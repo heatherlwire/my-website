@@ -1,0 +1,279 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Adaptive Learning Unleashed</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+        body {
+            margin: 0;
+            height: 100vh;
+            font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, #1f1c2c, #928dab);
+            color: #fff;
+            overflow: hidden;
+        }
+
+        .container {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.08);
+            padding: 50px 70px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(10px);
+            animation: fadeIn 1.2s ease-in-out;
+            max-width: 480px;
+        }
+
+        h1 {
+            font-size: 2.2rem;
+            margin-bottom: 8px;
+            letter-spacing: 1px;
+            background: linear-gradient(to right, #ffb6c1, #add8e6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        h2 {
+            font-size: 1.2rem;
+            margin-bottom: 25px;
+            color: #eee;
+            font-weight: normal;
+        }
+
+        input {
+            width: 260px;
+            padding: 12px 15px;
+            border-radius: 8px;
+            border: none;
+            outline: none;
+            font-size: 1rem;
+            text-align: center;
+            margin-bottom: 20px;
+            background: rgba(255, 255, 255, 0.9);
+            color: #222;
+        }
+
+        button {
+            background: linear-gradient(90deg, #6dd5ed, #2193b0);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 40px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            margin: 5px;
+        }
+
+            button:hover {
+                transform: scale(1.05);
+                background: linear-gradient(90deg, #56ccf2, #2f80ed);
+            }
+
+        .footer {
+            margin-top: 30px;
+            font-size: 0.85rem;
+            color: #ccc;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(173, 216, 230, 0.7);
+            }
+
+            70% {
+                box-shadow: 0 0 0 15px rgba(173, 216, 230, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(173, 216, 230, 0);
+            }
+        }
+
+        .welcome-back {
+            font-size: 1.1rem;
+            color: #e0f7fa;
+            margin-bottom: 20px;
+        }
+
+        /* LRS Badge */
+        #lrsStatus {
+            position: fixed;
+            bottom: 15px;
+            right: 15px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.3);
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            color: #fff;
+            backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            opacity: 0;
+            animation: fadeIn 1s ease-in forwards 1.5s;
+        }
+
+        .conn-bubble {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #bbb;
+        }
+
+            .conn-bubble.connected {
+                background: #1aa928;
+                animation: connPulse 1.8s ease-out infinite;
+            }
+
+            .conn-bubble.unstable {
+                background: #e6a700;
+            }
+
+            .conn-bubble.offline {
+                background: #a00;
+            }
+
+        @keyframes connPulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(26,169,40,0.5);
+            }
+
+            70% {
+                box-shadow: 0 0 0 8px rgba(26,169,40,0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(26,169,40,0);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container" id="launchContainer">
+        <h1>Adaptive Learning Unleashed</h1>
+        <h2>Personalizing Competency with Real-Time xAPI</h2>
+
+        <div id="newUserSection">
+            <p>Please enter your name to begin:</p>
+            <input type="text" id="nameInput" placeholder="Your Name" />
+            <br />
+            <button class="pulse" onclick="launchCourse()">Launch Experience</button>
+        </div>
+
+        <div id="returningUserSection" style="display:none;">
+            <div class="welcome-back" id="welcomeBack"></div>
+            <button class="pulse" onclick="continueCourse()">Continue Where You Left Off</button>
+            <button onclick="restartCourse()">Start Over</button>
+        </div>
+
+        <div class="footer">© 2025 Heather Wire | Conference Demo LRS Sandbox</div>
+    </div>
+
+    <div id="lrsStatus">
+        <div id="connIndicator" class="conn-bubble"></div>
+        <span id="connLabel">Checking LRS...</span>
+    </div>
+
+    <script>
+    const LRS = {
+      endpoint: "https://cloud.scorm.com/lrs/TENBKY6BZ6/sandbox/",
+      key: "d_cPqAqYNvM3sMTyJ2M",
+      secret: "rh70yfaxONPyu11z_vk"
+    };
+
+    const SCORM_LINKS = {
+      "C1-test": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C1_TEST",
+      "C2-test": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C2_TEST",
+      "C3-test": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C3_TEST",
+      "program-complete": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_PROGRAM_COMPLETE"
+    };
+
+    function scormUrl(target, learner, sid) {
+      const base = SCORM_LINKS[target];
+      const qs = new URLSearchParams({ learnerName: learner, sid: sid, current: target }).toString();
+      return `${base}?${qs}`;
+    }
+
+    // LRS connectivity check
+    (async () => {
+      const bubble = document.getElementById("connIndicator");
+      const label = document.getElementById("connLabel");
+      const setState = (cls, txt) => {
+        bubble.classList.remove("connected", "unstable", "offline");
+        bubble.classList.add(cls);
+        label.textContent = txt;
+      };
+      try {
+        const res = await fetch(LRS.endpoint + "about", {
+          headers: { Authorization: "Basic " + btoa(LRS.key + ":" + LRS.secret) }
+        });
+        if (res.ok) setState("connected", "Connected to LRS Sandbox");
+        else setState("unstable", "Unstable LRS Connection");
+      } catch {
+        setState("offline", "Offline Mode");
+      }
+    })();
+
+    // Detect returning learners
+    const savedName = localStorage.getItem("learnerName");
+    const savedSid = localStorage.getItem("sessionId");
+    const lastComp = localStorage.getItem("currentCompetency") || "C1-test";
+
+    if (savedName) {
+      document.getElementById("newUserSection").style.display = "none";
+      document.getElementById("returningUserSection").style.display = "block";
+      document.getElementById("welcomeBack").textContent = `Welcome back, ${savedName}!`;
+    }
+
+    function launchCourse() {
+      const learnerName = document.getElementById("nameInput").value.trim();
+      if (!learnerName) {
+        alert("Please enter your name before continuing.");
+        return;
+      }
+      localStorage.setItem("learnerName", learnerName);
+      const sid = crypto.randomUUID();
+      localStorage.setItem("sessionId", sid);
+      localStorage.setItem("currentCompetency", "C1-test");
+      window.location.href = scormUrl("C1-test", learnerName, sid);
+    }
+
+    function continueCourse() {
+      const learnerName = localStorage.getItem("learnerName");
+      const sid = localStorage.getItem("sessionId");
+      const nextTarget = localStorage.getItem("currentCompetency") || "C1-test";
+      window.location.href = scormUrl(nextTarget, learnerName, sid);
+    }
+
+    function restartCourse() {
+      if (confirm("This will clear your previous progress and start over. Continue?")) {
+        localStorage.clear();
+        window.location.reload();
+      }
+    }
+    </script>
+</body>
+</html>
