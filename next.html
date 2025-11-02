@@ -1,0 +1,470 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Dynamic Next Page</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+        body {
+            font-family: system-ui, Arial, sans-serif;
+            margin: 28px;
+            background: #fafafa;
+        }
+
+        h2 {
+            margin-bottom: 4px;
+        }
+
+        .card {
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            padding: 16px;
+            margin-bottom: 16px;
+            background: #fff;
+        }
+
+        .row {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        button {
+            padding: 10px 16px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            cursor: pointer;
+            font-size: 15px;
+        }
+
+            button.primary {
+                border-color: #3b82f6;
+                color: #fff;
+                background: #3b82f6;
+            }
+
+            button:disabled {
+                opacity: 0.6;
+                cursor: not-allowed;
+            }
+
+        pre {
+            background: #f7f7f7;
+            padding: 12px;
+            border-radius: 8px;
+            overflow: auto;
+        }
+
+        .muted {
+            color: #666;
+            font-size: 14px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+            vertical-align: middle;
+        }
+
+        th {
+            background-color: #f4f4f4;
+        }
+
+        .status {
+            font-weight: 600;
+            padding: 4px 8px;
+            border-radius: 6px;
+        }
+
+        .Completed {
+            color: #0a7300;
+            background: #e9f6e8;
+        }
+
+        .InProgress {
+            color: #b67c00;
+            background: #fff3d9;
+        }
+
+        .NotStarted {
+            color: #a00;
+            background: #fdeaea;
+        }
+
+        /* Connection bubble */
+        .conn-bubble {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #bbb;
+            margin-right: 8px;
+        }
+
+            .conn-bubble.connected {
+                background: #1aa928;
+                animation: connPulse 1.8s ease-out infinite;
+            }
+
+            .conn-bubble.unstable {
+                background: #e6a700;
+            }
+
+            .conn-bubble.offline {
+                background: #a00;
+            }
+
+        @keyframes connPulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(26,169,40,0.5);
+            }
+
+            70% {
+                box-shadow: 0 0 0 10px rgba(26,169,40,0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(26,169,40,0);
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .conn-bubble.connected {
+                animation: none;
+            }
+        }
+
+        /* Tiny fade-in */
+        .fade-in {
+            animation: fadeIn .35s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-2px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* ★ NEW: subtle sync notice */
+        #syncNotice {
+            font-size: 13px;
+            color: #555;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h2>Analyzing your progress</h2>
+
+    <!-- 1) Connection -->
+    <div id="connection" class="card">
+        <div class="row" style="align-items:center;">
+            <div id="connIndicator" class="conn-bubble" aria-hidden="true"></div>
+            <span id="connLabel" style="font-weight:600;" aria-live="polite">Checking connection...</span>
+        </div>
+    </div>
+
+    <!-- 2) Learner Details -->
+    <div id="info" class="card">
+        <div><b>Learner:</b> <span id="learnerNameLabel">—</span></div>
+        <div class="muted">Session: <span id="sessionLabel">—</span></div>
+        <!-- ★ NEW: red gate message sits right under session -->
+        <div id="gateMsg" class="muted" style="color:#a00; margin-top:8px; display:none;">
+            Progress actions are disabled until a learner name is provided.
+        </div>
+    </div>
+
+    <!-- 3) Summary -->
+    <div id="summaryCard" class="card">
+        <div id="currentSummary" class="muted">Loading summary…</div>
+    </div>
+
+    <!-- 4) Actions -->
+    <div id="actions" class="card">
+        <div class="row">
+            <button id="continueBtn" class="primary">Continue</button>
+            <button id="acceptBtn">Accept Mastery Level and Move On</button>
+            <button id="toggleDebug" aria-pressed="false">Show Debug Info</button>
+        </div>
+    </div>
+
+    <!-- 5) Progress Table -->
+    <div id="progress" class="card">
+        <h3>Your Progress</h3>
+        <p class="muted">Real-time data from your learning record.</p>
+        <table>
+            <thead><tr><th>Competency</th><th>Mastery Level</th><th>Status</th></tr></thead>
+            <tbody id="progressTable"><tr><td colspan="3">Loading...</td></tr></tbody>
+        </table>
+    </div>
+
+    <!-- 6) Debug -->
+    <div id="debug" class="card" style="display:none;"></div>
+
+    <!-- ★ NEW: subtle auto-sync notice -->
+    <div id="syncNotice" class="muted">🔄 Syncing latest progress…</div>
+
+    <script>
+        /* 1) LRS Configuration (conference sandbox) */
+        const learnerName = localStorage.getItem("learnerName") ||
+            new URLSearchParams(location.search).get("learnerName") || "Anonymous";
+
+        const endpoint = "https://cloud.scorm.com/lrs/TENBKY6BZ6/sandbox/";
+        const key = "d_cPqAqYNvM3sMTyJ2M";
+        const secret = "rh70yfaxONPyu11z_vk";
+        const auth = "Basic " + btoa(`${key}:${secret}`);
+
+        const NS = "https://acbl.wirelxdfirm.com/extensions/";
+        const EX = k => NS + k;
+
+        const sid = localStorage.getItem("sessionId") || (() => {
+            const v = self.crypto?.randomUUID?.() || String(Date.now());
+            localStorage.setItem("sessionId", v);
+            return v;
+        })();
+
+        const urlComp = new URLSearchParams(location.search).get("current");
+        if (urlComp) localStorage.setItem("currentCompetency", urlComp);
+
+        /* 2) Connection bubble */
+        (async () => {
+            const bubble = document.getElementById("connIndicator");
+            const label = document.getElementById("connLabel");
+            const setState = (cls, txt) => {
+                bubble.classList.remove("connected", "unstable", "offline");
+                bubble.classList.add(cls);
+                label.textContent = txt;
+            };
+            try {
+                const res = await fetch(`${endpoint}about`, { headers: { Authorization: auth } });
+                if (res.ok) setState("connected", "Connected to LRS Sandbox");
+                else setState("unstable", "Connection unstable");
+            } catch {
+                setState("offline", "Offline (using cached data)");
+            }
+        })();
+
+        /* 3) SCORM Links */
+        const SCORM_LINKS = {
+            "C1-test": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C1_TEST",
+            "C2-test": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C2_TEST",
+            "C3-test": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C3_TEST",
+            "program-complete": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_PROGRAM_COMPLETE"
+        };
+        function scormUrl(key, learner, sid) {
+            const base = SCORM_LINKS[key];
+            if (!base) throw new Error("No SCORM link for " + key);
+            const qs = new URLSearchParams({ learnerName: learner || "", sid: sid || "" });
+            return `${base}?${qs.toString()}`;
+        }
+
+        /* 4) Adaptive Rules */
+        async function loadAdaptiveRules() {
+            try {
+                const res = await fetch("adaptive_rules.json", { cache: "no-store" });
+                const data = await res.json();
+                const { meta, ...rules } = data || {};
+                return rules || {};
+            } catch { return {}; }
+        }
+        function evaluateAdaptiveRouting(compId, compState, ruleset) {
+            const rules = ruleset[compId]; if (!rules) return null;
+            for (const rule of rules) {
+                const cond = rule.if; let match = true;
+                for (const k in cond) {
+                    if (k === "masteryIn" && !cond[k].includes(compState.mastery)) match = false;
+                    else if (k !== "masteryIn" && compState[k] !== cond[k]) match = false;
+                }
+                if (match) {
+                    for (const a of rule.then) {
+                        if (a.route) {
+                            const type = Object.keys(a.route)[0];
+                            const t = a.route[type];
+                            return t.replace("{item}", compState.missed?.[0] || "");
+                        }
+                    }
+                }
+            }
+            return null;
+        }
+
+        /* 5) LRS Data */
+        async function fetchStatements(limit = 400) {
+            const res = await fetch(`${endpoint}statements?limit=${limit}&format=exact`, {
+                headers: { "Authorization": auth, "X-Experience-API-Version": "1.0.3" }
+            });
+            const j = await res.json();
+            const list = Array.isArray(j.statements) ? j.statements : [];
+            return list.filter(s => s.result?.extensions?.[EX("learnerName")] === learnerName);
+        }
+        function analyze(statements) {
+            const map = { C1: {}, C2: {}, C3: {} };
+            for (const s of statements) {
+                const id = s.object?.id || "";
+                const comp = id.match(/(C\d+)/i)?.[1]?.toUpperCase();
+                if (!comp) continue;
+                const ex = s.result?.extensions || {};
+                map[comp].mastery = ex[EX("masteryLevel")] || map[comp].mastery || null;
+                map[comp].finalized = ex[EX("finalized")] || map[comp].finalized || false;
+                map[comp].testedOut = ex[EX("testedOut")] || map[comp].testedOut || false;
+            }
+            return map;
+        }
+        function renderProgressDashboard(map) {
+            const tbody = document.getElementById("progressTable");
+            tbody.innerHTML = "";
+            for (const comp of ["C1", "C2", "C3"]) {
+                const s = map[comp] || {};
+                const mastery = s.mastery || "—";
+                let status = "NotStarted";
+                if (s.finalized || s.mastery === "Mastery" || s.testedOut) status = "Completed";
+                else if (s.mastery) status = "InProgress";
+                const tr = document.createElement("tr");
+                tr.innerHTML = `<td>${comp}</td><td>${mastery}</td><td><span class="status ${status}">${status}</span></td>`;
+                tbody.appendChild(tr);
+            }
+        }
+
+        /* 6) Off-ramp */
+        async function sendFinalizeStatement(current) {
+            const stmt = {
+                actor: { name: learnerName, mbox: `mailto:${encodeURIComponent(learnerName)}@wirelxdfirm.com` },
+                verb: { id: "http://id.tincanapi.com/verb/completed", display: { "en-US": "completed" } },
+                object: { id: `https://acbl.wirelxdfirm.com/activities/${current}/offramp` },
+                result: {
+                    completion: true,
+                    extensions: {
+                        [EX("learnerName")]: learnerName,
+                        [EX("finalized")]: true,
+                        [EX("competencyId")]: current
+                    }
+                },
+                timestamp: new Date().toISOString()
+            };
+            await fetch(`${endpoint}statements`, {
+                method: "POST",
+                headers: {
+                    "Authorization": auth,
+                    "Content-Type": "application/json",
+                    "X-Experience-API-Version": "1.0.3"
+                },
+                body: JSON.stringify(stmt)
+            });
+            localStorage.setItem(`${current}.finalized`, "true");
+        }
+
+        /* ---------- 7) Main runtime + ★ NEW Auto-refresh ---------- */
+        (async () => {
+            const infoCardName = document.getElementById("learnerNameLabel");
+            const infoCardSession = document.getElementById("sessionLabel");
+            const gateMsg = document.getElementById("gateMsg");
+            const debug = document.getElementById("debug");
+            const summary = document.getElementById("currentSummary");
+            const continueBtn = document.getElementById("continueBtn");
+            const acceptBtn = document.getElementById("acceptBtn");
+            const debugBtn = document.getElementById("toggleDebug");
+            const syncNotice = document.getElementById("syncNotice"); // ★ NEW
+
+            infoCardName.textContent = learnerName;
+            infoCardSession.textContent = sid;
+
+            // show/hide the red gate message based on learnerName
+            gateMsg.style.display = (learnerName === "Anonymous") ? "block" : "none";
+
+            const adaptiveRules = await loadAdaptiveRules();
+
+            // Keep local state so auto-refresh can reuse "current" correctly
+            let compMap = {};
+            let current = localStorage.getItem("currentCompetency") || "C1";
+
+            function applyUI(map) {
+                renderProgressDashboard(map);
+
+                let compState = map[current] || { mastery: null, missed: [], finalized: false, testedOut: false };
+                if (current !== "C1" && !compState.mastery && !compState.finalized && !compState.testedOut) {
+                    current = "C1";
+                    localStorage.setItem("currentCompetency", "C1");
+                    compState = map["C1"] || { mastery: null, missed: [], finalized: false, testedOut: false };
+                }
+
+                const currentLabel = current === "C1" ? "Competency 1" : (current === "C2" ? "Competency 2" : "Competency 3");
+                const nextTarget = evaluateAdaptiveRouting(current, compState, adaptiveRules) || `${current}-test`;
+
+                const masteryTxt = compState.mastery || "—";
+                const statusTxt = compState.finalized ? "Completed" : (compState.mastery ? "In Progress" : "Not Started");
+                summary.innerHTML = `Current: <b>${currentLabel}</b> — <b>${masteryTxt}</b> (${statusTxt}) → Next: <b>${nextTarget}</b>`;
+
+                // Enable/disable
+                const gated = (learnerName === "Anonymous") || (!compState.mastery && !compState.testedOut && !compState.finalized);
+                continueBtn.disabled = gated;
+                acceptBtn.disabled = gated;
+
+                // Bind (idempotent)
+                continueBtn.onclick = () => { if (!gated) location.href = scormUrl(nextTarget, learnerName, sid); };
+                acceptBtn.onclick = async () => {
+                    if (gated) return;
+                    const mastery = compState.mastery || "No recorded mastery";
+                    const ok = confirm(
+                        `You are accepting a "${mastery}" level for ${currentLabel}.\n\n` +
+                        `This will be submitted to the LRS, locked in, and you’ll move to the next competency.\n\nContinue?`
+                    );
+                    if (!ok) return;
+                    await sendFinalizeStatement(current);
+                    alert(`Submitted "${mastery}" for ${currentLabel}.`);
+                    const routed = evaluateAdaptiveRouting(current, { ...compState, finalized: true }, adaptiveRules) || "program-complete";
+                    location.href = scormUrl(routed, learnerName, sid);
+                };
+
+                // Debug toggle (idempotent)
+                debug.innerHTML = `<pre>${JSON.stringify(map, null, 2)}</pre>`;
+                const syncDebug = () => {
+                    const hidden = debug.style.display === "none" || !debug.style.display;
+                    debugBtn.textContent = hidden ? "Show Debug Info" : "Hide Debug Info";
+                    debugBtn.setAttribute("aria-pressed", (!hidden).toString());
+                };
+                syncDebug();
+                debugBtn.onclick = () => {
+                    const hidden = debug.style.display === "none" || !debug.style.display;
+                    debug.style.display = hidden ? "block" : "none";
+                    syncDebug();
+                };
+            }
+
+            async function pullAndRender(showNotice = false) {
+                try {
+                    if (showNotice) {
+                        syncNotice.style.display = "block";
+                    }
+                    const stmts = await fetchStatements().catch(() => []);
+                    compMap = analyze(stmts);
+                    applyUI(compMap);
+                } finally {
+                    if (showNotice) {
+                        // brief display then hide
+                        setTimeout(() => { syncNotice.style.display = "none"; }, 900);
+                    }
+                }
+            }
+
+            // Initial load
+            await pullAndRender(false);
+
+            // ★ NEW: Auto-refresh every 30s with subtle notice
+            setInterval(() => { pullAndRender(true); }, 30000);
+        })();
+    </script>
+</body>
+</html>
