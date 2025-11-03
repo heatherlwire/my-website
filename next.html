@@ -2,17 +2,23 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8" />
-    <title>Adaptive Learning Unleashed: Launch</title>
+    <title>Analyzing your progress</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
         :root {
             --bg-0: #0a0f1a;
             --bg-1: #0e1526;
+            --bg-2: #0f1b33;
             --ink-0: #e8f1ff;
             --ink-1: #b9c8e8;
             --sky-1: #0ea5e9;
             --sky-2: #22d3ee;
             --ok: #22c55e;
+            --warn: #f59e0b;
+            --err: #ef4444;
+            --chip-ok: #0b2e17;
+            --chip-warn: #2f2410;
+            --chip-err: #2f1616;
             --focus: #93c5fd;
             --shadow: 0 10px 24px rgba(0,0,0,.35);
         }
@@ -23,51 +29,33 @@
             font-family: ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;
             background: radial-gradient(1200px 800px at 70% -10%,rgba(34,211,238,.10),transparent 60%), radial-gradient(1000px 600px at -10% 20%,rgba(14,165,233,.15),transparent 55%), linear-gradient(180deg,#07101e 0%,#0a1322 50%,#0b1628 100%);
             min-height: 100dvh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: opacity .8s ease;
         }
 
-            body.fade-out {
-                opacity: 0;
-                pointer-events: none
-            }
+        header {
+            padding: 28px 24px 10px;
+        }
 
-        .wrap {
-            background: linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.015)),var(--bg-1);
-            border: 1px solid rgba(148,163,184,.15);
-            border-radius: 16px;
-            box-shadow: var(--shadow);
-            padding: 40px 32px;
-            max-width: 520px;
-            width: 90%;
-            text-align: center;
-            animation: fadeIn 1.2s ease-out forwards;
+        .title-row {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            flex-wrap: wrap;
         }
 
         h1 {
             margin: 0;
-            font-size: clamp(24px,3vw,32px);
+            font-size: clamp(22px,2.4vw,28px);
+            letter-spacing: .2px;
             background: linear-gradient(90deg,var(--ink-0),#cfe8ff);
             -webkit-background-clip: text;
             background-clip: text;
             color: transparent;
-            animation: slideUp 1s ease-out .2s both;
         }
-        /* Subtitle with subtle sky glow + crisp white micro-outline for projector readability */
+
         .subtitle {
-            margin-top: 10px;
+            margin: 4px 0 0;
             color: var(--ink-1);
-            font-size: 17px;
-            letter-spacing: .3px;
-            opacity: 0;
-            transform: translateY(10px);
-            animation: fadeUp 1s ease-out .5s forwards;
-            text-shadow: 0 0 1px rgba(255,255,255,.55), /* micro white edge */
-            0 1px 0 rgba(0,0,0,.25), /* faint anchor on dark bg */
-            0 0 6px rgba(34,211,238,.25), /* cyan glow inner */
-            0 0 14px rgba(14,165,233,.18); /* cyan glow outer */
+            font-size: 14px;
         }
 
         .badge {
@@ -79,189 +67,569 @@
             border-radius: 999px;
             background: rgba(14,165,233,.10);
             border: 1px solid rgba(34,211,238,.35);
-            margin-top: 20px;
-            opacity: 0;
-            transform: translateY(10px);
-            animation: fadeUp 1s ease-out .8s forwards;
         }
 
         .dot {
             width: 10px;
             height: 10px;
             border-radius: 50%;
-            background: #f59e0b
+            background: var(--warn);
         }
 
             .dot.ok {
                 background: var(--ok);
                 box-shadow: 0 0 0 0 rgba(34,197,94,.6);
-                animation: pulse 1.8s ease-out infinite
+                animation: pulse 1.8s ease-out infinite;
             }
 
-        input {
-            width: 100%;
-            padding: 12px 14px;
-            border-radius: 10px;
-            border: 1px solid rgba(148,163,184,.35);
-            background: #0f1a2e;
-            color: var(--ink-0);
-            font-size: 16px;
-            margin-top: 20px;
-            box-sizing: border-box;
-            opacity: 0;
-            transform: translateY(10px);
-            animation: fadeUp 1s ease-out 1s forwards;
-        }
-
-            input:focus {
-                outline: none;
-                border-color: var(--sky-2);
-                box-shadow: 0 0 0 3px rgba(147,197,253,.2)
+            .dot.warn {
+                background: var(--warn);
             }
 
-        button {
-            margin-top: 16px;
-            width: 100%;
-            padding: 12px 16px;
-            font-size: 16px;
-            border-radius: 10px;
-            border: 1px solid rgba(34,211,238,.55);
-            background: linear-gradient(180deg,#0e87c7,#0c6aa0);
-            color: #fff;
-            font-weight: 600;
-            cursor: pointer;
-            box-shadow: 0 6px 24px rgba(14,165,233,.35);
-            transition: transform .1s ease,box-shadow .2s ease;
-            opacity: 0;
-            transform: translateY(10px);
-            animation: fadeUp 1s ease-out 1.2s forwards;
-        }
-
-            button:hover {
-                transform: translateY(-2px);
-                box-shadow: 0 8px 28px rgba(14,165,233,.45)
+            .dot.err {
+                background: var(--err);
             }
-
-        .msg {
-            margin-top: 12px;
-            color: var(--ink-1);
-            font-size: 14px;
-            opacity: 0;
-            animation: fadeUp 1s ease-out 1.4s forwards
-        }
-
-        .pulse {
-            display: inline-block;
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            background: var(--ok);
-            animation: pulse 1.8s ease-out infinite;
-            vertical-align: middle;
-            margin-right: 6px
-        }
 
         @keyframes pulse {
             0% {
-                box-shadow: 0 0 0 0 rgba(34,197,94,.5)
+                box-shadow: 0 0 0 0 rgba(34,197,94,.5);
             }
 
             70% {
-                box-shadow: 0 0 0 10px rgba(34,197,94,0)
+                box-shadow: 0 0 0 10px rgba(34,197,94,0);
             }
 
             100% {
-                box-shadow: 0 0 0 0 rgba(34,197,94,0)
+                box-shadow: 0 0 0 0 rgba(34,197,94,0);
             }
         }
 
-        @keyframes fadeUp {
-            from {
-                opacity: 0;
-                transform: translateY(12px)
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0)
-            }
+        .wrap {
+            padding: 6px 24px 32px;
+            max-width: 1100px;
+            margin: 0 auto;
         }
 
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: scale(.96)
-            }
-
-            to {
-                opacity: 1;
-                transform: scale(1)
-            }
+        .card {
+            background: linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.015)),var(--bg-1);
+            border: 1px solid rgba(148,163,184,.15);
+            border-radius: 14px;
+            padding: 16px;
+            margin: 16px 0;
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(6px);
         }
 
-        @keyframes slideUp {
-            from {
-                opacity: 0;
-                transform: translateY(20px)
+        .muted {
+            color: var(--ink-1);
+        }
+
+        .summary {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px 16px;
+            align-items: center;
+            font-size: 15px;
+        }
+
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            border: 1px solid rgba(148,163,184,.25);
+            background: rgba(255,255,255,.04);
+            font-weight: 600;
+        }
+
+        .upnext {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px dashed rgba(34,211,238,.35);
+            background: rgba(14,165,233,.10);
+        }
+
+            .upnext b {
+                color: var(--sky-2);
             }
 
-            to {
-                opacity: 1;
-                transform: translateY(0)
+        .row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: center;
+        }
+
+        button {
+            padding: 10px 16px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 15px;
+            border: 1px solid rgba(148,163,184,.35);
+            background: #0f1a2e;
+            color: var(--ink-0);
+            transition: transform .05s ease, box-shadow .2s ease, border-color .2s ease;
+        }
+
+            button.primary {
+                background: linear-gradient(180deg,#0e87c7,#0c6aa0);
+                border-color: rgba(34,211,238,.55);
+                box-shadow: 0 6px 24px rgba(14,165,233,.35);
+            }
+
+            button:hover {
+                transform: translateY(-1px);
+            }
+
+            button:focus-visible {
+                outline: 2px solid var(--focus);
+                outline-offset: 2px;
+                box-shadow: 0 0 0 3px rgba(147,197,253,.25);
+            }
+
+            button:disabled {
+                opacity: .6;
+                cursor: not-allowed;
+                filter: saturate(.6);
+            }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 8px;
+        }
+
+        thead th {
+            text-align: left;
+            padding: 12px 10px;
+            background: var(--bg-2);
+            color: var(--ink-0);
+            border-bottom: 1px solid rgba(148,163,184,.25);
+        }
+
+        td {
+            padding: 12px 10px;
+            border-bottom: 1px solid rgba(148,163,184,.12);
+            color: var(--ink-0);
+        }
+
+        .status {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 13px;
+            color: #fff;
+            background: rgba(255,255,255,.06);
+            border: 1px solid rgba(148,163,184,.25);
+        }
+
+        .s-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .Completed .s-dot {
+            background: var(--ok);
+            animation: pulse 2s ease-out infinite;
+        }
+
+        .InProgress .s-dot {
+            background: var(--warn);
+        }
+
+        .NotStarted .s-dot {
+            background: var(--err);
+            animation: pulse 2s ease-out infinite;
+        }
+
+        pre {
+            white-space: pre-wrap;
+            word-break: break-word;
+            background: #0b1222;
+            color: #dbeafe;
+            padding: 12px;
+            border-radius: 12px;
+            border: 1px solid rgba(148,163,184,.2);
+            max-height: 420px;
+            overflow: auto;
+        }
+
+        .warnline {
+            color: var(--err);
+            margin-top: 8px;
+            font-size: 14px;
+        }
+
+        @media (max-width:640px) {
+            .wrap {
+                padding: 6px 16px 28px;
+            }
+
+            .card {
+                padding: 14px;
             }
         }
     </style>
 </head>
 <body>
-    <main class="wrap" role="main">
-        <h1 id="welcomeTitle">Welcome to Adaptive Learning Unleashed</h1>
-        <div class="badge">
-            <span class="dot" id="connDot"></span>
-            <span id="connText">Checking connection…</span>
+    <header>
+        <p class="subtitle">Adaptive Learning Unleashed: Personalizing Competency with Real-Time xAPI</p>
+        <div class="title-row">
+            <h1>Analyzing your progress</h1>
+            <span class="badge" id="connBadge">
+                <span class="dot" id="connDot"></span>
+                <span id="connText">Checking connection…</span>
+            </span>
         </div>
+    </header>
 
-        <br /><br />
-        <p class="subtitle">Please enter your name to begin.</p>
+    <main class="wrap">
+        <!-- Learner details -->
+        <section class="card" id="info">
+            <div><b>Learner:</b> <span id="learnerNameLabel">—</span></div>
+            <div class="muted">Session: <span id="sessionLabel">—</span></div>
+            <div id="anonWarn" class="warnline" style="display:none;">Progress actions are disabled until a learner name is provided.</div>
+        </section>
 
-        <input id="nameInput" type="text" placeholder="Your Name" />
-        <button id="launchBtn" onclick="launchCourse()">Launch</button>
-        <div class="msg" id="returnMsg"></div>
+        <!-- Summary + Up Next -->
+        <section class="card" id="summaryCard">
+            <div class="summary" id="summaryLine"></div>
+            <div class="upnext" style="margin-top:10px;">
+                <strong>Up Next:</strong>
+                <span id="upNextComp" class="chip"><strong>—</strong></span>
+                <span id="upNextSub" class="chip"><strong>—</strong></span>
+                <span id="upNextType" class="chip"><strong>—</strong></span>
+            </div>
+        </section>
+
+        <!-- Actions -->
+        <section class="card" id="actions">
+            <div class="row">
+                <button id="continueBtn" class="primary">Continue</button>
+                <button id="acceptBtn">Accept Mastery Level and Move On</button>
+                <button id="toggleDebug" aria-pressed="false">Show Debug Info</button>
+            </div>
+        </section>
+
+        <!-- Progress table -->
+        <section class="card" id="progress">
+            <h3 style="margin:0 0 6px;">Your Progress</h3>
+            <p class="muted" style="margin:0 0 8px;">Real-time data from your learning record.</p>
+            <table>
+                <thead><tr><th>Competency</th><th>Mastery Level</th><th>Status</th></tr></thead>
+                <tbody id="progressTable"><tr><td colspan="3" class="muted">Loading…</td></tr></tbody>
+            </table>
+        </section>
+
+        <!-- Debug -->
+        <section class="card" id="debug" style="display:none;"></section>
     </main>
 
     <script>
-    const storedName = localStorage.getItem("learnerName");
-    const inputEl = document.getElementById("nameInput");
-    const titleEl = document.getElementById("welcomeTitle");
-    const retEl = document.getElementById("returnMsg");
+        /* ===== 1) Config & helpers ===== */
+        const learnerName =
+            localStorage.getItem("learnerName") ||
+            new URLSearchParams(location.search).get("learnerName") ||
+            "Anonymous";
 
-    function fadeToNext(url){
-      document.body.classList.add("fade-out");
-      setTimeout(()=>{ window.location.href = url; }, 700);
-    }
+        const endpoint = "https://cloud.scorm.com/lrs/TENBKY6BZ6/sandbox/";
+        const key = "d_cPqAqYNvM3sMTyJ2M";
+        const secret = "rh70yfaxONPyu11z_vk";
+        const auth = "Basic " + btoa(`${key}:${secret}`);
 
-    // Auto-redirect returning learners
-    if (storedName){
-      titleEl.textContent = `Welcome back, ${storedName}!`;
-      retEl.innerHTML = '<span class="pulse"></span> Redirecting you to continue your session...';
-      setTimeout(()=> fadeToNext("next.html"), 1800);
-    }
+        const NS = "https://acbl.wirelxdfirm.com/extensions/";
+        const EX = k => NS + k;
 
-    function launchCourse(){
-      const name = (inputEl.value || storedName || "").trim();
-      if(!name){ alert("Please enter your name before launching."); return; }
+        const sid = localStorage.getItem("sessionId") || (() => {
+            const v = self.crypto?.randomUUID?.() || String(Date.now());
+            localStorage.setItem("sessionId", v);
+            return v;
+        })();
 
-      localStorage.setItem("learnerName", name);
-      if(!localStorage.getItem("sessionId")){
-        const sid = (self.crypto && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now());
-        localStorage.setItem("sessionId", sid);
-      }
-      fadeToNext("next.html");
-    }
+        // Allow ?current=C1-test etc to update local state
+        const urlComp = new URLSearchParams(location.search).get("current");
+        if (urlComp) localStorage.setItem("currentCompetency", urlComp);
 
-    // Mock connection beacon
-    const dot = document.getElementById("connDot");
-    const txt = document.getElementById("connText");
-    setTimeout(()=>{ dot.className = "dot ok"; txt.textContent = "Connected"; }, 1000);
+        window.currentComp = localStorage.getItem("currentCompetency") || "C1";
+        window.currentMasteryLevel = null;
+
+        // SCORM targets
+        const SCORM_LINKS = {
+            "C1-test": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C1_TEST",
+            "C2-test": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C2_TEST",
+            "C3-test": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C3_TEST",
+
+            "C1a-content": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C1A_CONTENT",
+            "C1a-apply": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C1A_APPLY",
+            "C1b-content": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C1B_CONTENT",
+            "C1b-apply": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C1B_APPLY",
+            "C1c-content": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C1C_CONTENT",
+            "C1c-apply": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C1C_APPLY",
+
+            "C2a-content": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C2A_CONTENT",
+            "C2a-apply": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C2A_APPLY",
+            "C2b-content": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C2B_CONTENT",
+            "C2b-apply": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C2B_APPLY",
+            "C2c-content": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C2C_CONTENT",
+            "C2c-apply": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C2C_APPLY",
+
+            "C3a-content": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C3A_CONTENT",
+            "C3a-apply": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C3A_APPLY",
+            "C3b-content": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C3B_CONTENT",
+            "C3b-apply": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C3B_APPLY",
+            "C3c-content": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C3C_CONTENT",
+            "C3c-apply": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C3C_APPLY",
+
+            "program-complete": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_PROGRAM_COMPLETE"
+        };
+
+        const displayMastery = m => (m === "Mastery" ? "Mastered" : (m || "—"));
+
+        function scormUrl(targetKey, learner, sessionId) {
+            const base = SCORM_LINKS[targetKey];
+            if (!base) throw new Error(`No SCORM link mapped for ${targetKey}`);
+            const qs = new URLSearchParams({ learnerName: learner || "", sid: sessionId || "" });
+            // Also persist "current" to help hand-off back to this page
+            return `${base}?${qs.toString()}&current=${encodeURIComponent(targetKey)}`;
+        }
+
+        /* ===== 2) Connection badge ===== */
+        async function checkConnection() {
+            const dot = document.getElementById("connDot");
+            const txt = document.getElementById("connText");
+            const set = (cls, label) => { dot.className = `dot ${cls}`; txt.textContent = label; };
+            try {
+                const r = await fetch(`${endpoint}about`, { headers: { Authorization: auth } });
+                set(r.ok ? "ok" : "warn", r.ok ? "Connected" : "Connection unstable");
+            } catch { set("err", "Offline"); }
+        }
+
+        /* ===== 3) Rules & LRS ===== */
+        async function loadAdaptiveRules() {
+            try {
+                const res = await fetch("adaptive_rules.json", { cache: "no-store" });
+                const data = await res.json();
+                const { meta, ...rules } = data || {};
+                return rules || {};
+            } catch { return {}; }
+        }
+
+        function evaluateAdaptiveRouting(compId, compState, ruleset) {
+            const rules = ruleset[compId]; if (!rules) return null;
+            for (const rule of rules) {
+                const cond = rule.if; let match = true;
+                for (const k in cond) {
+                    if (k === "masteryIn" && !cond[k].includes(compState.mastery)) match = false;
+                    else if (k !== "masteryIn" && compState[k] !== cond[k]) match = false;
+                }
+                if (match) {
+                    for (const a of rule.then) {
+                        if (a.route) {
+                            const key = Object.keys(a.route)[0];
+                            const target = a.route[key];
+                            return target.replace("{item}", compState.missed?.[0] || "");
+                        }
+                    }
+                }
+            }
+            return null;
+        }
+
+        async function fetchStatements(limit = 400) {
+            const res = await fetch(`${endpoint}statements?limit=${limit}&format=exact`, {
+                headers: { "Authorization": auth, "X-Experience-API-Version": "1.0.3" }
+            });
+            const j = await res.json();
+            const list = Array.isArray(j.statements) ? j.statements : [];
+            // Filter to this learner via extension key
+            return list.filter(s => s.result?.extensions?.[EX("learnerName")] === learnerName);
+        }
+
+        function analyze(statements) {
+            const map = { C1: {}, C2: {}, C3: {} };
+            for (const s of statements) {
+                const id = s.object?.id || "";
+                const comp = id.match(/(C\d+)/i)?.[1]?.toUpperCase();
+                if (!comp) continue;
+                const ex = s.result?.extensions || {};
+                map[comp].mastery = ex[EX("masteryLevel")] || map[comp].mastery || null;
+                map[comp].finalized = ex[EX("finalized")] || map[comp].finalized || false;
+                map[comp].testedOut = ex[EX("testedOut")] || map[comp].testedOut || false;
+                map[comp].missed = Array.isArray(ex[EX("missed")]) ? ex[EX("missed")] : map[comp].missed || [];
+            }
+            return map;
+        }
+
+        function renderProgress(map) {
+            const tbody = document.getElementById("progressTable");
+            tbody.innerHTML = "";
+            for (const comp of ["C1", "C2", "C3"]) {
+                const s = map[comp] || {};
+                const mastery = displayMastery(s.mastery);
+
+                // Separate class vs displayed text to keep spaces
+                let statusClass = "NotStarted";
+                let statusText = "Not Started";
+                if (s.finalized || s.mastery === "Mastery" || s.testedOut) { statusClass = "Completed"; statusText = "Completed"; }
+                else if (s.mastery) { statusClass = "InProgress"; statusText = "In Progress"; }
+
+                const tr = document.createElement("tr");
+                tr.innerHTML = `<td>${comp}</td><td>${mastery}</td>
+                            <td><span class="status ${statusClass}">
+                              <span class="s-dot"></span>${statusText}
+                            </span></td>`;
+                tbody.appendChild(tr);
+            }
+        }
+
+        /* ===== 4) UI writers ===== */
+        function writeSummary(current, compState, nextTarget) {
+            const line = document.getElementById("summaryLine");
+            const currentLabel = current === "C1" ? "Competency 1" : current === "C2" ? "Competency 2" : "Competency 3";
+            const masteryTxt = displayMastery(compState.mastery);
+            const statusTxt = compState.finalized ? "Completed" : (compState.mastery ? "In Progress" : "Not Started");
+
+            window.currentComp = current;
+            window.currentMasteryLevel = compState.mastery || null;
+
+            line.innerHTML = `Current: <b>${currentLabel}</b> — <b>${masteryTxt}</b> (${statusTxt})`;
+
+            const comp = (nextTarget.match(/(C\d)/i)?.[1] || current).toUpperCase();
+            const subMatch = nextTarget.match(/C\d([a-c])/i);
+            const sub = subMatch ? `C${comp[1]}${subMatch[1]}` : "—";
+            let type = "—";
+            if (/-content$/i.test(nextTarget)) type = "Content";
+            else if (/-apply$/i.test(nextTarget)) type = "Application";
+            else if (/-test$/i.test(nextTarget)) type = "Test";
+            else if (/program-complete/i.test(nextTarget)) type = "Finish";
+
+            document.getElementById("upNextComp").innerHTML = `<strong>${comp}</strong>`;
+            document.getElementById("upNextSub").innerHTML = `<strong>${sub}</strong>`;
+            document.getElementById("upNextType").innerHTML = `<strong>${type}</strong>`;
+        }
+
+        function writeLearner() {
+            const nameEl = document.getElementById("learnerNameLabel");
+            const sessEl = document.getElementById("sessionLabel");
+            const warnEl = document.getElementById("anonWarn");
+            nameEl.textContent = learnerName;
+            sessEl.textContent = sid;
+            warnEl.style.display = (learnerName === "Anonymous") ? "block" : "none";
+        }
+
+        /* ===== 5) Off-ramp finalize ===== */
+        async function sendFinalizeStatement(currentComp) {
+            const stmt = {
+                actor: { name: learnerName, mbox: `mailto:${encodeURIComponent(learnerName)}@wirelxdfirm.com` },
+                verb: { id: "http://id.tincanapi.com/verb/completed", display: { "en-US": "completed" } },
+                object: { id: `https://acbl.wirelxdfirm.com/activities/${currentComp}/offramp` },
+                result: {
+                    completion: true, extensions: {
+                        [EX("learnerName")]: learnerName,
+                        [EX("finalized")]: true,
+                        [EX("competencyId")]: currentComp,
+                        [EX("masteryLevel")]: (window.currentMasteryLevel || "Unknown")
+                    }
+                },
+                timestamp: new Date().toISOString()
+            };
+            await fetch(`${endpoint}statements`, {
+                method: "POST",
+                headers: {
+                    "Authorization": auth,
+                    "Content-Type": "application/json",
+                    "X-Experience-API-Version": "1.0.3"
+                },
+                body: JSON.stringify(stmt)
+            });
+            localStorage.setItem(`${currentComp}.finalized`, "true");
+        }
+
+        /* ===== 6) Runtime + refresh ===== */
+        let rulesCache = null;
+
+        async function refreshAll() {
+            await checkConnection();
+            writeLearner();
+
+            if (!rulesCache) rulesCache = await loadAdaptiveRules();
+
+            const stmts = await fetchStatements().catch(() => []);
+            const map = analyze(stmts);
+            renderProgress(map);
+
+            let current = localStorage.getItem("currentCompetency") || "C1";
+            let compState = map[current] || { mastery: null, missed: [], finalized: false, testedOut: false };
+
+            // Guard: default to C1 if we somehow jump ahead without data
+            if (current !== "C1" && !compState.mastery && !compState.finalized && !compState.testedOut) {
+                current = "C1";
+                localStorage.setItem("currentCompetency", "C1");
+                compState = map["C1"] || { mastery: null, missed: [], finalized: false, testedOut: false };
+            }
+
+            const nextTarget = evaluateAdaptiveRouting(current, compState, rulesCache) || `${current}-test`;
+            writeSummary(current, compState, nextTarget);
+
+            const continueBtn = document.getElementById("continueBtn");
+            const acceptBtn = document.getElementById("acceptBtn");
+            const debugBtn = document.getElementById("toggleDebug");
+            const debug = document.getElementById("debug");
+
+            // Keep debug live
+            debug.innerHTML = `<pre>${JSON.stringify({ current, compState, nextTarget, map }, null, 2)}</pre>`;
+
+            // Button logic
+            const canProceed = !(learnerName === "Anonymous" || (!compState.mastery && !compState.testedOut && !compState.finalized));
+            continueBtn.disabled = !canProceed;
+            acceptBtn.disabled = !canProceed;
+
+            if (canProceed) {
+                continueBtn.onclick = () => {
+                    // Persist current target for return trips
+                    localStorage.setItem("currentCompetency", nextTarget);
+                    location.href = scormUrl(nextTarget, learnerName, sid);
+                };
+                acceptBtn.onclick = async () => {
+                    const m = compState.mastery || "No recorded mastery";
+                    if (!confirm(`You are accepting a "${displayMastery(m)}" level for ${current}. Continue?`)) return;
+                    await sendFinalizeStatement(current);
+                    const routed = evaluateAdaptiveRouting(current, { ...compState, finalized: true }, rulesCache) || "program-complete";
+                    localStorage.setItem("currentCompetency", routed);
+                    location.href = scormUrl(routed, learnerName, sid);
+                };
+            }
+
+            // Debug toggle
+            const syncDbg = () => {
+                const hidden = debug.style.display === "none" || !debug.style.display;
+                debugBtn.textContent = hidden ? "Show Debug Info" : "Hide Debug Info";
+                debugBtn.setAttribute("aria-pressed", (!hidden).toString());
+            };
+            if (!debugBtn._init) {
+                debugBtn._init = true;
+                debugBtn.addEventListener("click", () => {
+                    const hidden = debug.style.display === "none" || !debug.style.display;
+                    debug.style.display = hidden ? "block" : "none";
+                    syncDbg();
+                });
+            }
+            syncDbg();
+        }
+
+        // Kickoff + gentle periodic refresh
+        refreshAll();
+        setInterval(() => { if (document.visibilityState === "visible") refreshAll(); }, 15000);
+        setTimeout(checkConnection, 800);
     </script>
 </body>
 </html>

@@ -27,13 +27,8 @@
             align-items: center;
             justify-content: center;
             overflow: hidden;
-            transition: opacity 0.8s ease;
+            transition: opacity 0.6s ease;
         }
-
-            body.fade-out {
-                opacity: 0;
-                pointer-events: none;
-            }
 
         .wrap {
             background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.015)), var(--bg-1);
@@ -44,7 +39,8 @@
             max-width: 520px;
             width: 90%;
             text-align: center;
-            animation: fadeIn 1.2s ease-out forwards;
+            position: relative;
+            z-index: 2;
         }
 
         h1 {
@@ -54,17 +50,13 @@
             -webkit-background-clip: text;
             background-clip: text;
             color: transparent;
-            animation: slideUp 1s ease-out 0.2s both;
         }
 
-        .subtitle {
+        .session-title {
+            font-size: 15px;
+            color: var(--sky-2);
             margin-top: 10px;
-            color: var(--ink-1);
-            font-size: 17px;
-            letter-spacing: 0.3px;
-            opacity: 0;
-            transform: translateY(10px);
-            animation: fadeUp 1s ease-out 0.5s forwards;
+            font-weight: 500;
         }
 
         .badge {
@@ -77,23 +69,30 @@
             background: rgba(14,165,233,.10);
             border: 1px solid rgba(34,211,238,.35);
             margin-top: 20px;
-            opacity: 0;
-            transform: translateY(10px);
-            animation: fadeUp 1s ease-out 0.8s forwards;
         }
 
         .dot {
             width: 10px;
             height: 10px;
             border-radius: 50%;
-            background: var(--warn);
+            background: var(--ok);
+            box-shadow: 0 0 0 0 rgba(34,197,94,.6);
+            animation: pulse 1.8s ease-out infinite;
         }
 
-            .dot.ok {
-                background: var(--ok);
-                box-shadow: 0 0 0 0 rgba(34,197,94,.6);
-                animation: pulse 1.8s ease-out infinite;
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(34,197,94,.5);
             }
+
+            70% {
+                box-shadow: 0 0 0 10px rgba(34,197,94,0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(34,197,94,0);
+            }
+        }
 
         input {
             width: 100%;
@@ -105,9 +104,6 @@
             font-size: 16px;
             margin-top: 20px;
             box-sizing: border-box;
-            opacity: 0;
-            transform: translateY(10px);
-            animation: fadeUp 1s ease-out 1s forwards;
         }
 
             input:focus {
@@ -129,9 +125,6 @@
             cursor: pointer;
             box-shadow: 0 6px 24px rgba(14,165,233,.35);
             transition: transform .1s ease, box-shadow .2s ease;
-            opacity: 0;
-            transform: translateY(10px);
-            animation: fadeUp 1s ease-out 1.2s forwards;
         }
 
             button:hover {
@@ -143,129 +136,99 @@
             margin-top: 12px;
             color: var(--ink-1);
             font-size: 14px;
+        }
+
+        .reset-link {
+            margin-top: 12px;
+            font-size: 14px;
+            color: var(--ink-1);
+            text-decoration: underline;
+            cursor: pointer;
+        }
+
+        .overlay {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: rgba(10,15,26,0.92);
+            color: var(--ink-0);
+            font-size: 1.2rem;
+            text-align: center;
+            z-index: 10;
             opacity: 0;
-            animation: fadeUp 1s ease-out 1.4s forwards;
+            visibility: hidden;
+            transition: opacity 0.5s ease;
         }
 
-        .pulse {
-            display: inline-block;
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            background: var(--ok);
-            animation: pulse 1.8s ease-out infinite;
-            vertical-align: middle;
-            margin-right: 6px;
-        }
-
-        @keyframes pulse {
-            0% {
-                box-shadow: 0 0 0 0 rgba(34,197,94,.5);
-            }
-
-            70% {
-                box-shadow: 0 0 0 10px rgba(34,197,94,0);
-            }
-
-            100% {
-                box-shadow: 0 0 0 0 rgba(34,197,94,0);
-            }
-        }
-
-        @keyframes fadeUp {
-            from {
-                opacity: 0;
-                transform: translateY(12px);
-            }
-
-            to {
+            .overlay.active {
                 opacity: 1;
-                transform: translateY(0);
+                visibility: visible;
             }
-        }
-
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: scale(0.96);
-            }
-
-            to {
-                opacity: 1;
-                transform: scale(1);
-            }
-        }
-
-        @keyframes slideUp {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
     </style>
 </head>
-<body>
-    <main class="wrap" role="main">
-        <h1 id="welcomeTitle">Welcome to Adaptive Learning Unleashed</h1>
-        <div class="badge">
-            <span class="dot" id="connDot"></span>
-            <span id="connText">Checking connection…</span>
-        </div>
-        <br /><br />
-        <p class="subtitle">Please enter your name to begin.</p>
 
-        <input id="nameInput" type="text" placeholder="Your Name" />
-        <button id="launchBtn" onclick="launchCourse()">Launch</button>
-        <div class="msg" id="returnMsg"></div>
+<body>
+    <main class="wrap" id="mainWrap">
+        <h1 id="welcomeTitle">Welcome to Adaptive Learning Unleashed</h1>
+        <div class="badge"><span class="dot"></span><span>Connected</span></div>
+        <p class="session-title">Adaptive Learning Unleashed: Personalizing Competency with Real-Time xAPI</p>
+
+        <div id="inputSection">
+            <p class="msg">Please enter your name to begin.</p>
+            <input id="nameInput" type="text" placeholder="Your Name" />
+            <button onclick="launchCourse()">Launch</button>
+        </div>
+
+        <p class="reset-link" id="resetLink" style="display:none;">Not you? Reset learner</p>
     </main>
+
+    <div class="overlay" id="redirectOverlay">Redirecting you to continue your session...</div>
 
     <script>
         const storedName = localStorage.getItem("learnerName");
-        const inputEl = document.getElementById("nameInput");
-        const titleEl = document.getElementById("welcomeTitle");
-        const retEl = document.getElementById("returnMsg");
+        const inputSection = document.getElementById("inputSection");
+        const mainWrap = document.getElementById("mainWrap");
+        const overlay = document.getElementById("redirectOverlay");
+        const resetLink = document.getElementById("resetLink");
 
-        // Smooth page fade transition
-        function fadeToNext(url) {
-            document.body.classList.add("fade-out");
-            setTimeout(() => { window.location.href = url; }, 700);
-        }
-
-        // Auto-redirect returning learners
         if (storedName) {
-            titleEl.textContent = `Welcome back, ${storedName}!`;
-            retEl.innerHTML = '<span class="pulse"></span> Redirecting you to continue your session...';
-            setTimeout(() => fadeToNext("next.html"), 1800);
+            // Hide input immediately and redirect seamlessly
+            inputSection.style.display = "none";
+            document.getElementById("welcomeTitle").textContent = `Welcome back, ${storedName}!`;
+            resetLink.style.display = "block";
+
+            // Show overlay before redirect (no flash)
+            overlay.classList.add("active");
+            mainWrap.style.opacity = "0.2";
+
+            setTimeout(() => {
+                window.location.href = "next.html";
+            }, 1500);
         }
 
         function launchCourse() {
-            const name = (inputEl.value || storedName || "").trim();
+            const name = document.getElementById("nameInput").value.trim();
             if (!name) {
                 alert("Please enter your name before launching.");
                 return;
             }
-
             localStorage.setItem("learnerName", name);
             if (!localStorage.getItem("sessionId")) {
-                const sid = (self.crypto && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now());
+                const sid = crypto.randomUUID ? crypto.randomUUID() : String(Date.now());
                 localStorage.setItem("sessionId", sid);
             }
-
-            fadeToNext("next.html");
+            const launchURL = "https://cloud.scorm.com/api/cloud/registration/launch/1d8cb7b4-3cb3-4d81-92ad-b7bf1129c0c8";
+            window.location.href = `${launchURL}?name=${encodeURIComponent(name)}`;
         }
 
-        // Mock connection beacon
-        const dot = document.getElementById("connDot");
-        const txt = document.getElementById("connText");
-        setTimeout(() => {
-            dot.className = "dot ok";
-            txt.textContent = "Connected";
-        }, 1000);
+        resetLink.addEventListener("click", () => {
+            if (confirm("This will clear your learner data and restart. Continue?")) {
+                localStorage.clear();
+                window.location.reload();
+            }
+        });
     </script>
 </body>
 </html>
