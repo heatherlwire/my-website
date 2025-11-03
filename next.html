@@ -16,9 +16,6 @@
             --ok: #22c55e;
             --warn: #f59e0b;
             --err: #ef4444;
-            --chip-ok: #0b2e17;
-            --chip-warn: #2f2410;
-            --chip-err: #2f1616;
             --focus: #93c5fd;
             --shadow: 0 10px 24px rgba(0,0,0,.35);
         }
@@ -317,6 +314,7 @@
                 <button id="continueBtn" class="primary">Continue</button>
                 <button id="acceptBtn">Accept Mastery Level and Move On</button>
                 <button id="toggleDebug" aria-pressed="false">Show Debug Info</button>
+                <button id="resetBtn" title="Clear local progress & identity">Reset Learner</button>
             </div>
         </section>
 
@@ -335,6 +333,9 @@
     </main>
 
     <script>
+        /* ===== 0) Settings ===== */
+        const REFRESH_MS = 15000; // change to 30000 if you want fewer LRS calls
+
         /* ===== 1) Config & helpers ===== */
         const learnerName =
             localStorage.getItem("learnerName") ||
@@ -355,40 +356,35 @@
             return v;
         })();
 
-        // Allow ?current=C1-test etc to update local state
         const urlComp = new URLSearchParams(location.search).get("current");
         if (urlComp) localStorage.setItem("currentCompetency", urlComp);
 
         window.currentComp = localStorage.getItem("currentCompetency") || "C1";
         window.currentMasteryLevel = null;
 
-        // SCORM targets
+        // All targets referenced by rules must exist here
         const SCORM_LINKS = {
             "C1-test": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C1_TEST",
             "C2-test": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C2_TEST",
             "C3-test": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C3_TEST",
-
             "C1a-content": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C1A_CONTENT",
             "C1a-apply": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C1A_APPLY",
             "C1b-content": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C1B_CONTENT",
             "C1b-apply": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C1B_APPLY",
             "C1c-content": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C1C_CONTENT",
             "C1c-apply": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C1C_APPLY",
-
             "C2a-content": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C2A_CONTENT",
             "C2a-apply": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C2A_APPLY",
             "C2b-content": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C2B_CONTENT",
             "C2b-apply": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C2B_APPLY",
             "C2c-content": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C2C_CONTENT",
             "C2c-apply": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C2C_APPLY",
-
             "C3a-content": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C3A_CONTENT",
             "C3a-apply": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C3A_APPLY",
             "C3b-content": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C3B_CONTENT",
             "C3b-apply": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C3B_APPLY",
             "C3c-content": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C3C_CONTENT",
             "C3c-apply": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C3C_APPLY",
-
             "program-complete": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_PROGRAM_COMPLETE"
         };
 
@@ -398,11 +394,10 @@
             const base = SCORM_LINKS[targetKey];
             if (!base) throw new Error(`No SCORM link mapped for ${targetKey}`);
             const qs = new URLSearchParams({ learnerName: learner || "", sid: sessionId || "" });
-            // Also persist "current" to help hand-off back to this page
-            return `${base}?${qs.toString()}&current=${encodeURIComponent(targetKey)}`;
+            return `${base}?${qs.toString()}`;
         }
 
-        /* ===== 2) Connection badge ===== */
+        /* ===== 2) Connection in header ===== */
         async function checkConnection() {
             const dot = document.getElementById("connDot");
             const txt = document.getElementById("connText");
@@ -413,44 +408,74 @@
             } catch { set("err", "Offline"); }
         }
 
-        /* ===== 3) Rules & LRS ===== */
+        /* ===== 3) Rules: load with local fallback ===== */
+        const RULES_FALLBACK = {
+            "meta": { "version": "1.0.1", "lastUpdated": "2025-11-02", "author": "Wire LXD Firm", "description": "Adaptive Routing Rules for Competency-Based Learning (C1–C3)", "namespace": "https://acbl.wirelxdfirm.com/extensions/", "conventions": { "masteryLevels": ["Mastery", "Proficient", "Emerging", "Failing"], "testedOut": "3/3 on first attempt", "finalized": "from the off-ramp button on next.html", "missed": "array of missed sub-competencies like ['C1b']", "targets": "must exist in SCORM link map" } },
+            "C1": [
+                { "if": { "finalized": true }, "then": [{ "set": { "status": "Finalized" } }, { "unlock": "C2" }, { "route": { "assessment": "C2-test" } }, { "note": "C1 finalized. Continue to C2 test." }] },
+                { "if": { "testedOut": true }, "then": [{ "set": { "status": "TestedOut" } }, { "unlock": "C2" }, { "route": { "assessment": "C2-test" } }, { "note": "C1 tested out on first attempt." }] },
+                { "if": { "mastery": "Mastery", "finalized": false, "testedOut": false }, "then": [{ "set": { "status": "Mastered" } }, { "unlock": "C2" }, { "route": { "assessment": "C2-test" } }, { "note": "C1 mastered. Proceed to C2 test." }] },
+                { "if": { "mastery": "Proficient", "finalized": false }, "then": [{ "forEach": "missed", "do": [{ "route": { "content": "{item}-content" } }, { "route": { "apply": "{item}-apply" } }] }, { "note": "C1 proficient. Targeted remediation for missed sub-competencies." }] },
+                {
+                    "if": { "masteryIn": ["Emerging", "Failing"], "finalized": false }, "then": [
+                        { "route": { "content": "C1a-content" } }, { "route": { "apply": "C1a-apply" } },
+                        { "route": { "content": "C1b-content" } }, { "route": { "apply": "C1b-apply" } },
+                        { "route": { "content": "C1c-content" } }, { "route": { "apply": "C1c-apply" } },
+                        { "note": "C1 emerging or failing. Full remediation." }]
+                },
+                { "if": { "mastery": null }, "then": [{ "route": { "assessment": "C1-test" } }, { "note": "No C1 data. Start with C1 test." }] },
+                { "if": {}, "then": [{ "route": { "assessment": "C1-test" } }, { "note": "Fallback: no valid route found, starting from C1 test." }] }
+            ],
+            "C2": [
+                { "if": { "finalized": true }, "then": [{ "set": { "status": "Finalized" } }, { "unlock": "C3" }, { "route": { "assessment": "C3-test" } }, { "note": "C2 finalized. Continue to C3 test." }] },
+                { "if": { "testedOut": true }, "then": [{ "set": { "status": "TestedOut" } }, { "unlock": "C3" }, { "route": { "assessment": "C3-test" } }, { "note": "C2 tested out on first attempt." }] },
+                { "if": { "mastery": "Mastery", "finalized": false, "testedOut": false }, "then": [{ "set": { "status": "Mastered" } }, { "unlock": "C3" }, { "route": { "assessment": "C3-test" } }, { "note": "C2 mastered. Proceed to C3 test." }] },
+                { "if": { "mastery": "Proficient", "finalized": false }, "then": [{ "forEach": "missed", "do": [{ "route": { "content": "{item}-content" } }, { "route": { "apply": "{item}-apply" } }] }, { "note": "C2 proficient. Targeted remediation for missed sub-competencies." }] },
+                {
+                    "if": { "masteryIn": ["Emerging", "Failing"], "finalized": false }, "then": [
+                        { "route": { "content": "C2a-content" } }, { "route": { "apply": "C2a-apply" } },
+                        { "route": { "content": "C2b-content" } }, { "route": { "apply": "C2b-apply" } },
+                        { "route": { "content": "C2c-content" } }, { "route": { "apply": "C2c-apply" } },
+                        { "note": "C2 emerging or failing. Full remediation." }]
+                },
+                { "if": { "mastery": null }, "then": [{ "route": { "assessment": "C2-test" } }, { "note": "No C2 data. Start with C2 test." }] },
+                { "if": {}, "then": [{ "route": { "assessment": "C2-test" } }, { "note": "Fallback: no valid route found, starting from C2 test." }] }
+            ],
+            "C3": [
+                { "if": { "finalized": true }, "then": [{ "set": { "status": "Finalized" } }, { "unlock": "ProgramComplete" }, { "route": { "finish": "program-complete" } }, { "note": "C3 finalized. Finish program." }] },
+                { "if": { "testedOut": true }, "then": [{ "set": { "status": "TestedOut" } }, { "unlock": "ProgramComplete" }, { "route": { "finish": "program-complete" } }, { "note": "C3 tested out on first attempt." }] },
+                { "if": { "mastery": "Mastery", "finalized": false, "testedOut": false }, "then": [{ "set": { "status": "Mastered" } }, { "unlock": "ProgramComplete" }, { "route": { "finish": "program-complete" } }, { "note": "C3 mastered. Finish program." }] },
+                { "if": { "mastery": "Proficient", "finalized": false }, "then": [{ "forEach": "missed", "do": [{ "route": { "content": "{item}-content" } }, { "route": { "apply": "{item}-apply" } }] }, { "note": "C3 proficient. Targeted remediation for missed sub-competencies." }] },
+                {
+                    "if": { "masteryIn": ["Emerging", "Failing"], "finalized": false }, "then": [
+                        { "route": { "content": "C3a-content" } }, { "route": { "apply": "C3a-apply" } },
+                        { "route": { "content": "C3b-content" } }, { "route": { "apply": "C3b-apply" } },
+                        { "route": { "content": "C3c-content" } }, { "route": { "apply": "C3c-apply" } },
+                        { "note": "C3 emerging or failing. Full remediation." }]
+                },
+                { "if": { "mastery": null }, "then": [{ "route": { "assessment": "C3-test" } }, { "note": "No C3 data. Start with C3 test." }] },
+                { "if": {}, "then": [{ "route": { "assessment": "C3-test" } }, { "note": "Fallback: no valid route found, starting from C3 test." }] }
+            ],
+            "ProgramComplete": [{ "if": { "completed": true }, "then": [{ "note": "All competencies complete. End of adaptive path." }] }]
+        };
+
         async function loadAdaptiveRules() {
             try {
                 const res = await fetch("adaptive_rules.json", { cache: "no-store" });
+                if (!res.ok) throw new Error("rules fetch failed");
                 const data = await res.json();
                 const { meta, ...rules } = data || {};
                 return rules || {};
-            } catch { return {}; }
+            } catch { return { ...RULES_FALLBACK, meta: undefined }; }
         }
 
-        function evaluateAdaptiveRouting(compId, compState, ruleset) {
-            const rules = ruleset[compId]; if (!rules) return null;
-            for (const rule of rules) {
-                const cond = rule.if; let match = true;
-                for (const k in cond) {
-                    if (k === "masteryIn" && !cond[k].includes(compState.mastery)) match = false;
-                    else if (k !== "masteryIn" && compState[k] !== cond[k]) match = false;
-                }
-                if (match) {
-                    for (const a of rule.then) {
-                        if (a.route) {
-                            const key = Object.keys(a.route)[0];
-                            const target = a.route[key];
-                            return target.replace("{item}", compState.missed?.[0] || "");
-                        }
-                    }
-                }
-            }
-            return null;
-        }
-
+        /* ===== 4) LRS statements ===== */
         async function fetchStatements(limit = 400) {
             const res = await fetch(`${endpoint}statements?limit=${limit}&format=exact`, {
                 headers: { "Authorization": auth, "X-Experience-API-Version": "1.0.3" }
             });
             const j = await res.json();
             const list = Array.isArray(j.statements) ? j.statements : [];
-            // Filter to this learner via extension key
             return list.filter(s => s.result?.extensions?.[EX("learnerName")] === learnerName);
         }
 
@@ -469,29 +494,76 @@
             return map;
         }
 
+        // Ensure friendly labels in the table
+        function labelStatus(k) {
+            if (k === "NotStarted") return "Not Started";
+            if (k === "InProgress") return "In Progress";
+            if (k === "Completed") return "Completed";
+            return k || "—";
+        }
+
         function renderProgress(map) {
             const tbody = document.getElementById("progressTable");
             tbody.innerHTML = "";
             for (const comp of ["C1", "C2", "C3"]) {
                 const s = map[comp] || {};
                 const mastery = displayMastery(s.mastery);
-
-                // Separate class vs displayed text to keep spaces
-                let statusClass = "NotStarted";
-                let statusText = "Not Started";
-                if (s.finalized || s.mastery === "Mastery" || s.testedOut) { statusClass = "Completed"; statusText = "Completed"; }
-                else if (s.mastery) { statusClass = "InProgress"; statusText = "In Progress"; }
+                let statusKey = "NotStarted";
+                if (s.finalized || s.mastery === "Mastery" || s.testedOut) statusKey = "Completed";
+                else if (s.mastery) statusKey = "InProgress";
 
                 const tr = document.createElement("tr");
                 tr.innerHTML = `<td>${comp}</td><td>${mastery}</td>
-                            <td><span class="status ${statusClass}">
-                              <span class="s-dot"></span>${statusText}
-                            </span></td>`;
+            <td><span class="status ${statusKey}">
+              <span class="s-dot"></span>${labelStatus(statusKey)}
+            </span></td>`;
                 tbody.appendChild(tr);
             }
         }
 
-        /* ===== 4) UI writers ===== */
+        /* ===== 5) Adaptive evaluation ===== */
+        function evaluateAdaptiveRouting(compId, compState, ruleset) {
+            const rules = ruleset[compId]; if (!rules) return null;
+            // Execute first matching rule; if rule has forEach, return first route with {item} substituted
+            for (const rule of rules) {
+                const cond = rule.if || {};
+                let match = true;
+
+                for (const k in cond) {
+                    if (k === "masteryIn") {
+                        if (!Array.isArray(cond[k]) || !cond[k].includes(compState.mastery)) { match = false; break; }
+                    } else {
+                        if (compState[k] !== cond[k]) { match = false; break; }
+                    }
+                }
+                if (!match) continue;
+
+                for (const action of rule.then || []) {
+                    // For simple route blocks
+                    if (action.route) {
+                        const key = Object.keys(action.route)[0];
+                        const target = action.route[key];
+                        return target.replace("{item}", compState.missed?.[0] || "");
+                    }
+                    // For forEach logic
+                    if (action.forEach && Array.isArray(compState[action.forEach]) && action.do) {
+                        const first = compState[action.forEach][0];
+                        if (first) {
+                            for (const a of action.do) {
+                                if (a.route) {
+                                    const key = Object.keys(a.route)[0];
+                                    const target = a.route[key];
+                                    return target.replace("{item}", first);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            return null;
+        }
+
+        /* ===== 6) UI writers ===== */
         function writeSummary(current, compState, nextTarget) {
             const line = document.getElementById("summaryLine");
             const currentLabel = current === "C1" ? "Competency 1" : current === "C2" ? "Competency 2" : "Competency 3";
@@ -503,8 +575,8 @@
 
             line.innerHTML = `Current: <b>${currentLabel}</b> — <b>${masteryTxt}</b> (${statusTxt})`;
 
-            const comp = (nextTarget.match(/(C\d)/i)?.[1] || current).toUpperCase();
-            const subMatch = nextTarget.match(/C\d([a-c])/i);
+            const comp = (nextTarget?.match(/(C\d)/i)?.[1] || current).toUpperCase();
+            const subMatch = nextTarget?.match(/C\d([a-c])/i);
             const sub = subMatch ? `C${comp[1]}${subMatch[1]}` : "—";
             let type = "—";
             if (/-content$/i.test(nextTarget)) type = "Content";
@@ -526,7 +598,7 @@
             warnEl.style.display = (learnerName === "Anonymous") ? "block" : "none";
         }
 
-        /* ===== 5) Off-ramp finalize ===== */
+        /* ===== 7) Off-ramp ===== */
         async function sendFinalizeStatement(currentComp) {
             const stmt = {
                 actor: { name: learnerName, mbox: `mailto:${encodeURIComponent(learnerName)}@wirelxdfirm.com` },
@@ -544,19 +616,14 @@
             };
             await fetch(`${endpoint}statements`, {
                 method: "POST",
-                headers: {
-                    "Authorization": auth,
-                    "Content-Type": "application/json",
-                    "X-Experience-API-Version": "1.0.3"
-                },
+                headers: { "Authorization": auth, "Content-Type": "application/json", "X-Experience-API-Version": "1.0.3" },
                 body: JSON.stringify(stmt)
             });
             localStorage.setItem(`${currentComp}.finalized`, "true");
         }
 
-        /* ===== 6) Runtime + refresh ===== */
+        /* ===== 8) Runtime ===== */
         let rulesCache = null;
-
         async function refreshAll() {
             await checkConnection();
             writeLearner();
@@ -570,10 +637,9 @@
             let current = localStorage.getItem("currentCompetency") || "C1";
             let compState = map[current] || { mastery: null, missed: [], finalized: false, testedOut: false };
 
-            // Guard: default to C1 if we somehow jump ahead without data
+            // Guard: if user jumps to C2/C3 without any C1 data, snap back to C1
             if (current !== "C1" && !compState.mastery && !compState.finalized && !compState.testedOut) {
-                current = "C1";
-                localStorage.setItem("currentCompetency", "C1");
+                current = "C1"; localStorage.setItem("currentCompetency", "C1");
                 compState = map["C1"] || { mastery: null, missed: [], finalized: false, testedOut: false };
             }
 
@@ -584,27 +650,20 @@
             const acceptBtn = document.getElementById("acceptBtn");
             const debugBtn = document.getElementById("toggleDebug");
             const debug = document.getElementById("debug");
+            const resetBtn = document.getElementById("resetBtn");
 
-            // Keep debug live
             debug.innerHTML = `<pre>${JSON.stringify({ current, compState, nextTarget, map }, null, 2)}</pre>`;
 
-            // Button logic
-            const canProceed = !(learnerName === "Anonymous" || (!compState.mastery && !compState.testedOut && !compState.finalized));
-            continueBtn.disabled = !canProceed;
-            acceptBtn.disabled = !canProceed;
-
-            if (canProceed) {
-                continueBtn.onclick = () => {
-                    // Persist current target for return trips
-                    localStorage.setItem("currentCompetency", nextTarget);
-                    location.href = scormUrl(nextTarget, learnerName, sid);
-                };
+            if (learnerName === "Anonymous" || (!compState.mastery && !compState.testedOut && !compState.finalized)) {
+                continueBtn.disabled = true; acceptBtn.disabled = true;
+            } else {
+                continueBtn.disabled = false; acceptBtn.disabled = false;
+                continueBtn.onclick = () => location.href = scormUrl(nextTarget, learnerName, sid);
                 acceptBtn.onclick = async () => {
                     const m = compState.mastery || "No recorded mastery";
                     if (!confirm(`You are accepting a "${displayMastery(m)}" level for ${current}. Continue?`)) return;
                     await sendFinalizeStatement(current);
                     const routed = evaluateAdaptiveRouting(current, { ...compState, finalized: true }, rulesCache) || "program-complete";
-                    localStorage.setItem("currentCompetency", routed);
                     location.href = scormUrl(routed, learnerName, sid);
                 };
             }
@@ -624,11 +683,23 @@
                 });
             }
             syncDbg();
+
+            // Reset Learner
+            if (!resetBtn._init) {
+                resetBtn._init = true;
+                resetBtn.addEventListener("click", () => {
+                    if (confirm("This will clear your local learner identity and session. Continue?")) {
+                        const keep = {}; // keep nothing; full reset
+                        localStorage.clear();
+                        for (const k in keep) localStorage.setItem(k, keep[k]);
+                        location.href = "index.html";
+                    }
+                });
+            }
         }
 
-        // Kickoff + gentle periodic refresh
         refreshAll();
-        setInterval(() => { if (document.visibilityState === "visible") refreshAll(); }, 15000);
+        setInterval(() => { if (document.visibilityState === "visible") refreshAll(); }, REFRESH_MS);
         setTimeout(checkConnection, 800);
     </script>
 </body>
