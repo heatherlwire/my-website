@@ -56,7 +56,7 @@
             color: var(--ink-0);
             font-size: 1.6rem;
             font-weight: 600;
-            letter-spacing: 0.5px;
+            letter-spacing: .5px;
             text-align: center;
             text-shadow: 0 1px 6px rgba(34,211,238,0.35);
         }
@@ -71,6 +71,19 @@
             font-size: 16px;
             margin-top: 16px;
             box-sizing: border-box;
+            outline: none;
+        }
+
+            input:focus {
+                border-color: var(--focus);
+                box-shadow: 0 0 0 3px rgba(147,197,253,.25);
+            }
+
+        .error {
+            margin: 8px 0 0;
+            color: var(--err);
+            font-size: 0.9rem;
+            text-align: left;
         }
 
         button {
@@ -85,12 +98,17 @@
             font-weight: 600;
             cursor: pointer;
             box-shadow: 0 6px 24px rgba(14,165,233,.35);
-            transition: transform .1s ease, box-shadow .2s ease;
+            transition: transform .1s ease, box-shadow .2s ease, opacity .2s ease;
         }
 
-            button:hover {
+            button:hover:not([disabled]) {
                 transform: translateY(-2px);
                 box-shadow: 0 8px 28px rgba(14,165,233,.45);
+            }
+
+            button[disabled] {
+                opacity: .6;
+                cursor: not-allowed;
             }
 
         .badge {
@@ -141,55 +159,95 @@
             <span id="connText">Checking connection…</span>
         </div>
 
-        <p class="subtitle">Please enter your name to begin.</p>
-        <input id="nameInput" type="text" placeholder="Your Name" autocomplete="name" />
-        <button id="btnLaunch">Launch</button>
+        <p class="subtitle">Please enter your name and email to begin.</p>
+        <input id="nameInput" type="text" placeholder="Your Name" autocomplete="name" required />
+        <input id="emailInput" type="email" placeholder="Your Email" autocomplete="email" required />
+        <p id="emailError" class="error" hidden>Enter a valid email like name@example.com.</p>
+        <button id="btnLaunch" disabled>Launch</button>
     </main>
 
     <script>
+        // ---------- Connection check (unchanged) ----------
         const endpoint = "https://cloud.scorm.com/lrs/TENBKY6BZ6/sandbox/";
         const key = "d_cPqAqYNvM3sMTyJ2M";
         const secret = "rh70yfaxONPyu11z_vk";
         const auth = "Basic " + btoa(`${key}:${secret}`);
-
         async function checkConnection() {
             const dot = document.getElementById("connDot");
             const txt = document.getElementById("connText");
             try {
                 const r = await fetch(endpoint + "about", { headers: { Authorization: auth } });
-                if (r.ok) {
-                    dot.classList.add("ok");
-                    txt.textContent = "Connected";
-                } else {
-                    txt.textContent = "Connection unstable";
-                }
-            } catch {
-                txt.textContent = "Offline";
-                dot.style.background = "var(--err)";
-            }
+                if (r.ok) { dot.classList.add("ok"); txt.textContent = "Connected"; }
+                else { txt.textContent = "Connection unstable"; }
+            } catch { txt.textContent = "Offline"; dot.style.background = "var(--err)"; }
         }
         checkConnection();
 
+        // ---------- Session ID ----------
         function ensureSid() {
             let sid = localStorage.getItem("sessionId");
-            if (!sid) {
-                sid = self.crypto?.randomUUID?.() || String(Date.now());
-                localStorage.setItem("sessionId", sid);
-            }
+            if (!sid) { sid = self.crypto?.randomUUID?.() || String(Date.now()); localStorage.setItem("sessionId", sid); }
             return sid;
         }
 
-        document.getElementById("btnLaunch").addEventListener("click", () => {
-            const name = document.getElementById("nameInput").value.trim();
-            if (!name) return alert("Please enter your name before launching.");
-            localStorage.setItem("learnerName", name);
-            const sid = ensureSid();
-            localStorage.setItem("currentCompetency", "C1");
-            window.location.href = `next.html?learnerName=${encodeURIComponent(name)}&sid=${encodeURIComponent(sid)}&current=C1`;
+        // ---------- Validation ----------
+        const nameInput = document.getElementById("nameInput");
+        const emailInput = document.getElementById("emailInput");
+        const emailError = document.getElementById("emailError");
+        const btn = document.getElementById("btnLaunch");
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+        function isEmailValid(value) {
+            const v = (value || "").trim();
+            // Use native email validity first; fall back to regex for consistency
+            return (emailInput.type === "email" && emailInput.checkValidity())
+                || emailRegex.test(v.toLowerCase());
+        }
+
+        function validate() {
+            const nameOk = nameInput.value.trim().length > 0;
+            const emailOk = isEmailValid(emailInput.value);
+
+            emailError.hidden = emailInput.value.trim() === "" || emailOk;
+            btn.disabled = !(nameOk && emailOk);
+        }
+
+        // Handle typing + common autofill quirks
+        ["input", "change", "blur"].forEach(evt => {
+            nameInput.addEventListener(evt, validate);
+            emailInput.addEventListener(evt, validate);
         });
 
-        document.getElementById("nameInput").addEventListener("keydown", e => {
-            if (e.key === "Enter") document.getElementById("btnLaunch").click();
+        // Run validation on load and after autofill settles
+        window.addEventListener("DOMContentLoaded", () => {
+            requestAnimationFrame(validate);
+            setTimeout(validate, 150);   // catches Chrome/Safari autofill
+        });
+        window.addEventListener("pageshow", validate);
+        document.addEventListener("visibilitychange", () => { if (!document.hidden) validate(); });
+
+        // Enter to submit only when valid
+        document.addEventListener("keydown", e => {
+            if (e.key === "Enter" && !btn.disabled) btn.click();
+        });
+
+        // ---------- Launch ----------
+        btn.addEventListener("click", () => {
+            const name = nameInput.value.trim();
+            const email = emailInput.value.trim().toLowerCase();
+
+            if (!name || !isEmailValid(email)) {
+                validate();
+                if (!isEmailValid(email)) { emailInput.focus(); }
+                return;
+            }
+
+            localStorage.setItem("learnerName", name);
+            localStorage.setItem("learnerEmail", email);
+            const sid = ensureSid();
+            localStorage.setItem("currentCompetency", "C1");
+
+            window.location.href = `next.html?learnerName=${encodeURIComponent(name)}&sid=${encodeURIComponent(sid)}&current=C1`;
         });
     </script>
 </body>

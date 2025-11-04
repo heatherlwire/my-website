@@ -347,12 +347,38 @@
             "program-complete": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_PROGRAM_COMPLETE"
         };
 
-        function scormUrl(targetKey, learner, sessionId) {
+        /* ===== Updated SCORM URL Builder (Session-Persistent) ===== */
+        function scormUrl(targetKey) {
             const base = SCORM_LINKS[targetKey];
             if (!base) throw new Error(`No SCORM link mapped for ${targetKey}`);
-            const qs = new URLSearchParams({ learnerName: learner || "", sid: sessionId || "", current: targetKey });
+
+            // 1️⃣  Retrieve stored identity and registration alias
+            const learnerName = localStorage.getItem("learnerName") || "Guest";
+            let sid = localStorage.getItem("sessionId");
+            if (!sid) {
+                sid = crypto.randomUUID();
+                localStorage.setItem("sessionId", sid);
+            }
+
+            // Pull the alias from localStorage or rebuild it if missing
+            let regAlias = localStorage.getItem("registrationAlias");
+            if (!regAlias) {
+                regAlias = `TENBKY6BZ6|anon-${sid}`;
+                localStorage.setItem("registrationAlias", regAlias);
+            }
+
+            // 2️⃣  Build the query string for cmi5 launch
+            const qs = new URLSearchParams({
+                learnerName,
+                sid,
+                regid: regAlias,
+                current: targetKey
+            });
+
+            // 3️⃣  Return the full SCORM Cloud launch URL
             return `${base}?${qs.toString()}`;
         }
+
 
         /* ===== 2) Connection badge ===== */
         async function checkConnection() {
