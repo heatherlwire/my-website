@@ -2,17 +2,20 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8" />
-    <title>Adaptive Learning Unleashed: Launch</title>
+    <title>Adaptive Learning Unleashed</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
         :root {
             --bg-0: #0a0f1a;
             --bg-1: #0e1526;
+            --bg-2: #0f1b33;
             --ink-0: #e8f1ff;
             --ink-1: #b9c8e8;
             --sky-1: #0ea5e9;
             --sky-2: #22d3ee;
             --ok: #22c55e;
+            --warn: #f59e0b;
+            --err: #ef4444;
             --focus: #93c5fd;
             --shadow: 0 10px 24px rgba(0,0,0,.35);
         }
@@ -20,78 +23,42 @@
         body {
             margin: 0;
             color: var(--ink-0);
-            font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
-            background: radial-gradient(1200px 800px at 70% -10%, rgba(34,211,238,.10), transparent 60%), radial-gradient(1000px 600px at -10% 20%, rgba(14,165,233,.15), transparent 55%), linear-gradient(180deg, #07101e 0%, #0a1322 50%, #0b1628 100%);
+            font-family: ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;
+            background: radial-gradient(1200px 800px at 70% -10%,rgba(34,211,238,.10),transparent 60%), radial-gradient(1000px 600px at -10% 20%,rgba(14,165,233,.15),transparent 55%), linear-gradient(180deg,#07101e 0%,#0a1322 50%,#0b1628 100%);
             min-height: 100dvh;
             display: flex;
             align-items: center;
             justify-content: center;
-            overflow: hidden;
-            transition: opacity 0.6s ease;
         }
 
         .wrap {
-            background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.015)), var(--bg-1);
+            background: linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.015)),var(--bg-1);
             border: 1px solid rgba(148,163,184,.15);
             border-radius: 16px;
             box-shadow: var(--shadow);
             padding: 40px 32px;
             max-width: 520px;
-            width: 90%;
+            width: 92%;
             text-align: center;
-            position: relative;
-            z-index: 2;
         }
 
         h1 {
             margin: 0;
-            font-size: clamp(24px, 3vw, 32px);
-            background: linear-gradient(90deg, var(--ink-0), #cfe8ff);
+            font-size: clamp(24px,3vw,32px);
+            background: linear-gradient(90deg,var(--ink-0),#cfe8ff);
             -webkit-background-clip: text;
             background-clip: text;
             color: transparent;
         }
 
-        .session-title {
-            font-size: 15px;
-            color: var(--sky-2);
-            margin-top: 10px;
-            font-weight: 500;
-        }
-
-        .badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 14px;
-            padding: 8px 12px;
-            border-radius: 999px;
-            background: rgba(14,165,233,.10);
-            border: 1px solid rgba(34,211,238,.35);
-            margin-top: 20px;
-        }
-
-        .dot {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            background: var(--ok);
-            box-shadow: 0 0 0 0 rgba(34,197,94,.6);
-            animation: pulse 1.8s ease-out infinite;
-        }
-
-        @keyframes pulse {
-            0% {
-                box-shadow: 0 0 0 0 rgba(34,197,94,.5);
-            }
-
-            70% {
-                box-shadow: 0 0 0 10px rgba(34,197,94,0);
-            }
-
-            100% {
-                box-shadow: 0 0 0 0 rgba(34,197,94,0);
-            }
+        .subtitle {
+            margin: 20px 0 0;
+            color: var(--ink-0);
+            font-size: 1.6rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            text-align: center;
+            text-shadow: 0 1px 6px rgba(34,211,238,0.35);
         }
 
         input {
@@ -102,24 +69,18 @@
             background: #0f1a2e;
             color: var(--ink-0);
             font-size: 16px;
-            margin-top: 20px;
+            margin-top: 16px;
             box-sizing: border-box;
         }
 
-            input:focus {
-                outline: none;
-                border-color: var(--sky-2);
-                box-shadow: 0 0 0 3px rgba(147,197,253,.2);
-            }
-
         button {
-            margin-top: 16px;
+            margin-top: 14px;
             width: 100%;
             padding: 12px 16px;
             font-size: 16px;
             border-radius: 10px;
             border: 1px solid rgba(34,211,238,.55);
-            background: linear-gradient(180deg, #0e87c7, #0c6aa0);
+            background: linear-gradient(180deg,#0e87c7,#0c6aa0);
             color: #fff;
             font-weight: 600;
             cursor: pointer;
@@ -132,102 +93,103 @@
                 box-shadow: 0 8px 28px rgba(14,165,233,.45);
             }
 
-        .msg {
-            margin-top: 12px;
-            color: var(--ink-1);
-            font-size: 14px;
-        }
-
-        .reset-link {
-            margin-top: 12px;
-            font-size: 14px;
-            color: var(--ink-1);
-            text-decoration: underline;
-            cursor: pointer;
-        }
-
-        .overlay {
-            position: fixed;
-            inset: 0;
-            display: flex;
-            justify-content: center;
+        .badge {
+            display: inline-flex;
             align-items: center;
-            background: rgba(10,15,26,0.92);
-            color: var(--ink-0);
-            font-size: 1.2rem;
-            text-align: center;
-            z-index: 10;
-            opacity: 0;
-            visibility: hidden;
-            transition: opacity 0.5s ease;
+            gap: 8px;
+            font-size: 14px;
+            padding: 8px 12px;
+            border-radius: 999px;
+            background: rgba(14,165,233,.10);
+            border: 1px solid rgba(34,211,238,.35);
+            margin-top: 16px;
         }
 
-            .overlay.active {
-                opacity: 1;
-                visibility: visible;
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--warn);
+        }
+
+            .dot.ok {
+                background: var(--ok);
+                box-shadow: 0 0 0 0 rgba(34,197,94,.6);
+                animation: pulse 1.8s ease-out infinite;
             }
+
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(34,197,94,.5)
+            }
+
+            70% {
+                box-shadow: 0 0 0 10px rgba(34,197,94,0)
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(34,197,94,0)
+            }
+        }
     </style>
 </head>
-
 <body>
-    <main class="wrap" id="mainWrap">
-        <h1 id="welcomeTitle">Welcome to Adaptive Learning Unleashed</h1>
-        <div class="badge"><span class="dot"></span><span>Connected</span></div>
-        <br /><br />
-
-        <div id="inputSection">
-            <p class="msg">Please enter your name to begin.</p>
-            <input id="nameInput" type="text" placeholder="Your Name" />
-            <button onclick="launchCourse()">Launch</button>
+    <main class="wrap">
+        <h1>Welcome to Adaptive Learning Unleashed</h1>
+        <div class="badge" aria-live="polite">
+            <span class="dot" id="connDot"></span>
+            <span id="connText">Checking connection…</span>
         </div>
 
-        <p class="reset-link" id="resetLink" style="display:none;">Not you? Reset learner</p>
+        <p class="subtitle">Please enter your name to begin.</p>
+        <input id="nameInput" type="text" placeholder="Your Name" autocomplete="name" />
+        <button id="btnLaunch">Launch</button>
     </main>
 
-    <div class="overlay" id="redirectOverlay">Redirecting you to continue your session...</div>
-
     <script>
-        const storedName = localStorage.getItem("learnerName");
-        const inputSection = document.getElementById("inputSection");
-        const mainWrap = document.getElementById("mainWrap");
-        const overlay = document.getElementById("redirectOverlay");
-        const resetLink = document.getElementById("resetLink");
+        const endpoint = "https://cloud.scorm.com/lrs/TENBKY6BZ6/sandbox/";
+        const key = "d_cPqAqYNvM3sMTyJ2M";
+        const secret = "rh70yfaxONPyu11z_vk";
+        const auth = "Basic " + btoa(`${key}:${secret}`);
 
-        if (storedName) {
-            // Hide input immediately and redirect seamlessly
-            inputSection.style.display = "none";
-            document.getElementById("welcomeTitle").textContent = `Welcome back, ${storedName}!`;
-            resetLink.style.display = "block";
-
-            // Show overlay before redirect (no flash)
-            overlay.classList.add("active");
-            mainWrap.style.opacity = "0.2";
-
-            setTimeout(() => {
-                window.location.href = "next.html";
-            }, 1500);
-        }
-
-        function launchCourse() {
-            const name = document.getElementById("nameInput").value.trim();
-            if (!name) {
-                alert("Please enter your name before launching.");
-                return;
+        async function checkConnection() {
+            const dot = document.getElementById("connDot");
+            const txt = document.getElementById("connText");
+            try {
+                const r = await fetch(endpoint + "about", { headers: { Authorization: auth } });
+                if (r.ok) {
+                    dot.classList.add("ok");
+                    txt.textContent = "Connected";
+                } else {
+                    txt.textContent = "Connection unstable";
+                }
+            } catch {
+                txt.textContent = "Offline";
+                dot.style.background = "var(--err)";
             }
-            localStorage.setItem("learnerName", name);
-            if (!localStorage.getItem("sessionId")) {
-                const sid = crypto.randomUUID ? crypto.randomUUID() : String(Date.now());
+        }
+        checkConnection();
+
+        function ensureSid() {
+            let sid = localStorage.getItem("sessionId");
+            if (!sid) {
+                sid = self.crypto?.randomUUID?.() || String(Date.now());
                 localStorage.setItem("sessionId", sid);
             }
-            const launchURL = "https://cloud.scorm.com/api/cloud/registration/launch/1d8cb7b4-3cb3-4d81-92ad-b7bf1129c0c8";
-            window.location.href = `${launchURL}?name=${encodeURIComponent(name)}`;
+            return sid;
         }
 
-        resetLink.addEventListener("click", () => {
-            if (confirm("This will clear your learner data and restart. Continue?")) {
-                localStorage.clear();
-                window.location.reload();
-            }
+        document.getElementById("btnLaunch").addEventListener("click", () => {
+            const name = document.getElementById("nameInput").value.trim();
+            if (!name) return alert("Please enter your name before launching.");
+            localStorage.setItem("learnerName", name);
+            const sid = ensureSid();
+            localStorage.setItem("currentCompetency", "C1");
+            window.location.href = `next.html?learnerName=${encodeURIComponent(name)}&sid=${encodeURIComponent(sid)}&current=C1`;
+        });
+
+        document.getElementById("nameInput").addEventListener("keydown", e => {
+            if (e.key === "Enter") document.getElementById("btnLaunch").click();
         });
     </script>
 </body>

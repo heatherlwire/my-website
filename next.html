@@ -24,7 +24,7 @@
             margin: 0;
             color: var(--ink-0);
             font-family: ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;
-            background: radial-gradient(1200px 800px at 70% -10%,rgba(34,211,238,.10),transparent 60%), radial-gradient(1000px 600px at -10% 20%,rgba(14,165,233,.15),transparent 55%), linear-gradient(180deg,#07101e 0%,#0a1322 50%,#0b1628 100%);
+            background: radial-gradient(1200px 800px at 70% -10%, rgba(34,211,238,.10), transparent 60%), radial-gradient(1000px 600px at -10% 20%, rgba(14,165,233,.15), transparent 55%), linear-gradient(180deg, #07101e 0%, #0a1322 50%, #0b1628 100%);
             min-height: 100dvh;
         }
 
@@ -35,14 +35,13 @@
         .title-row {
             display: flex;
             align-items: center;
-            gap: 14px;
+            gap: 12px;
             flex-wrap: wrap;
         }
 
         h1 {
             margin: 0;
             font-size: clamp(22px,2.4vw,28px);
-            letter-spacing: .2px;
             background: linear-gradient(90deg,var(--ink-0),#cfe8ff);
             -webkit-background-clip: text;
             background-clip: text;
@@ -50,9 +49,9 @@
         }
 
         .subtitle {
-            margin: 4px 0 0;
             color: var(--ink-1);
             font-size: 14px;
+            margin-top: 4px;
         }
 
         .badge {
@@ -79,25 +78,17 @@
                 animation: pulse 1.8s ease-out infinite;
             }
 
-            .dot.warn {
-                background: var(--warn);
-            }
-
-            .dot.err {
-                background: var(--err);
-            }
-
         @keyframes pulse {
             0% {
-                box-shadow: 0 0 0 0 rgba(34,197,94,.5);
+                box-shadow: 0 0 0 0 rgba(34,197,94,.5)
             }
 
             70% {
-                box-shadow: 0 0 0 10px rgba(34,197,94,0);
+                box-shadow: 0 0 0 10px rgba(34,197,94,0)
             }
 
             100% {
-                box-shadow: 0 0 0 0 rgba(34,197,94,0);
+                box-shadow: 0 0 0 0 rgba(34,197,94,0)
             }
         }
 
@@ -120,40 +111,6 @@
         .muted {
             color: var(--ink-1);
         }
-
-        .summary {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px 16px;
-            align-items: center;
-            font-size: 15px;
-        }
-
-        .chip {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 6px 10px;
-            border-radius: 999px;
-            border: 1px solid rgba(148,163,184,.25);
-            background: rgba(255,255,255,.04);
-            font-weight: 600;
-        }
-
-        .upnext {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            flex-wrap: wrap;
-            padding: 10px 12px;
-            border-radius: 10px;
-            border: 1px dashed rgba(34,211,238,.35);
-            background: rgba(14,165,233,.10);
-        }
-
-            .upnext b {
-                color: var(--sky-2);
-            }
 
         .row {
             display: flex;
@@ -181,12 +138,6 @@
 
             button:hover {
                 transform: translateY(-1px);
-            }
-
-            button:focus-visible {
-                outline: 2px solid var(--focus);
-                outline-offset: 2px;
-                box-shadow: 0 0 0 3px rgba(147,197,253,.25);
             }
 
             button:disabled {
@@ -260,32 +211,35 @@
             overflow: auto;
         }
 
-        .warnline {
-            color: var(--err);
-            margin-top: 8px;
-            font-size: 14px;
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            border: 1px solid rgba(148,163,184,.25);
+            background: rgba(255,255,255,.04);
+            font-weight: 600;
         }
 
-        @media (max-width:640px) {
-            .wrap {
-                padding: 6px 16px 28px;
-            }
-
-            .card {
-                padding: 14px;
-            }
+        .upnext {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px dashed rgba(34,211,238,.35);
+            background: rgba(14,165,233,.10);
+            margin-top: 10px;
         }
     </style>
 </head>
 <body>
     <header>
-        <p class="subtitle">Adaptive Learning Unleashed: Personalizing Competency with Real-Time xAPI</p>
         <div class="title-row">
             <h1>Analyzing your progress</h1>
-            <span class="badge" id="connBadge">
-                <span class="dot" id="connDot"></span>
-                <span id="connText">Checking connection…</span>
-            </span>
+            <span class="badge"><span class="dot" id="connDot"></span><span id="connText">Checking connection…</span></span>
         </div>
     </header>
 
@@ -294,13 +248,13 @@
         <section class="card" id="info">
             <div><b>Learner:</b> <span id="learnerNameLabel">—</span></div>
             <div class="muted">Session: <span id="sessionLabel">—</span></div>
-            <div id="anonWarn" class="warnline" style="display:none;">Progress actions are disabled until a learner name is provided.</div>
+            <div id="anonWarn" class="muted" style="color:var(--err);display:none;">Progress actions are disabled until a learner name is provided.</div>
         </section>
 
         <!-- Summary + Up Next -->
         <section class="card" id="summaryCard">
             <div class="summary" id="summaryLine"></div>
-            <div class="upnext" style="margin-top:10px;">
+            <div class="upnext">
                 <strong>Up Next:</strong>
                 <span id="upNextComp" class="chip"><strong>—</strong></span>
                 <span id="upNextSub" class="chip"><strong>—</strong></span>
@@ -314,7 +268,7 @@
                 <button id="continueBtn" class="primary">Continue</button>
                 <button id="acceptBtn">Accept Mastery Level and Move On</button>
                 <button id="toggleDebug" aria-pressed="false">Show Debug Info</button>
-                <button id="resetBtn" title="Clear local progress & identity">Reset Learner</button>
+                <button id="resetBtn" style="background:linear-gradient(180deg,#5b6470,#3e4650); border-color:rgba(148,163,184,.55);">Reset Learner</button>
             </div>
         </section>
 
@@ -334,14 +288,9 @@
 
     <script>
         /* ===== 0) Settings ===== */
-        const REFRESH_MS = 15000; // change to 30000 if you want fewer LRS calls
+        const REFRESH_MS = 15000; // adjust if you want fewer LRS calls
 
         /* ===== 1) Config & helpers ===== */
-        const learnerName =
-            localStorage.getItem("learnerName") ||
-            new URLSearchParams(location.search).get("learnerName") ||
-            "Anonymous";
-
         const endpoint = "https://cloud.scorm.com/lrs/TENBKY6BZ6/sandbox/";
         const key = "d_cPqAqYNvM3sMTyJ2M";
         const secret = "rh70yfaxONPyu11z_vk";
@@ -350,19 +299,29 @@
         const NS = "https://acbl.wirelxdfirm.com/extensions/";
         const EX = k => NS + k;
 
-        const sid = localStorage.getItem("sessionId") || (() => {
-            const v = self.crypto?.randomUUID?.() || String(Date.now());
-            localStorage.setItem("sessionId", v);
-            return v;
-        })();
+        // Query or localStorage identity
+        const qs = new URLSearchParams(location.search);
+        const learnerName =
+            qs.get("learnerName") ||
+            localStorage.getItem("learnerName") ||
+            "Anonymous";
 
-        const urlComp = new URLSearchParams(location.search).get("current");
+        const sid =
+            qs.get("sid") ||
+            localStorage.getItem("sessionId") ||
+            (self.crypto?.randomUUID?.() || String(Date.now()));
+
+        const urlComp = qs.get("current");
         if (urlComp) localStorage.setItem("currentCompetency", urlComp);
 
         window.currentComp = localStorage.getItem("currentCompetency") || "C1";
         window.currentMasteryLevel = null;
 
-        // All targets referenced by rules must exist here
+        // Keep identity persisted
+        localStorage.setItem("learnerName", learnerName);
+        localStorage.setItem("sessionId", sid);
+
+        // SCORM links for every target used in rules
         const SCORM_LINKS = {
             "C1-test": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C1_TEST",
             "C2-test": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C2_TEST",
@@ -388,29 +347,42 @@
             "program-complete": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_PROGRAM_COMPLETE"
         };
 
-        const displayMastery = m => (m === "Mastery" ? "Mastered" : (m || "—"));
-
         function scormUrl(targetKey, learner, sessionId) {
             const base = SCORM_LINKS[targetKey];
             if (!base) throw new Error(`No SCORM link mapped for ${targetKey}`);
-            const qs = new URLSearchParams({ learnerName: learner || "", sid: sessionId || "" });
+            const qs = new URLSearchParams({ learnerName: learner || "", sid: sessionId || "", current: targetKey });
             return `${base}?${qs.toString()}`;
         }
 
-        /* ===== 2) Connection in header ===== */
+        /* ===== 2) Connection badge ===== */
         async function checkConnection() {
             const dot = document.getElementById("connDot");
             const txt = document.getElementById("connText");
-            const set = (cls, label) => { dot.className = `dot ${cls}`; txt.textContent = label; };
             try {
                 const r = await fetch(`${endpoint}about`, { headers: { Authorization: auth } });
-                set(r.ok ? "ok" : "warn", r.ok ? "Connected" : "Connection unstable");
-            } catch { set("err", "Offline"); }
+                if (r.ok) { dot.classList.add("ok"); txt.textContent = "Connected"; }
+                else { txt.textContent = "Connection unstable"; }
+            } catch {
+                txt.textContent = "Offline"; dot.style.background = "var(--err)";
+            }
         }
 
-        /* ===== 3) Rules: load with local fallback ===== */
+        /* ===== 3) Rules: external with local fallback ===== */
         const RULES_FALLBACK = {
-            "meta": { "version": "1.0.1", "lastUpdated": "2025-11-02", "author": "Wire LXD Firm", "description": "Adaptive Routing Rules for Competency-Based Learning (C1–C3)", "namespace": "https://acbl.wirelxdfirm.com/extensions/", "conventions": { "masteryLevels": ["Mastery", "Proficient", "Emerging", "Failing"], "testedOut": "3/3 on first attempt", "finalized": "from the off-ramp button on next.html", "missed": "array of missed sub-competencies like ['C1b']", "targets": "must exist in SCORM link map" } },
+            "meta": {
+                "version": "1.0.1",
+                "lastUpdated": "2025-11-02",
+                "author": "Wire LXD Firm",
+                "description": "Adaptive Routing Rules for Competency-Based Learning (C1–C3)",
+                "namespace": "https://acbl.wirelxdfirm.com/extensions/",
+                "conventions": {
+                    "masteryLevels": ["Mastery", "Proficient", "Emerging", "Failing"],
+                    "testedOut": "3/3 on first attempt",
+                    "finalized": "from the off-ramp button on next.html",
+                    "missed": "array of missed sub-competencies like ['C1b']",
+                    "targets": "must exist in SCORM link map"
+                }
+            },
             "C1": [
                 { "if": { "finalized": true }, "then": [{ "set": { "status": "Finalized" } }, { "unlock": "C2" }, { "route": { "assessment": "C2-test" } }, { "note": "C1 finalized. Continue to C2 test." }] },
                 { "if": { "testedOut": true }, "then": [{ "set": { "status": "TestedOut" } }, { "unlock": "C2" }, { "route": { "assessment": "C2-test" } }, { "note": "C1 tested out on first attempt." }] },
@@ -421,7 +393,8 @@
                         { "route": { "content": "C1a-content" } }, { "route": { "apply": "C1a-apply" } },
                         { "route": { "content": "C1b-content" } }, { "route": { "apply": "C1b-apply" } },
                         { "route": { "content": "C1c-content" } }, { "route": { "apply": "C1c-apply" } },
-                        { "note": "C1 emerging or failing. Full remediation." }]
+                        { "note": "C1 emerging or failing. Full remediation." }
+                    ]
                 },
                 { "if": { "mastery": null }, "then": [{ "route": { "assessment": "C1-test" } }, { "note": "No C1 data. Start with C1 test." }] },
                 { "if": {}, "then": [{ "route": { "assessment": "C1-test" } }, { "note": "Fallback: no valid route found, starting from C1 test." }] }
@@ -436,7 +409,8 @@
                         { "route": { "content": "C2a-content" } }, { "route": { "apply": "C2a-apply" } },
                         { "route": { "content": "C2b-content" } }, { "route": { "apply": "C2b-apply" } },
                         { "route": { "content": "C2c-content" } }, { "route": { "apply": "C2c-apply" } },
-                        { "note": "C2 emerging or failing. Full remediation." }]
+                        { "note": "C2 emerging or failing. Full remediation." }
+                    ]
                 },
                 { "if": { "mastery": null }, "then": [{ "route": { "assessment": "C2-test" } }, { "note": "No C2 data. Start with C2 test." }] },
                 { "if": {}, "then": [{ "route": { "assessment": "C2-test" } }, { "note": "Fallback: no valid route found, starting from C2 test." }] }
@@ -451,12 +425,15 @@
                         { "route": { "content": "C3a-content" } }, { "route": { "apply": "C3a-apply" } },
                         { "route": { "content": "C3b-content" } }, { "route": { "apply": "C3b-apply" } },
                         { "route": { "content": "C3c-content" } }, { "route": { "apply": "C3c-apply" } },
-                        { "note": "C3 emerging or failing. Full remediation." }]
+                        { "note": "C3 emerging or failing. Full remediation." }
+                    ]
                 },
                 { "if": { "mastery": null }, "then": [{ "route": { "assessment": "C3-test" } }, { "note": "No C3 data. Start with C3 test." }] },
                 { "if": {}, "then": [{ "route": { "assessment": "C3-test" } }, { "note": "Fallback: no valid route found, starting from C3 test." }] }
             ],
-            "ProgramComplete": [{ "if": { "completed": true }, "then": [{ "note": "All competencies complete. End of adaptive path." }] }]
+            "ProgramComplete": [
+                { "if": { "completed": true }, "then": [{ "note": "All competencies complete. End of adaptive path." }] }
+            ]
         };
 
         async function loadAdaptiveRules() {
@@ -466,7 +443,10 @@
                 const data = await res.json();
                 const { meta, ...rules } = data || {};
                 return rules || {};
-            } catch { return { ...RULES_FALLBACK, meta: undefined }; }
+            } catch {
+                const { meta, ...rules } = RULES_FALLBACK;
+                return rules;
+            }
         }
 
         /* ===== 4) LRS statements ===== */
@@ -482,24 +462,36 @@
         function analyze(statements) {
             const map = { C1: {}, C2: {}, C3: {} };
             for (const s of statements) {
-                const id = s.object?.id || "";
-                const comp = id.match(/(C\d+)/i)?.[1]?.toUpperCase();
-                if (!comp) continue;
+                // Get comp id from object.id like .../activities/C1..., .../C2..., or from name if needed
+                const id = s.object?.id || s.object?.definition?.name?.["en-US"] || "";
+                const comp = (id.match(/(C\d+)/i)?.[1] || "").toUpperCase();
+                if (!comp || !map[comp]) continue;
                 const ex = s.result?.extensions || {};
+                // Accumulate last-known signals
                 map[comp].mastery = ex[EX("masteryLevel")] || map[comp].mastery || null;
-                map[comp].finalized = ex[EX("finalized")] || map[comp].finalized || false;
-                map[comp].testedOut = ex[EX("testedOut")] || map[comp].testedOut || false;
-                map[comp].missed = Array.isArray(ex[EX("missed")]) ? ex[EX("missed")] : map[comp].missed || [];
+                map[comp].finalized = (ex[EX("finalized")] ?? map[comp].finalized) || false;
+                map[comp].testedOut = (ex[EX("testedOut")] ?? map[comp].testedOut) || false;
+                const missedArr = Array.isArray(ex[EX("missed")]) ? ex[EX("missed")] : [];
+                if (missedArr.length) map[comp].missed = missedArr;
+            }
+            // Defaults
+            for (const k of ["C1", "C2", "C3"]) {
+                map[k].mastery = map[k].mastery ?? null;
+                map[k].finalized = map[k].finalized ?? false;
+                map[k].testedOut = map[k].testedOut ?? false;
+                map[k].missed = map[k].missed ?? [];
             }
             return map;
         }
 
-        // Ensure friendly labels in the table
-        function labelStatus(k) {
-            if (k === "NotStarted") return "Not Started";
-            if (k === "InProgress") return "In Progress";
-            if (k === "Completed") return "Completed";
-            return k || "—";
+        // Human-friendly mastery
+        const displayMastery = m => (m === "Mastery" ? "Mastered" : (m || "—"));
+
+        function labelStatus(key) {
+            if (key === "NotStarted") return "Not Started";
+            if (key === "InProgress") return "In Progress";
+            if (key === "Completed") return "Completed";
+            return key || "—";
         }
 
         function renderProgress(map) {
@@ -511,20 +503,20 @@
                 let statusKey = "NotStarted";
                 if (s.finalized || s.mastery === "Mastery" || s.testedOut) statusKey = "Completed";
                 else if (s.mastery) statusKey = "InProgress";
-
                 const tr = document.createElement("tr");
                 tr.innerHTML = `<td>${comp}</td><td>${mastery}</td>
-            <td><span class="status ${statusKey}">
-              <span class="s-dot"></span>${labelStatus(statusKey)}
-            </span></td>`;
+              <td><span class="status ${statusKey}">
+                <span class="s-dot"></span>${labelStatus(statusKey)}
+              </span></td>`;
                 tbody.appendChild(tr);
             }
         }
 
         /* ===== 5) Adaptive evaluation ===== */
         function evaluateAdaptiveRouting(compId, compState, ruleset) {
-            const rules = ruleset[compId]; if (!rules) return null;
-            // Execute first matching rule; if rule has forEach, return first route with {item} substituted
+            const rules = ruleset[compId];
+            if (!rules) return null;
+
             for (const rule of rules) {
                 const cond = rule.if || {};
                 let match = true;
@@ -538,14 +530,15 @@
                 }
                 if (!match) continue;
 
-                for (const action of rule.then || []) {
-                    // For simple route blocks
+                // return the first actionable route
+                for (const action of (rule.then || [])) {
+                    // simple route
                     if (action.route) {
                         const key = Object.keys(action.route)[0];
                         const target = action.route[key];
                         return target.replace("{item}", compState.missed?.[0] || "");
                     }
-                    // For forEach logic
+                    // forEach support: return first route for first missed item
                     if (action.forEach && Array.isArray(compState[action.forEach]) && action.do) {
                         const first = compState[action.forEach][0];
                         if (first) {
@@ -598,7 +591,7 @@
             warnEl.style.display = (learnerName === "Anonymous") ? "block" : "none";
         }
 
-        /* ===== 7) Off-ramp ===== */
+        /* ===== 7) Off-ramp finalize statement ===== */
         async function sendFinalizeStatement(currentComp) {
             const stmt = {
                 actor: { name: learnerName, mbox: `mailto:${encodeURIComponent(learnerName)}@wirelxdfirm.com` },
@@ -616,7 +609,11 @@
             };
             await fetch(`${endpoint}statements`, {
                 method: "POST",
-                headers: { "Authorization": auth, "Content-Type": "application/json", "X-Experience-API-Version": "1.0.3" },
+                headers: {
+                    "Authorization": auth,
+                    "Content-Type": "application/json",
+                    "X-Experience-API-Version": "1.0.3"
+                },
                 body: JSON.stringify(stmt)
             });
             localStorage.setItem(`${currentComp}.finalized`, "true");
@@ -637,7 +634,7 @@
             let current = localStorage.getItem("currentCompetency") || "C1";
             let compState = map[current] || { mastery: null, missed: [], finalized: false, testedOut: false };
 
-            // Guard: if user jumps to C2/C3 without any C1 data, snap back to C1
+            // Guard: if user jumps ahead without prior comp data, snap back to C1
             if (current !== "C1" && !compState.mastery && !compState.finalized && !compState.testedOut) {
                 current = "C1"; localStorage.setItem("currentCompetency", "C1");
                 compState = map["C1"] || { mastery: null, missed: [], finalized: false, testedOut: false };
@@ -652,7 +649,7 @@
             const debug = document.getElementById("debug");
             const resetBtn = document.getElementById("resetBtn");
 
-            debug.innerHTML = `<pre>${JSON.stringify({ current, compState, nextTarget, map }, null, 2)}</pre>`;
+            debug.innerHTML = `<pre>${JSON.stringify({ learnerName, sid, current, compState, nextTarget, map }, null, 2)}</pre>`;
 
             if (learnerName === "Anonymous" || (!compState.mastery && !compState.testedOut && !compState.finalized)) {
                 continueBtn.disabled = true; acceptBtn.disabled = true;
@@ -689,9 +686,7 @@
                 resetBtn._init = true;
                 resetBtn.addEventListener("click", () => {
                     if (confirm("This will clear your local learner identity and session. Continue?")) {
-                        const keep = {}; // keep nothing; full reset
                         localStorage.clear();
-                        for (const k in keep) localStorage.setItem(k, keep[k]);
                         location.href = "index.html";
                     }
                 });
