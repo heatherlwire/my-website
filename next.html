@@ -351,7 +351,7 @@
             "C3-test": "https://app.cloud.scorm.com/sc/InvitationConfirmEmail?publicInvitationId=7875c13c-7a17-4bce-94b3-0ace7c3dd1d9",
 
             // C1 content/apply (examples)
-            "C1a-content": "https://www.youtube.com/watch?v=zBmCLMmgfs4",   // ⟵ replace VIDEO_ID_C1A with real YouTube ID
+            "C1a-content": "https://www.youtube.com/watch?v=olOSOl0YPL4",   // ⟵ replace VIDEO_ID_C1A with real YouTube ID
             "C1a-apply": "https://rise.articulate.com/share/PLACEHOLDER_C1A_APPLY",
             "C1b-content": "https://www.youtube.com/watch?v=VnXdj0yqpzI",
             "C1b-apply": "https://rise.articulate.com/share/PLACEHOLDER_C1B_APPLY",
@@ -661,8 +661,10 @@
                 return;
             }
 
-            // Rise/Storyline path: open link directly
-            // Carry the learner/session context for consistency (benign on invitation)
+            if (/-apply$/i.test(targetKey) || (typeof link === "string" && link.includes("/apply/"))) {
+                localStorage.setItem("lastApplyLaunched", targetKey);
+            }
+
             const url = new URL(link);
             url.searchParams.set("learnerName", learnerName);
             url.searchParams.set("sid", sid);

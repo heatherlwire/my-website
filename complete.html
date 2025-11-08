@@ -2,83 +2,260 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8" />
-    <title>Marking Apply Complete…</title>
+    <title>Application Lesson Complete</title>
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <style>
+        :root {
+            --bg-0: #0a0f1a;
+            --bg-1: #0e1526;
+            --bg-2: #0f1b33;
+            --ink-0: #e8f1ff;
+            --ink-1: #b9c8e8;
+            --sky-1: #0ea5e9;
+            --sky-2: #22d3ee;
+            --ok: #22c55e;
+            --warn: #f59e0b;
+            --shadow: 0 10px 24px rgba(0,0,0,.35);
+        }
+
         body {
-            font-family: system-ui,Segoe UI,Roboto,Arial;
-            background: #0b1628;
-            color: #e8f1ff;
+            margin: 0;
+            color: var(--ink-0);
+            font-family: ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;
+            background: radial-gradient(1200px 800px at 70% -10%, rgba(34,211,238,.10), transparent 60%), radial-gradient(1000px 600px at -10% 20%, rgba(14,165,233,.15), transparent 55%), linear-gradient(180deg, #07101e 0%, #0a1322 50%, #0b1628 100%);
+            min-height: 100dvh;
             display: flex;
             align-items: center;
             justify-content: center;
-            height: 100vh
+            padding: 24px;
+        }
+
+        .card {
+            background: linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.015)),var(--bg-1);
+            border: 1px solid rgba(148,163,184,.15);
+            border-radius: 16px;
+            box-shadow: var(--shadow);
+            padding: 28px 24px;
+            backdrop-filter: blur(6px);
+            max-width: 640px;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: clamp(22px,2.4vw,28px);
+            margin-bottom: 10px;
+            background: linear-gradient(90deg,var(--ink-0),#cfe8ff);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            border-radius: 999px;
+            border: 1px solid rgba(34,211,238,.45);
+            background: rgba(14,165,233,.10);
+            margin-bottom: 14px;
+        }
+
+        .dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: var(--ok);
+            box-shadow: 0 0 0 0 rgba(34,197,94,.55);
+            animation: pulse 1.8s ease-out infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(34,197,94,.5)
+            }
+
+            70% {
+                box-shadow: 0 0 0 10px rgba(34,197,94,0)
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(34,197,94,0)
+            }
+        }
+
+        .muted {
+            color: var(--ink-1);
+        }
+
+        .module {
+            font-weight: 700;
+            color: #d8ecff;
+        }
+
+        .row {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 16px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 10px 16px;
+            border-radius: 10px;
+            border: 1px solid rgba(148,163,184,.35);
+            background: #0f1a2e;
+            color: var(--ink-0);
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        pre {
+            white-space: pre-wrap;
+            word-break: break-word;
+            background: #0b1222;
+            color: #dbeafe;
+            border: 1px solid rgba(148,163,184,.2);
+            border-radius: 12px;
+            padding: 12px;
+            max-height: 260px;
+            overflow: auto;
+            margin-top: 12px;
+            text-align: left;
         }
     </style>
 </head>
 <body>
-    <div>Saving your progress…</div>
+    <section class="card">
+        <div class="badge"><span class="dot"></span><span id="statusText">Recording completion…</span></div>
+        <h1>Application Lesson Complete</h1>
+        <p class="muted">You just finished <span class="module" id="moduleName">—</span></p>
+        <p class="muted small">Redirecting to your next step in <span id="count">3</span> seconds…</p>
+
+        <div class="row">
+            <button id="viewDebug" class="btn" aria-pressed="false">Show debug</button>
+            <button id="continueBtn" class="btn">Go now</button>
+        </div>
+
+        <div id="debugPanel" style="display:none">
+            <pre id="debugOut">Loading…</pre>
+        </div>
+    </section>
+
     <script>
-    (async () => {
-      // --- LRS config (same as your next.html) ---
-      const endpoint = "https://cloud.scorm.com/lrs/TENBKY6BZ6/sandbox/";
-      const key = "d_cPqAqYNvM3sMTyJ2M";
-      const secret = "rh70yfaxONPyu11z_vk";
-      const auth = "Basic " + btoa(`${key}:${secret}`);
-      const NS = "https://acbl.wirelxdfirm.com/extensions/";
-      const EX = k => NS + k;
+        const endpoint = "https://cloud.scorm.com/lrs/TENBKY6BZ6/sandbox/";
+        const key = "d_cPqAqYNvM3sMTyJ2M";
+        const secret = "rh70yfaxONPyu11z_vk";
+        const auth = "Basic " + btoa(`${key}:${secret}`);
+        const NS = "https://acbl.wirelxdfirm.com/extensions/";
+        const EX = k => NS + k;
 
-      // --- Identity from localStorage ---
-      const learnerName = localStorage.getItem("learnerName") || "Anonymous";
-      const sid = localStorage.getItem("sessionId") || "";
+        const qs = new URLSearchParams(location.search);
+        let targetKey = qs.get("target");
+        function inferFromReferrer() {
+            const r = document.referrer || "";
+            const m = r.match(/(C[123][abc])/i);
+            return m ? (m[1] + "-apply") : null;
+        }
+        if (!targetKey) targetKey = inferFromReferrer() || localStorage.getItem("lastApplyLaunched") ||
+            ((localStorage.getItem("currentCompetency") || "C1") + "-apply");
 
-      // --- Target from query string, e.g., ?target=C1a-apply ---
-      const qs = new URLSearchParams(location.search);
-      const targetKey = qs.get("target") || "Unknown-apply";
+        const comp = (targetKey.match(/(C\d[a-c])/i)?.[1] || "C1").toUpperCase();
+        const prettyModule = `${targetKey.toUpperCase()} Application Lesson`;
+        document.getElementById("moduleName").textContent = prettyModule;
 
-      // Try to infer the competency (C1/C2/C3) from targetKey
-      const comp = (targetKey.match(/(C\d)/i)?.[1] || "C1").toUpperCase();
+        const learnerName = localStorage.getItem("learnerName") || "Anonymous";
+        const sid = localStorage.getItem("sessionId") || (self.crypto?.randomUUID?.() || String(Date.now()));
 
-      // xAPI completed for the Apply module
-      const stmt = {
-        actor: { name: learnerName, mbox: `mailto:${encodeURIComponent(learnerName)}@wirelxdfirm.com` },
-        verb: { id: "http://adlnet.gov/expapi/verbs/completed", display: { "en-US": "completed" } },
-        object: {
-          id: `${location.origin}/apply/${targetKey.split("-")[0]}/`,
-          definition: {
-            name: { "en-US": `Apply: ${targetKey}` },
-            description: { "en-US": "Rise Apply module completed (web export)" }
-          }
-        },
-        result: {
-          completion: true,
-          extensions: {
-            [EX("learnerName")]: learnerName,
-            [EX("sessionId")]: sid,
-            [EX("targetKey")]: targetKey,
-            [EX("competencyId")]: comp
-          }
-        },
-        timestamp: new Date().toISOString()
-      };
+        const debugBtn = document.getElementById("viewDebug");
+        const debugPanel = document.getElementById("debugPanel");
+        const debugOut = document.getElementById("debugOut");
+        debugBtn.onclick = () => {
+            const open = debugPanel.style.display !== "block";
+            debugPanel.style.display = open ? "block" : "none";
+            debugBtn.setAttribute("aria-pressed", open ? "true" : "false");
+            debugBtn.textContent = open ? "Hide debug" : "Show debug";
+        };
 
-      try {
-        await fetch(endpoint + "statements", {
-          method: "POST",
-          headers: {
-            "Authorization": auth,
-            "Content-Type": "application/json",
-            "X-Experience-API-Version": "1.0.3"
-          },
-          body: JSON.stringify(stmt)
-        });
-        localStorage.setItem(`${targetKey}.completed`, "true");
-      } catch(e) {/* non-blocking */}
+        // ===== 4) Countdown + manual continue =====
+        const countEl = document.getElementById("count");
 
-      // Return to your router
-      const back = `${location.origin}/next.html?current=${encodeURIComponent(comp)}`;
-      setTimeout(() => location.href = back, 400);
-    })();
+        function goNow() {
+            const url = new URL(`${location.origin}/next.html`);
+            url.searchParams.set("current", comp);                // e.g., C2
+            url.searchParams.set("target", targetKey);            // e.g., C2a-apply
+            url.searchParams.set("learnerName", learnerName);     // identity
+            url.searchParams.set("sid", sid);                     // session continuity
+            url.searchParams.set("source", "apply-complete");     // breadcrumb
+            url.searchParams.set("completedAt", new Date().toISOString());
+
+            // breadcrumb for extra reliability on next.html
+            localStorage.setItem("lastApplyLaunched", targetKey);
+
+            location.href = url.toString();
+        }
+
+        document.getElementById("continueBtn").onclick = goNow;
+
+        function startCountdown() {
+            let t = 3;
+            const id = setInterval(() => {
+                t -= 1; countEl.textContent = String(Math.max(t, 0));
+                if (t <= 0) { clearInterval(id); goNow(); }
+            }, 1000);
+        }
+
+
+        async function sendCompleted() {
+            const stmt = {
+                actor: { name: learnerName, mbox: `mailto:${encodeURIComponent(learnerName)}@wirelxdfirm.com` },
+                verb: { id: "http://adlnet.gov/expapi/verbs/completed", display: { "en-US": "completed" } },
+                object: {
+                    id: `${location.origin}/activities/${targetKey}`,
+                    definition: { name: { "en-US": prettyModule }, description: { "en-US": "Application Lesson completed (Rise web export)" } }
+                },
+                result: {
+                    completion: true,
+                    extensions: {
+                        [EX("learnerName")]: learnerName,
+                        [EX("sessionId")]: sid,
+                        [EX("targetKey")]: targetKey,
+                        [EX("competencyId")]: comp
+                    }
+                },
+                timestamp: new Date().toISOString()
+            };
+
+            localStorage.setItem(`${targetKey}.completed`, "true");
+
+            debugOut.textContent = JSON.stringify({ targetKey, comp, learnerName, sid, referrer: document.referrer, online: navigator.onLine }, null, 2);
+
+            const status = document.getElementById("statusText");
+            if (!navigator.onLine) {
+                status.textContent = "Saved locally (offline)";
+                startCountdown();
+                return;
+            }
+
+            try {
+                const r = await fetch(endpoint + "statements", {
+                    method: "POST",
+                    headers: {
+                        "Authorization": auth,
+                        "Content-Type": "application/json",
+                        "X-Experience-API-Version": "1.0.3"
+                    },
+                    body: JSON.stringify(stmt)
+                });
+                status.textContent = r.ok ? "Progress recorded" : `⚠️ Saved locally (LRS ${r.status})`;
+            } catch {
+                status.textContent = "⚠️ Saved locally (network error)";
+            }
+            startCountdown();
+        }
+
+        document.addEventListener("DOMContentLoaded", sendCompleted);
     </script>
 </body>
 </html>
