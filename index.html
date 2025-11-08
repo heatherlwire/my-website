@@ -115,7 +115,6 @@
             margin-top: 20px;
         }
 
-        /* Button variants */
         .btn {
             display: inline-flex;
             align-items: center;
@@ -190,7 +189,6 @@
             }
         }
 
-        /* Fade-in animations */
         @keyframes fadeInUp {
             0% {
                 opacity: 0;
@@ -281,13 +279,10 @@
         const emailInput = document.getElementById("emailInput");
         const emailError = document.getElementById("emailError");
         const btn = document.getElementById("btnLaunch");
-
-        // IMPORTANT: single backslashes in regex literal
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
         function isEmailValid(v) {
             const value = (v || "").trim().toLowerCase();
-            // use native constraint validation when available, fallback to regex
             return (emailInput.type === "email" && emailInput.validity.valid) || emailRegex.test(value);
         }
 
@@ -302,15 +297,9 @@
             nameInput.addEventListener(evt, validate);
             emailInput.addEventListener(evt, validate);
         });
-
-        // Run validation on load and after a short delay to catch autofill
-        document.addEventListener("DOMContentLoaded", () => {
-            validate();
-            setTimeout(validate, 150);
-        });
+        document.addEventListener("DOMContentLoaded", () => { validate(); setTimeout(validate, 150); });
         window.addEventListener("pageshow", validate);
 
-        // Enter to submit only when valid
         document.addEventListener("keydown", e => {
             if (e.key === "Enter" && !btn.disabled) btn.click();
         });
@@ -322,7 +311,7 @@
 
             if (!name || !isEmailValid(email)) {
                 validate();
-                if (!isEmailValid(email)) { emailInput.focus(); }
+                if (!isEmailValid(email)) emailInput.focus();
                 return;
             }
 
@@ -331,10 +320,13 @@
             const sid = ensureSid();
             localStorage.setItem("currentCompetency", "C1");
 
-            window.location.href = `next.html?learnerName=${encodeURIComponent(name)}&sid=${encodeURIComponent(sid)}&current=C1`;
+            // --- Directly launch C1-test in SCORM Cloud ---
+            const c1LaunchUrl = "https://app.cloud.scorm.com/sc/InvitationConfirmEmail?publicInvitationId=8207d2e5-4eed-4c70-9346-85ab1d91aca3";
+            const fullUrl = `${c1LaunchUrl}&learnerName=${encodeURIComponent(name)}&sid=${encodeURIComponent(sid)}`;
+            window.location.href = fullUrl;
         });
 
-        // ---------- Returning User Logic + animations ----------
+        // ---------- Returning User Logic ----------
         const newUserSection = document.getElementById("newUserSection");
         const returningSection = document.getElementById("returningSection");
         const welcomeText = document.getElementById("welcomeText");

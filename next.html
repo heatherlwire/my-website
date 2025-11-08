@@ -48,12 +48,6 @@
             color: transparent;
         }
 
-        .subtitle {
-            color: var(--ink-1);
-            font-size: 14px;
-            margin-top: 4px;
-        }
-
         .badge {
             display: inline-flex;
             align-items: center;
@@ -233,6 +227,26 @@
             background: rgba(14,165,233,.10);
             margin-top: 10px;
         }
+        /* inline video container */
+        #inlineVideoWrap {
+            max-width: 980px;
+            margin: 18px auto 8px;
+            background: #0b1222;
+            padding: 14px;
+            border-radius: 12px;
+            border: 1px solid rgba(148,163,184,.2);
+        }
+
+        #launchInfo {
+            font-size: 14px;
+            color: var(--ink-1);
+            margin-top: 6px;
+        }
+
+        .count {
+            font-weight: 800;
+            color: #cfe8ff;
+        }
     </style>
 </head>
 <body>
@@ -251,7 +265,7 @@
             <div id="anonWarn" class="muted" style="color:var(--err);display:none;">Progress actions are disabled until a learner name is provided.</div>
         </section>
 
-        <!-- Summary + Up Next -->
+        <!-- Summary + Up Next + Auto-launch -->
         <section class="card" id="summaryCard">
             <div class="summary" id="summaryLine"></div>
             <div class="upnext">
@@ -260,6 +274,7 @@
                 <span id="upNextSub" class="chip"><strong>—</strong></span>
                 <span id="upNextType" class="chip"><strong>—</strong></span>
             </div>
+            <div id="launchInfo">Auto-launching in <span class="count" id="countdown">3</span> seconds… <button id="cancelAuto" style="margin-left:10px;">Cancel</button></div>
         </section>
 
         <!-- Actions -->
@@ -270,6 +285,11 @@
                 <button id="toggleDebug" aria-pressed="false">Show Debug Info</button>
                 <button id="resetBtn" style="background:linear-gradient(180deg,#5b6470,#3e4650); border-color:rgba(148,163,184,.55);">Reset Learner</button>
             </div>
+        </section>
+
+        <!-- Inline video slot (only shown for YouTube content) -->
+        <section class="card" id="inlineVideoWrap" style="display:none;">
+            <div id="player"></div>
         </section>
 
         <!-- Progress table -->
@@ -288,97 +308,26 @@
 
     <script>
         /* ===== 0) Settings ===== */
-        const REFRESH_MS = 15000; // adjust if you want fewer LRS calls
+        const REFRESH_MS = 15000;
 
-        /* ===== 1) Config & helpers ===== */
+        /* ===== 1) LRS / identity config ===== */
         const endpoint = "https://cloud.scorm.com/lrs/TENBKY6BZ6/sandbox/";
         const key = "d_cPqAqYNvM3sMTyJ2M";
         const secret = "rh70yfaxONPyu11z_vk";
         const auth = "Basic " + btoa(`${key}:${secret}`);
-
         const NS = "https://acbl.wirelxdfirm.com/extensions/";
         const EX = k => NS + k;
 
-        // Query or localStorage identity
+        // Identity
         const qs = new URLSearchParams(location.search);
-        const learnerName =
-            qs.get("learnerName") ||
-            localStorage.getItem("learnerName") ||
-            "Anonymous";
-
-        const sid =
-            qs.get("sid") ||
-            localStorage.getItem("sessionId") ||
-            (self.crypto?.randomUUID?.() || String(Date.now()));
-
+        const learnerName = qs.get("learnerName") || localStorage.getItem("learnerName") || "Anonymous";
+        const sid = qs.get("sid") || localStorage.getItem("sessionId") || (self.crypto?.randomUUID?.() || String(Date.now()));
         const urlComp = qs.get("current");
         if (urlComp) localStorage.setItem("currentCompetency", urlComp);
-
         window.currentComp = localStorage.getItem("currentCompetency") || "C1";
         window.currentMasteryLevel = null;
-
-        // Keep identity persisted
         localStorage.setItem("learnerName", learnerName);
         localStorage.setItem("sessionId", sid);
-
-        // SCORM links for every target used in rules
-        const SCORM_LINKS = {
-            "C1-test": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C1_TEST",
-            "C2-test": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C2_TEST",
-            "C3-test": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C3_TEST",
-            "C1a-content": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C1A_CONTENT",
-            "C1a-apply": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C1A_APPLY",
-            "C1b-content": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C1B_CONTENT",
-            "C1b-apply": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C1B_APPLY",
-            "C1c-content": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C1C_CONTENT",
-            "C1c-apply": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C1C_APPLY",
-            "C2a-content": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C2A_CONTENT",
-            "C2a-apply": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C2A_APPLY",
-            "C2b-content": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C2B_CONTENT",
-            "C2b-apply": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C2B_APPLY",
-            "C2c-content": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C2C_CONTENT",
-            "C2c-apply": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C2C_APPLY",
-            "C3a-content": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C3A_CONTENT",
-            "C3a-apply": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C3A_APPLY",
-            "C3b-content": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C3B_CONTENT",
-            "C3b-apply": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C3B_APPLY",
-            "C3c-content": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C3C_CONTENT",
-            "C3c-apply": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_C3C_APPLY",
-            "program-complete": "https://cloud.scorm.com/sc/launch/INVITE_TOKEN_PROGRAM_COMPLETE"
-        };
-
-        /* ===== Updated SCORM URL Builder (Session-Persistent) ===== */
-        function scormUrl(targetKey) {
-            const base = SCORM_LINKS[targetKey];
-            if (!base) throw new Error(`No SCORM link mapped for ${targetKey}`);
-
-            // 1️⃣  Retrieve stored identity and registration alias
-            const learnerName = localStorage.getItem("learnerName") || "Guest";
-            let sid = localStorage.getItem("sessionId");
-            if (!sid) {
-                sid = crypto.randomUUID();
-                localStorage.setItem("sessionId", sid);
-            }
-
-            // Pull the alias from localStorage or rebuild it if missing
-            let regAlias = localStorage.getItem("registrationAlias");
-            if (!regAlias) {
-                regAlias = `TENBKY6BZ6|anon-${sid}`;
-                localStorage.setItem("registrationAlias", regAlias);
-            }
-
-            // 2️⃣  Build the query string for cmi5 launch
-            const qs = new URLSearchParams({
-                learnerName,
-                sid,
-                regid: regAlias,
-                current: targetKey
-            });
-
-            // 3️⃣  Return the full SCORM Cloud launch URL
-            return `${base}?${qs.toString()}`;
-        }
-
 
         /* ===== 2) Connection badge ===== */
         async function checkConnection() {
@@ -388,17 +337,54 @@
                 const r = await fetch(`${endpoint}about`, { headers: { Authorization: auth } });
                 if (r.ok) { dot.classList.add("ok"); txt.textContent = "Connected"; }
                 else { txt.textContent = "Connection unstable"; }
-            } catch {
-                txt.textContent = "Offline"; dot.style.background = "var(--err)";
-            }
+            } catch { txt.textContent = "Offline"; dot.style.background = "var(--err)"; }
         }
 
-        /* ===== 3) Rules: external with local fallback ===== */
+        /* ===== 3) Link map =====
+           Tests = your SCORM Cloud public invitation links (CMI5)
+           Content (YouTube) / Apply (Rise) = placeholders to replace with your real links/IDs
+        */
+        const SCORM_LINKS = {
+            // Tests (CMI5 via public invitation)
+            "C1-test": "https://app.cloud.scorm.com/sc/InvitationConfirmEmail?publicInvitationId=8207d2e5-4eed-4c70-9346-85ab1d91aca3",
+            "C2-test": "https://app.cloud.scorm.com/sc/InvitationConfirmEmail?publicInvitationId=67a6f435-43fb-44ae-8f51-749f9c2dfa77",
+            "C3-test": "https://app.cloud.scorm.com/sc/InvitationConfirmEmail?publicInvitationId=7875c13c-7a17-4bce-94b3-0ace7c3dd1d9",
+
+            // C1 content/apply (examples)
+            "C1a-content": "https://www.youtube.com/watch?v=zBmCLMmgfs4",   // ⟵ replace VIDEO_ID_C1A with real YouTube ID
+            "C1a-apply": "https://rise.articulate.com/share/PLACEHOLDER_C1A_APPLY",
+            "C1b-content": "https://www.youtube.com/watch?v=VnXdj0yqpzI",
+            "C1b-apply": "https://rise.articulate.com/share/PLACEHOLDER_C1B_APPLY",
+            "C1c-content": "https://www.youtube.com/watch?v=QXGOjzcQdhQ",
+            "C1c-apply": "https://rise.articulate.com/share/PLACEHOLDER_C1C_APPLY",
+
+            // C2 content/apply
+            "C2a-content": "https://www.youtube.com/watch?v=S6Y1QrQ-Wuw",
+            "C2a-apply": "https://rise.articulate.com/share/PLACEHOLDER_C2A_APPLY",
+            "C2b-content": "https://www.youtube.com/watch?v=VnXdj0yqpzI",
+            "C2b-apply": "https://rise.articulate.com/share/PLACEHOLDER_C2B_APPLY",
+            "C2c-content": "https://www.youtube.com/watch?v=XscUZ8dIa-8",
+            "C2c-apply": "https://rise.articulate.com/share/PLACEHOLDER_C2C_APPLY",
+
+            // C3 content/apply
+            "C3a-content": "https://www.youtube.com/watch?v=VnXdj0yqpzI",
+            "C3a-apply": "https://rise.articulate.com/share/PLACEHOLDER_C3A_APPLY",
+            "C3b-content": "https://www.youtube.com/watch?v=6Pl3hPRwO-o",
+            "C3b-apply": "https://rise.articulate.com/share/PLACEHOLDER_C3B_APPLY",
+            "C3c-content": "https://www.youtube.com/watch?v=vswvFKIeMfg",
+            "C3c-apply": "https://rise.articulate.com/share/PLACEHOLDER_C3C_APPLY",
+
+            "program-complete": "https://www.wirelearningsolutions.com/thanks.html"
+        };
+
+        // Simple helper to recognize "youtube://<id>" entries
+        function isYouTubeKey(link) { return typeof link === "string" && link.startsWith("youtube://"); }
+        function getYouTubeId(link) { return link.replace("youtube://", "").trim(); }
+
+        /* ===== 4) Rules (with fallback) ===== */
         const RULES_FALLBACK = {
             "meta": {
-                "version": "1.0.1",
-                "lastUpdated": "2025-11-02",
-                "author": "Wire LXD Firm",
+                "version": "1.0.1", "lastUpdated": "2025-11-02", "author": "Wire LXD Firm",
                 "description": "Adaptive Routing Rules for Competency-Based Learning (C1–C3)",
                 "namespace": "https://acbl.wirelxdfirm.com/extensions/",
                 "conventions": {
@@ -457,25 +443,18 @@
                 { "if": { "mastery": null }, "then": [{ "route": { "assessment": "C3-test" } }, { "note": "No C3 data. Start with C3 test." }] },
                 { "if": {}, "then": [{ "route": { "assessment": "C3-test" } }, { "note": "Fallback: no valid route found, starting from C3 test." }] }
             ],
-            "ProgramComplete": [
-                { "if": { "completed": true }, "then": [{ "note": "All competencies complete. End of adaptive path." }] }
-            ]
+            "ProgramComplete": [{ "if": { "completed": true }, "then": [{ "note": "All competencies complete. End of adaptive path." }] }]
         };
 
         async function loadAdaptiveRules() {
             try {
                 const res = await fetch("adaptive_rules.json", { cache: "no-store" });
                 if (!res.ok) throw new Error("rules fetch failed");
-                const data = await res.json();
-                const { meta, ...rules } = data || {};
-                return rules || {};
-            } catch {
-                const { meta, ...rules } = RULES_FALLBACK;
-                return rules;
-            }
+                const data = await res.json(); const { meta, ...rules } = data || {}; return rules || {};
+            } catch { const { meta, ...rules } = RULES_FALLBACK; return rules; }
         }
 
-        /* ===== 4) LRS statements ===== */
+        /* ===== 5) Fetch & analyze statements ===== */
         async function fetchStatements(limit = 400) {
             const res = await fetch(`${endpoint}statements?limit=${limit}&format=exact`, {
                 headers: { "Authorization": auth, "X-Experience-API-Version": "1.0.3" }
@@ -488,19 +467,16 @@
         function analyze(statements) {
             const map = { C1: {}, C2: {}, C3: {} };
             for (const s of statements) {
-                // Get comp id from object.id like .../activities/C1..., .../C2..., or from name if needed
                 const id = s.object?.id || s.object?.definition?.name?.["en-US"] || "";
                 const comp = (id.match(/(C\d+)/i)?.[1] || "").toUpperCase();
                 if (!comp || !map[comp]) continue;
                 const ex = s.result?.extensions || {};
-                // Accumulate last-known signals
                 map[comp].mastery = ex[EX("masteryLevel")] || map[comp].mastery || null;
                 map[comp].finalized = (ex[EX("finalized")] ?? map[comp].finalized) || false;
                 map[comp].testedOut = (ex[EX("testedOut")] ?? map[comp].testedOut) || false;
                 const missedArr = Array.isArray(ex[EX("missed")]) ? ex[EX("missed")] : [];
                 if (missedArr.length) map[comp].missed = missedArr;
             }
-            // Defaults
             for (const k of ["C1", "C2", "C3"]) {
                 map[k].mastery = map[k].mastery ?? null;
                 map[k].finalized = map[k].finalized ?? false;
@@ -510,61 +486,22 @@
             return map;
         }
 
-        // Human-friendly mastery
-        const displayMastery = m => (m === "Mastery" ? "Mastered" : (m || "—"));
-
-        function labelStatus(key) {
-            if (key === "NotStarted") return "Not Started";
-            if (key === "InProgress") return "In Progress";
-            if (key === "Completed") return "Completed";
-            return key || "—";
-        }
-
-        function renderProgress(map) {
-            const tbody = document.getElementById("progressTable");
-            tbody.innerHTML = "";
-            for (const comp of ["C1", "C2", "C3"]) {
-                const s = map[comp] || {};
-                const mastery = displayMastery(s.mastery);
-                let statusKey = "NotStarted";
-                if (s.finalized || s.mastery === "Mastery" || s.testedOut) statusKey = "Completed";
-                else if (s.mastery) statusKey = "InProgress";
-                const tr = document.createElement("tr");
-                tr.innerHTML = `<td>${comp}</td><td>${mastery}</td>
-              <td><span class="status ${statusKey}">
-                <span class="s-dot"></span>${labelStatus(statusKey)}
-              </span></td>`;
-                tbody.appendChild(tr);
-            }
-        }
-
-        /* ===== 5) Adaptive evaluation ===== */
+        /* ===== 6) Routing evaluation ===== */
         function evaluateAdaptiveRouting(compId, compState, ruleset) {
-            const rules = ruleset[compId];
-            if (!rules) return null;
-
+            const rules = ruleset[compId]; if (!rules) return null;
             for (const rule of rules) {
-                const cond = rule.if || {};
-                let match = true;
-
+                const cond = rule.if || {}; let match = true;
                 for (const k in cond) {
-                    if (k === "masteryIn") {
-                        if (!Array.isArray(cond[k]) || !cond[k].includes(compState.mastery)) { match = false; break; }
-                    } else {
-                        if (compState[k] !== cond[k]) { match = false; break; }
-                    }
+                    if (k === "masteryIn") { if (!Array.isArray(cond[k]) || !cond[k].includes(compState.mastery)) { match = false; break; } }
+                    else { if (compState[k] !== cond[k]) { match = false; break; } }
                 }
                 if (!match) continue;
-
-                // return the first actionable route
                 for (const action of (rule.then || [])) {
-                    // simple route
                     if (action.route) {
                         const key = Object.keys(action.route)[0];
                         const target = action.route[key];
                         return target.replace("{item}", compState.missed?.[0] || "");
                     }
-                    // forEach support: return first route for first missed item
                     if (action.forEach && Array.isArray(compState[action.forEach]) && action.do) {
                         const first = compState[action.forEach][0];
                         if (first) {
@@ -582,7 +519,16 @@
             return null;
         }
 
-        /* ===== 6) UI writers ===== */
+        /* ===== 7) UI helpers ===== */
+        const displayMastery = m => (m === "Mastery" ? "Mastered" : (m || "—"));
+        function labelStatus(key) { if (key === "NotStarted") return "Not Started"; if (key === "InProgress") return "In Progress"; if (key === "Completed") return "Completed"; return key || "—"; }
+
+        function writeLearner() {
+            document.getElementById("learnerNameLabel").textContent = learnerName;
+            document.getElementById("sessionLabel").textContent = sid;
+            document.getElementById("anonWarn").style.display = (learnerName === "Anonymous") ? "block" : "none";
+        }
+
         function writeSummary(current, compState, nextTarget) {
             const line = document.getElementById("summaryLine");
             const currentLabel = current === "C1" ? "Competency 1" : current === "C2" ? "Competency 2" : "Competency 3";
@@ -608,16 +554,25 @@
             document.getElementById("upNextType").innerHTML = `<strong>${type}</strong>`;
         }
 
-        function writeLearner() {
-            const nameEl = document.getElementById("learnerNameLabel");
-            const sessEl = document.getElementById("sessionLabel");
-            const warnEl = document.getElementById("anonWarn");
-            nameEl.textContent = learnerName;
-            sessEl.textContent = sid;
-            warnEl.style.display = (learnerName === "Anonymous") ? "block" : "none";
+        function renderProgress(map) {
+            const tbody = document.getElementById("progressTable");
+            tbody.innerHTML = "";
+            for (const comp of ["C1", "C2", "C3"]) {
+                const s = map[comp] || {};
+                const mastery = displayMastery(s.mastery);
+                let statusKey = "NotStarted";
+                if (s.finalized || s.mastery === "Mastery" || s.testedOut) statusKey = "Completed";
+                else if (s.mastery) statusKey = "InProgress";
+                const tr = document.createElement("tr");
+                tr.innerHTML = `<td>${comp}</td><td>${mastery}</td>
+              <td><span class="status ${statusKey}">
+                <span class="s-dot"></span>${labelStatus(statusKey)}
+              </span></td>`;
+                tbody.appendChild(tr);
+            }
         }
 
-        /* ===== 7) Off-ramp finalize statement ===== */
+        /* ===== 8) Finalize (off-ramp) statement ===== */
         async function sendFinalizeStatement(currentComp) {
             const stmt = {
                 actor: { name: learnerName, mbox: `mailto:${encodeURIComponent(learnerName)}@wirelxdfirm.com` },
@@ -635,19 +590,88 @@
             };
             await fetch(`${endpoint}statements`, {
                 method: "POST",
-                headers: {
-                    "Authorization": auth,
-                    "Content-Type": "application/json",
-                    "X-Experience-API-Version": "1.0.3"
-                },
+                headers: { "Authorization": auth, "Content-Type": "application/json", "X-Experience-API-Version": "1.0.3" },
                 body: JSON.stringify(stmt)
             });
             localStorage.setItem(`${currentComp}.finalized`, "true");
         }
 
-        /* ===== 8) Runtime ===== */
+        /* ===== 9) Inline launch logic (YouTube xAPI; Rise/Storyline redirect) ===== */
+        let autoTimer = null, countdownTimer = null;
+
+        async function launchTarget(targetKey) {
+            const link = SCORM_LINKS[targetKey];
+            if (!link) { alert(`No link found for ${targetKey}`); return; }
+
+            // YouTube inline path
+            if (isYouTubeKey(link)) {
+                // Reveal inline container
+                document.getElementById("inlineVideoWrap").style.display = "block";
+                // Load API if needed
+                if (!window.YT || !window.YT.Player) {
+                    const tag = document.createElement("script");
+                    tag.src = "https://www.youtube.com/iframe_api";
+                    document.head.appendChild(tag);
+                }
+                const videoId = getYouTubeId(link);
+                let player, started = false, totalWatch = 0, lastTick = null, duration = 0;
+
+                // helper to send xAPI
+                const xapi = (verbId, verb, ext = {}) => fetch(endpoint + "statements", {
+                    method: "POST",
+                    headers: { Authorization: auth, "Content-Type": "application/json", "X-Experience-API-Version": "1.0.3" },
+                    body: JSON.stringify({
+                        actor: { name: learnerName, mbox: `mailto:${encodeURIComponent(learnerName)}@wirelxdfirm.com` },
+                        verb: { id: verbId, display: { "en-US": verb } },
+                        object: { id: `https://acbl.wirelxdfirm.com/activities/${targetKey}/content` },
+                        result: { extensions: { [EX("learnerName")]: learnerName, [EX("sessionId")]: sid, [EX("target")]: targetKey, ...ext } },
+                        timestamp: new Date().toISOString()
+                    })
+                });
+
+                window.onYouTubeIframeAPIReady = () => {
+                    player = new YT.Player("player", {
+                        videoId: videoId,
+                        playerVars: { rel: 0, modestbranding: 1, playsinline: 1 },
+                        events: {
+                            onReady: e => { duration = e.target.getDuration?.() || 0; },
+                            onStateChange: async e => {
+                                const s = e.data, now = Date.now();
+                                if (s === YT.PlayerState.PLAYING) {
+                                    if (!started) { started = true; xapi("http://adlnet.gov/expapi/verbs/experienced", "experienced", { [EX("duration")]: duration }); }
+                                    lastTick = now;
+                                }
+                                if (s === YT.PlayerState.PAUSED) {
+                                    if (lastTick) { totalWatch += (now - lastTick) / 1000; lastTick = null; }
+                                    xapi("http://id.tincanapi.com/verb/paused", "paused", { [EX("watchedSeconds")]: Math.round(totalWatch) });
+                                }
+                                if (s === YT.PlayerState.ENDED) {
+                                    if (lastTick) { totalWatch += (now - lastTick) / 1000; lastTick = null; }
+                                    await xapi("http://adlnet.gov/expapi/verbs/completed", "completed", { [EX("watchedSeconds")]: Math.round(totalWatch), [EX("duration")]: duration });
+                                    localStorage.setItem(`${targetKey}.completed`, "true");
+                                    // Move to apply
+                                    const nextApply = targetKey.replace("-content", "-apply");
+                                    launchTarget(nextApply);
+                                }
+                            }
+                        }
+                    });
+                };
+                if (window.YT && window.YT.Player) { window.onYouTubeIframeAPIReady(); }
+                return;
+            }
+
+            // Rise/Storyline path: open link directly
+            // Carry the learner/session context for consistency (benign on invitation)
+            const url = new URL(link);
+            url.searchParams.set("learnerName", learnerName);
+            url.searchParams.set("sid", sid);
+            window.location.href = url.toString();
+        }
+
+        /* ===== 10) Runtime ===== */
         let rulesCache = null;
-        async function refreshAll() {
+        async function refreshAll(autoLaunch = true) {
             await checkConnection();
             writeLearner();
 
@@ -660,7 +684,7 @@
             let current = localStorage.getItem("currentCompetency") || "C1";
             let compState = map[current] || { mastery: null, missed: [], finalized: false, testedOut: false };
 
-            // Guard: if user jumps ahead without prior comp data, snap back to C1
+            // Guard: if user jumped ahead with no data, return to C1
             if (current !== "C1" && !compState.mastery && !compState.finalized && !compState.testedOut) {
                 current = "C1"; localStorage.setItem("currentCompetency", "C1");
                 compState = map["C1"] || { mastery: null, missed: [], finalized: false, testedOut: false };
@@ -669,27 +693,29 @@
             const nextTarget = evaluateAdaptiveRouting(current, compState, rulesCache) || `${current}-test`;
             writeSummary(current, compState, nextTarget);
 
+            // Wire controls
             const continueBtn = document.getElementById("continueBtn");
             const acceptBtn = document.getElementById("acceptBtn");
             const debugBtn = document.getElementById("toggleDebug");
             const debug = document.getElementById("debug");
             const resetBtn = document.getElementById("resetBtn");
+            const cancelAuto = document.getElementById("cancelAuto");
+            const launchInfo = document.getElementById("launchInfo");
+            const countdownEl = document.getElementById("countdown");
 
             debug.innerHTML = `<pre>${JSON.stringify({ learnerName, sid, current, compState, nextTarget, map }, null, 2)}</pre>`;
 
-            if (learnerName === "Anonymous" || (!compState.mastery && !compState.testedOut && !compState.finalized)) {
-                continueBtn.disabled = true; acceptBtn.disabled = true;
-            } else {
-                continueBtn.disabled = false; acceptBtn.disabled = false;
-                continueBtn.onclick = () => location.href = scormUrl(nextTarget, learnerName, sid);
-                acceptBtn.onclick = async () => {
-                    const m = compState.mastery || "No recorded mastery";
-                    if (!confirm(`You are accepting a "${displayMastery(m)}" level for ${current}. Continue?`)) return;
-                    await sendFinalizeStatement(current);
-                    const routed = evaluateAdaptiveRouting(current, { ...compState, finalized: true }, rulesCache) || "program-complete";
-                    location.href = scormUrl(routed, learnerName, sid);
-                };
-            }
+            const canAct = !(learnerName === "Anonymous" || (!compState.mastery && !compState.testedOut && !compState.finalized));
+            continueBtn.disabled = !canAct; acceptBtn.disabled = !canAct;
+
+            continueBtn.onclick = () => launchTarget(nextTarget);
+            acceptBtn.onclick = async () => {
+                const m = compState.mastery || "No recorded mastery";
+                if (!confirm(`You are accepting a "${displayMastery(m)}" level for ${current}. Continue?`)) return;
+                await sendFinalizeStatement(current);
+                const routed = evaluateAdaptiveRouting(current, { ...compState, finalized: true }, rulesCache) || "program-complete";
+                launchTarget(routed);
+            };
 
             // Debug toggle
             const syncDbg = () => {
@@ -707,20 +733,45 @@
             }
             syncDbg();
 
-            // Reset Learner
+            // Reset learner
             if (!resetBtn._init) {
                 resetBtn._init = true;
                 resetBtn.addEventListener("click", () => {
                     if (confirm("This will clear your local learner identity and session. Continue?")) {
-                        localStorage.clear();
-                        location.href = "index.html";
+                        localStorage.clear(); sessionStorage.clear(); location.href = "index.html";
                     }
                 });
             }
+
+            // Auto-launch with cancel
+            if (autoLaunch && canAct) {
+                clearInterval(countdownTimer); clearTimeout(autoTimer);
+                let left = 3;
+                launchInfo.style.display = "block";
+                countdownEl.textContent = String(left);
+                countdownTimer = setInterval(() => {
+                    left -= 1; if (left <= 0) { clearInterval(countdownTimer); }
+                    countdownEl.textContent = String(Math.max(left, 0));
+                }, 1000);
+                autoTimer = setTimeout(() => {
+                    launchTarget(nextTarget);
+                }, 3000);
+
+                if (!cancelAuto._init) {
+                    cancelAuto._init = true;
+                    cancelAuto.addEventListener("click", () => {
+                        clearInterval(countdownTimer); clearTimeout(autoTimer);
+                        launchInfo.style.display = "none";
+                    });
+                }
+            } else {
+                launchInfo.style.display = "none";
+            }
         }
 
-        refreshAll();
-        setInterval(() => { if (document.visibilityState === "visible") refreshAll(); }, REFRESH_MS);
+        // Kickoff
+        refreshAll(true);
+        setInterval(() => { if (document.visibilityState === "visible") refreshAll(false); }, REFRESH_MS);
         setTimeout(checkConnection, 800);
     </script>
 </body>
