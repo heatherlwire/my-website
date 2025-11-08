@@ -97,12 +97,12 @@
             white-space: pre-wrap;
             word-break: break-word;
             background: #0b1222;
-            color: #dbeafe;
+            color: #b9c8e8;
             border: 1px solid rgba(148,163,184,.2);
             border-radius: 12px;
             padding: 12px;
             margin-top: 10px;
-            max-height: 260px;
+            max-height: 250px;
             overflow: auto;
         }
     </style>
@@ -114,6 +114,7 @@
         <div id="playerWrap"><div id="player"></div></div>
         <div class="row">
             <button id="nextBtn" disabled>Next: Application</button>
+            <button id="captionBtn" style="display:none;">Show Captions</button>
             <button id="debugBtn" aria-pressed="false">Show debug</button>
         </div>
         <div id="debugPanel" style="display:none;">
@@ -134,9 +135,9 @@
   const qs = new URLSearchParams(location.search);
   const fileKeyRaw = location.pathname.split("/").pop().replace(/\.html$/,"").trim();
   const keyRaw = (qs.get("key") || fileKeyRaw).trim();
-  const comp = (keyRaw.match(/(C\d)/i)?.[1] || "C1").toUpperCase();
+  const comp = (keyRaw.match(/(C\\d)/i)?.[1] || "C1").toUpperCase();
   const rawBase = keyRaw.replace(/-content$/i, "");
-  const m = rawBase.match(/^c(\d)([abc])$/i);
+  const m = rawBase.match(/^c(\\d)([abc])$/i);
   const prettyKey = m ? `C${m[1]}${m[2].toLowerCase()}` : rawBase;
   document.getElementById("title").textContent = `${prettyKey} Content`;
 
@@ -145,7 +146,7 @@
   localStorage.setItem("learnerName", learnerName);
   localStorage.setItem("sessionId", sid);
 
-  // ===== Content config map =====
+  // ===== Content config =====
   const FALLBACK_MAP = {
     "C1a-content": { video:"olOSOl0YPL4", apply:"../apply/C1a-apply.html" },
     "C1b-content": { video:"VnXdj0yqpzI", apply:"../apply/C1b-apply.html" },
@@ -159,17 +160,10 @@
   };
 
   const cfg = FALLBACK_MAP[keyRaw] || null;
-  if (!cfg) {
-    const ciKey = Object.keys(FALLBACK_MAP).find(k => k.toLowerCase() === keyRaw.toLowerCase());
-    if (ciKey) {
-      console.warn(`Key matched case-insensitively: using "${ciKey}"`);
-    }
-  }
-
-  // ===== Debug panel =====
   const dbgEl = document.getElementById("dbg");
   const debugBtn = document.getElementById("debugBtn");
   const debugPanel = document.getElementById("debugPanel");
+  const captionBtn = document.getElementById("captionBtn");
   debugBtn.addEventListener("click", () => {
     const open = debugPanel.style.display !== "block";
     debugPanel.style.display = open ? "block" : "none";
@@ -177,7 +171,7 @@
   });
   function logDebug(obj){ try{ dbgEl.textContent = JSON.stringify(obj,null,2); }catch{} }
 
-  // ===== xAPI helper =====
+  // ===== xAPI =====
   function sendXAPI(verbId, verb, ext = {}) {
     return fetch(endpoint + "statements", {
       method:"POST",
@@ -196,7 +190,7 @@
     }).catch(()=>{});
   }
 
-  // ===== Captions loader =====
+  // ===== Captions loader (toggleable) =====
   async function loadCaptions(videoId) {
     try {
       const response = await fetch(`https://video.google.com/timedtext?lang=en&v=${videoId}`);
@@ -211,20 +205,21 @@
       const capBox = document.createElement("pre");
       capBox.id = "captionsBox";
       capBox.textContent = captions;
-      capBox.style.marginTop = "12px";
-      capBox.style.background = "#0b1222";
-      capBox.style.color = "#b9c8e8";
-      capBox.style.padding = "12px";
-      capBox.style.borderRadius = "10px";
-      capBox.style.maxHeight = "250px";
-      capBox.style.overflow = "auto";
+      capBox.style.display = "none";
       document.querySelector(".card").appendChild(capBox);
+
+      captionBtn.style.display = "inline-block";
+      captionBtn.addEventListener("click", () => {
+        const visible = capBox.style.display === "block";
+        capBox.style.display = visible ? "none" : "block";
+        captionBtn.textContent = visible ? "Show Captions" : "Hide Captions";
+      });
     } catch (err) {
       console.error("Error fetching captions:", err);
     }
   }
 
-  // ===== Player + button logic =====
+  // ===== YouTube player logic =====
   const nextBtn = document.getElementById("nextBtn");
   function enableNext(){ nextBtn.disabled=false; nextBtn.classList.add("ready"); }
 
@@ -258,6 +253,7 @@
       enableNext();
     }
   }
+
   function initYouTube(){
     if(!cfg?.video) return;
     player=new YT.Player("player",{ videoId:cfg.video, playerVars:{ rel:0,modestbranding:1,playsinline:1 }, events:{ onReady:onPlayerReady,onStateChange:onPlayerStateChange }});
