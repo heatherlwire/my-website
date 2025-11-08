@@ -20,6 +20,14 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "content", "content", "{3EA5E36F-8E1C-4039-9F6B-D2562C049EB1}"
 	ProjectSection(SolutionItems) = preProject
 		C1a-content.html = C1a-content.html
+		C1b-content.html = C1b-content.html
+		C1c-content.html = C1c-content.html
+		C2a-content.html = C2a-content.html
+		C2b-content.html = C2b-content.html
+		C2c-content.html = C2c-content.html
+		C3a-content.html = C3a-content.html
+		C3b-content.html = C3b-content.html
+		C3c-content.html = C3c-content.html
 	EndProjectSection
 EndProject
 Global

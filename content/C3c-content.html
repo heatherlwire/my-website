@@ -1,0 +1,321 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Content Lesson</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <style>
+        :root {
+            --bg-0: #0a0f1a;
+            --bg-1: #0e1526;
+            --bg-2: #0f1b33;
+            --ink-0: #e8f1ff;
+            --ink-1: #b9c8e8;
+            --sky-1: #0ea5e9;
+            --sky-2: #22d3ee;
+            --ok: #22c55e;
+            --warn: #f59e0b;
+            --err: #ef4444;
+            --shadow: 0 10px 24px rgba(0,0,0,.35);
+        }
+
+        body {
+            margin: 0;
+            min-height: 100dvh;
+            color: var(--ink-0);
+            font-family: ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;
+            background: radial-gradient(1200px 800px at 70% -10%, rgba(34,211,238,.10), transparent 60%), radial-gradient(1000px 600px at -10% 20%, rgba(14,165,233,.15), transparent 55%), linear-gradient(180deg,#07101e 0%,#0a1322 50%,#0b1628 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+
+        .card {
+            width: min(980px,96vw);
+            background: linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.015)),var(--bg-1);
+            border: 1px solid rgba(148,163,184,.15);
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(6px);
+        }
+
+        h1 {
+            margin: 0 0 8px;
+            font-size: clamp(20px,2.2vw,26px);
+            background: linear-gradient(90deg,var(--ink-0),#cfe8ff);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .muted {
+            color: var(--ink-1);
+        }
+
+        #playerWrap {
+            margin-top: 12px;
+            border: 1px solid rgba(148,163,184,.2);
+            border-radius: 12px;
+            overflow: hidden;
+            background: #0b1222;
+            aspect-ratio: 16/9;
+        }
+
+        .row {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 14px;
+        }
+
+        button {
+            padding: 10px 16px;
+            border-radius: 10px;
+            font-size: 15px;
+            cursor: pointer;
+            border: 1px solid rgba(148,163,184,.35);
+            background: #0f1a2e;
+            color: var(--ink-0);
+            transition: transform .05s ease, box-shadow .2s ease, border-color .2s ease, filter .2s ease, opacity .2s ease;
+        }
+
+            button:disabled {
+                opacity: .55;
+                cursor: not-allowed;
+                filter: saturate(.6);
+            }
+
+        #nextBtn.ready {
+            background: linear-gradient(180deg,#0e87c7,#0c6aa0);
+            border-color: rgba(34,211,238,.55);
+            box-shadow: 0 6px 24px rgba(14,165,233,.35);
+        }
+
+        pre {
+            white-space: pre-wrap;
+            word-break: break-word;
+            background: #0b1222;
+            color: #dbeafe;
+            border: 1px solid rgba(148,163,184,.2);
+            border-radius: 12px;
+            padding: 12px;
+            margin-top: 10px;
+            max-height: 260px;
+            overflow: auto;
+        }
+    </style>
+</head>
+<body>
+    <section class="card">
+        <h1 id="title">Content Lesson</h1>
+        <p class="muted">Watch the video. When it ends, the next step will unlock.</p>
+
+        <div id="playerWrap">
+            <div id="player"></div>
+        </div>
+
+        <div class="row">
+            <button id="nextBtn" disabled>Next: Application</button>
+            <button id="debugBtn" aria-pressed="false">Show debug</button>
+        </div>
+
+        <div id="debugPanel" style="display:none;">
+            <pre id="dbg">Loading…</pre>
+        </div>
+    </section>
+
+    <!-- YouTube IFrame API (loads once) -->
+    <script>
+        // ---- Config: LRS + namespace (same as your other pages) ----
+        const endpoint = "https://cloud.scorm.com/lrs/TENBKY6BZ6/sandbox/";
+        const key = "d_cPqAqYNvM3sMTyJ2M";
+        const secret = "rh70yfaxONPyu11z_vk";
+        const auth = "Basic " + btoa(`${key}:${secret}`);
+        const NS = "https://acbl.wirelxdfirm.com/extensions/";
+        const EX = k => NS + k;
+
+        // ---- Read inputs ----
+        const qs = new URLSearchParams(location.search);
+        const keyParam = (qs.get("key") || "").trim();               // e.g., C1a-content
+        const videoIdIn = (qs.get("video") || "").trim();               // YouTube ID
+        const applyLinkIn = (qs.get("apply") || "").trim();               // Rise Apply URL
+        const unlockDbg = qs.get("unlock") === "1";                     // optional: force unlock (testing)
+
+        // Try to infer competency from key (falls back to C1)
+        const comp = (keyParam.match(/(C\d)/i)?.[1] || "C1").toUpperCase();
+        const niceTitle = keyParam ? `${keyParam.toUpperCase()} Content` : "Content Lesson";
+        document.getElementById("title").textContent = niceTitle;
+
+        // Identity (prefer persisted values from index)
+        const learnerName = qs.get("learnerName") || localStorage.getItem("learnerName") || "Anonymous";
+        const sid = qs.get("sid") || localStorage.getItem("sessionId") || (self.crypto?.randomUUID?.() || String(Date.now()));
+        localStorage.setItem("learnerName", learnerName);
+        localStorage.setItem("sessionId", sid);
+
+        // Required: video ID and apply link (allow both query or small local map)
+        // If you prefer a local map, populate here:
+        const FALLBACK_MAP = {
+            // C1
+            "C1a-content": {
+                video: "olOSOl0YPL4",
+                apply: "../apply/C1a-apply.html"
+            },
+            "C1b-content": {
+                video: "VnXdj0yqpzI",
+                apply: "../apply/C1b-apply.html"
+            },
+            "C1c-content": {
+                video: "QXGOjzcQdhQ",
+                apply: "../apply/C1c-apply.html"
+            },
+
+            // C2
+            "C2a-content": {
+                video: "S6Y1QrQ-Wuw",
+                apply: "../apply/C2a-apply.html"
+            },
+            "C2b-content": {
+                video: "VnXdj0yqpzI",
+                apply: "../apply/C2b-apply.html"
+            },
+            "C2c-content": {
+                video: "XscUZ8dIa-8",
+                apply: "../apply/C2c-apply.html"
+            },
+
+            // C3
+            "C3a-content": {
+                video: "VnXdj0yqpzI",
+                apply: "../apply/C3a-apply.html"
+            },
+            "C3b-content": {
+                video: "6Pl3hPRwO-o",
+                apply: "../apply/C3b-apply.html"
+            },
+            "C3c-content": {
+                video: "vswvFKIeMfg",
+                apply: "../apply/C3c-apply.html"
+            }
+        };
+
+
+        const cfg = (videoIdIn && applyLinkIn)
+            ? { video: videoIdIn, apply: applyLinkIn }
+            : (FALLBACK_MAP[keyParam] || null);
+
+        if (!cfg) {
+            alert("Missing video/apply config. Pass ?key=...&video=YOUTUBE_ID&apply=URL or fill FALLBACK_MAP.");
+        }
+
+        // ---- Debug UI ----
+        const dbgEl = document.getElementById("dbg");
+        const debugBtn = document.getElementById("debugBtn");
+        const debugPanel = document.getElementById("debugPanel");
+        function setDebug(open) {
+            debugPanel.style.display = open ? "block" : "none";
+            debugBtn.setAttribute("aria-pressed", open ? "true" : "false");
+            debugBtn.textContent = open ? "Hide debug" : "Show debug";
+        }
+        debugBtn.addEventListener("click", () => setDebug(debugPanel.style.display !== "block"));
+
+        function logDebug(obj) {
+            try { dbgEl.textContent = JSON.stringify(obj, null, 2); } catch { /* ignore */ }
+        }
+
+        // ---- xAPI helper ----
+        function sendXAPI(verbId, verb, ext = {}) {
+            return fetch(endpoint + "statements", {
+                method: "POST",
+                headers: {
+                    "Authorization": auth,
+                    "Content-Type": "application/json",
+                    "X-Experience-API-Version": "1.0.3"
+                },
+                body: JSON.stringify({
+                    actor: { name: learnerName, mbox: `mailto:${encodeURIComponent(learnerName)}@wirelxdfirm.com` },
+                    verb: { id: verbId, display: { "en-US": verb } },
+                    object: { id: `https://acbl.wirelxdfirm.com/activities/${keyParam || "content"}` },
+                    result: { extensions: { [EX("learnerName")]: learnerName, [EX("sessionId")]: sid, [EX("target")]: keyParam, ...ext } },
+                    timestamp: new Date().toISOString()
+                })
+            }).catch(() => { });
+        }
+
+        // ---- Player + button logic ----
+        const nextBtn = document.getElementById("nextBtn");
+        function enableNext() {
+            nextBtn.disabled = false;
+            nextBtn.classList.add("ready");
+        }
+        if (unlockDbg) enableNext(); // manual unlock for testing
+
+        // Continue in the same window, passing identity forward
+        function goToApply() {
+            const url = new URL(cfg.apply);
+            url.searchParams.set("learnerName", learnerName);
+            url.searchParams.set("sid", sid);
+            url.searchParams.set("source", keyParam || "");
+            localStorage.setItem("lastApplyLaunched", (keyParam || "").replace("-content", "-apply"));
+            location.href = url.toString(); // same tab
+        }
+        nextBtn.addEventListener("click", goToApply);
+
+        // ---- Load YouTube API then wire events ----
+        let player, started = false, totalWatch = 0, lastTick = null, duration = 0;
+
+        function onPlayerReady(e) {
+            duration = e?.target?.getDuration?.() || 0;
+            logDebug({ ready: true, keyParam, comp, learnerName, sid, duration, video: cfg?.video, apply: cfg?.apply });
+        }
+
+        async function onPlayerStateChange(e) {
+            const s = e.data;
+            const now = Date.now();
+
+            if (s === YT.PlayerState.PLAYING) {
+                if (!started) {
+                    started = true;
+                    sendXAPI("http://adlnet.gov/expapi/verbs/experienced", "experienced", { [EX("duration")]: duration });
+                }
+                lastTick = now;
+            }
+
+            if (s === YT.PlayerState.PAUSED) {
+                if (lastTick) { totalWatch += (now - lastTick) / 1000; lastTick = null; }
+                sendXAPI("http://id.tincanapi.com/verb/paused", "paused", { [EX("watchedSeconds")]: Math.round(totalWatch) });
+            }
+
+            if (s === YT.PlayerState.ENDED) {
+                if (lastTick) { totalWatch += (now - lastTick) / 1000; lastTick = null; }
+                await sendXAPI("http://adlnet.gov/expapi/verbs/completed", "completed", {
+                    [EX("watchedSeconds")]: Math.round(totalWatch),
+                    [EX("duration")]: duration
+                });
+                localStorage.setItem(`${(keyParam || "content")}.completed`, "true");
+                enableNext(); // unlock and glow
+            }
+        }
+
+        function initYouTube() {
+            if (!cfg?.video) return;
+            player = new YT.Player("player", {
+                videoId: cfg.video,
+                playerVars: { rel: 0, modestbranding: 1, playsinline: 1 },
+                events: { onReady: onPlayerReady, onStateChange: onPlayerStateChange }
+            });
+        }
+
+        // Load API and init
+        if (!window.YT || !window.YT.Player) {
+            const tag = document.createElement("script");
+            tag.src = "https://www.youtube.com/iframe_api";
+            document.head.appendChild(tag);
+            window.onYouTubeIframeAPIReady = initYouTube;
+        } else {
+            initYouTube();
+        }
+    </script>
+</body>
+</html>
