@@ -664,30 +664,29 @@ window.Script13 = function()
     var testedOut = (correct === 3);
     var finalized = false;
 
-    // --- 4. Collect per-question data into JSON array ---
+    // --- 4. Collect per-question data ---
     var questionRows = [];
     for (var i = 1; i <= 20; i++) {
       var ans = p.GetVar(compId + "_Q" + i + "_Answer");
       var cor = p.GetVar(compId + "_Q" + i + "_IsCorrect");
       var txt = p.GetVar(compId + "_Q" + i + "_Text");
-      var sub = p.GetVar(compId + "_Q" + i + "_Sub"); // optional
+      var sub = p.GetVar(compId + "_Q" + i + "_Sub");
 
       if (typeof ans === "undefined" && typeof cor === "undefined" && typeof txt === "undefined") break;
       if (ans == null && cor == null && txt == null) continue;
 
       questionRows.push({
-        id:  (compId.toLowerCase() + "a" + i),
-        sub: (sub || null),
-        text: (txt || "Question " + i),
-        response: (ans || ""),
+        id: compId.toLowerCase() + "a" + i,
+        sub: sub || null,
+        text: txt || "Question " + i,
+        response: ans || "",
         correct: !!cor
       });
     }
     p.SetVar(compId + "_QuestionData", JSON.stringify(questionRows));
-    window.__QUESTION_DATA__ = questionRows;
 
-    // --- 5. Pull Storyline built-in Results variables ---
-    window.__SL_RESULTS__ = {
+    // --- 5. Pull Storyline Results variables ---
+    var slResults = {
       scorePercent: Number(p.GetVar("Results.ScorePercent") || 0),
       scorePoints:  Number(p.GetVar("Results.ScorePoints")  || 0),
       maxPoints:    Number(p.GetVar("Results.MaxPoints")    || 0),
@@ -699,18 +698,18 @@ window.Script13 = function()
     var key = "d_cPqAqYNvM3sMTyJ2M";
     var secret = "rh70yfaxONPyu11z_vk";
 
-    // --- 7. Build main Passed/Failed xAPI statement ---
+    // --- 7. Main xAPI statement ---
     var verbId = (correct >= 2)
       ? "http://adlnet.gov/expapi/verbs/passed"
       : "http://adlnet.gov/expapi/verbs/failed";
 
     var stmt = {
       actor: { name: learnerName, mbox: mbox },
-      verb:  { id: verbId, display: { "en-US": correct >= 2 ? "passed" : "failed" } },
-      object:{ id: "https://acbl.wirelxdfirm.com/activities/" + compId + "/quiz" },
-      result:{
+      verb: { id: verbId, display: { "en-US": correct >= 2 ? "passed" : "failed" } },
+      object: { id: `https://acbl.wirelxdfirm.com/activities/${compId}/quiz` },
+      result: {
         score: { raw: correct, min: 0, max: 3 },
-        success: (correct >= 2),
+        success: correct >= 2,
         completion: true,
         extensions: {
           "https://acbl.wirelxdfirm.com/extensions/learnerName": learnerName,
@@ -720,11 +719,11 @@ window.Script13 = function()
           "https://acbl.wirelxdfirm.com/extensions/missed": missedSubs,
           "https://acbl.wirelxdfirm.com/extensions/testedOut": testedOut,
           "https://acbl.wirelxdfirm.com/extensions/finalized": finalized,
-          "https://acbl.wirelxdfirm.com/extensions/scorePercent": window.__SL_RESULTS__?.scorePercent || 0,
-          "https://acbl.wirelxdfirm.com/extensions/scorePoints":  window.__SL_RESULTS__?.scorePoints  || 0,
-          "https://acbl.wirelxdfirm.com/extensions/maxPoints":    window.__SL_RESULTS__?.maxPoints    || 0,
-          "https://acbl.wirelxdfirm.com/extensions/passFail":     window.__SL_RESULTS__?.passFail     || false,
-          "https://acbl.wirelxdfirm.com/extensions/questionData": window.__QUESTION_DATA__ || []
+          "https://acbl.wirelxdfirm.com/extensions/scorePercent": slResults.scorePercent,
+          "https://acbl.wirelxdfirm.com/extensions/scorePoints": slResults.scorePoints,
+          "https://acbl.wirelxdfirm.com/extensions/maxPoints": slResults.maxPoints,
+          "https://acbl.wirelxdfirm.com/extensions/passFail": slResults.passFail,
+          "https://acbl.wirelxdfirm.com/extensions/questionData": questionRows
         }
       },
       timestamp: new Date().toISOString()
@@ -741,14 +740,7 @@ window.Script13 = function()
     }).then(r => console.log(`✅ Sent ${verbId.split('/').pop()} (${mastery}) for ${compId}:`, r.status))
       .catch(e => console.warn("❌ LRS send failed:", e));
 
-    // --- 8. Send terminated verb ---
-    var terminatedStmt = {
-      actor: { name: learnerName, mbox: mbox },
-      verb:  { id: "http://adlnet.gov/expapi/verbs/terminated", display: { "en-US": "terminated" } },
-      object:{ id: "https://acbl.wirelxdfirm.com/activities/" + compId + "/quiz" },
-      context:{ registration: sessionId },
-      timestamp: new Date().toISOString()
-    };
+    // --- 8. Terminated statement ---
     fetch(endpoint + "statements", {
       method: "POST",
       headers: {
@@ -756,30 +748,48 @@ window.Script13 = function()
         "Content-Type": "application/json",
         "X-Experience-API-Version": "1.0.3"
       },
-      body: JSON.stringify(terminatedStmt),
+      body: JSON.stringify({
+        actor: { name: learnerName, mbox: mbox },
+        verb: { id: "http://adlnet.gov/expapi/verbs/terminated", display: { "en-US": "terminated" } },
+        object: { id: `https://acbl.wirelxdfirm.com/activities/${compId}/quiz` },
+        context: { registration: sessionId },
+        timestamp: new Date().toISOString()
+      }),
       keepalive: true
-    }).then(r => console.log(`🧩 Terminated sent for ${compId}:`, r.status))
-      .catch(e => console.warn("Terminated send failed:", e));
+    });
 
-    // --- 9. Local storage (for dashboard) ---
-    localStorage.setItem(compId + ".mastery", mastery);
-    localStorage.setItem(compId + ".score", correct);
-    localStorage.setItem(compId + ".missed", JSON.stringify(missedSubs));
-    localStorage.setItem(compId + ".questionData", JSON.stringify(questionRows));
+    // --- 9. Local save ---
+    localStorage.setItem(`${compId}.mastery`, mastery);
+    localStorage.setItem(`${compId}.score`, correct);
+    localStorage.setItem(`${compId}.missed`, JSON.stringify(missedSubs));
+    localStorage.setItem(`${compId}.questionData`, JSON.stringify(questionRows));
 
-    // --- 10. Redirect ---
+    // --- 10. Redirect (escape Storyline iframe) ---
     var next = "https://www.wirelxdfirm.com/next.html";
     var qs = new URLSearchParams({
-      learnerName: learnerName,
+      learnerName,
       sid: sessionId,
       current: compId,
-      mastery: mastery,
+      mastery,
       missed: JSON.stringify(missedSubs),
-      testedOut: testedOut,
-      finalized: finalized,
+      testedOut,
+      finalized,
       score: correct
     });
-    window.location.href = next + "?" + qs.toString();
+
+    console.log("➡️ Redirecting to next.html with params:", qs.toString());
+    setTimeout(() => {
+      try {
+        if (window.top) {
+          window.top.location.href = next + "?" + qs.toString();
+        } else {
+          window.location.href = next + "?" + qs.toString();
+        }
+      } catch (err) {
+        console.warn("⚠️ Redirect blocked, opening new tab:", err);
+        window.open(next + "?" + qs.toString(), "_blank");
+      }
+    }, 600);
 
   } catch (e) {
     console.warn("Continue button error:", e);
@@ -820,30 +830,29 @@ window.Script14 = function()
     var testedOut = (correct === 3);
     var finalized = false;
 
-    // --- 4. Collect per-question data into JSON array ---
+    // --- 4. Collect per-question data ---
     var questionRows = [];
     for (var i = 1; i <= 20; i++) {
       var ans = p.GetVar(compId + "_Q" + i + "_Answer");
       var cor = p.GetVar(compId + "_Q" + i + "_IsCorrect");
       var txt = p.GetVar(compId + "_Q" + i + "_Text");
-      var sub = p.GetVar(compId + "_Q" + i + "_Sub"); // optional
+      var sub = p.GetVar(compId + "_Q" + i + "_Sub");
 
       if (typeof ans === "undefined" && typeof cor === "undefined" && typeof txt === "undefined") break;
       if (ans == null && cor == null && txt == null) continue;
 
       questionRows.push({
-        id:  (compId.toLowerCase() + "a" + i),
-        sub: (sub || null),
-        text: (txt || "Question " + i),
-        response: (ans || ""),
+        id: compId.toLowerCase() + "a" + i,
+        sub: sub || null,
+        text: txt || "Question " + i,
+        response: ans || "",
         correct: !!cor
       });
     }
     p.SetVar(compId + "_QuestionData", JSON.stringify(questionRows));
-    window.__QUESTION_DATA__ = questionRows;
 
-    // --- 5. Pull Storyline built-in Results variables ---
-    window.__SL_RESULTS__ = {
+    // --- 5. Pull Storyline Results variables ---
+    var slResults = {
       scorePercent: Number(p.GetVar("Results.ScorePercent") || 0),
       scorePoints:  Number(p.GetVar("Results.ScorePoints")  || 0),
       maxPoints:    Number(p.GetVar("Results.MaxPoints")    || 0),
@@ -855,18 +864,18 @@ window.Script14 = function()
     var key = "d_cPqAqYNvM3sMTyJ2M";
     var secret = "rh70yfaxONPyu11z_vk";
 
-    // --- 7. Build main Passed/Failed xAPI statement ---
+    // --- 7. Main xAPI statement ---
     var verbId = (correct >= 2)
       ? "http://adlnet.gov/expapi/verbs/passed"
       : "http://adlnet.gov/expapi/verbs/failed";
 
     var stmt = {
       actor: { name: learnerName, mbox: mbox },
-      verb:  { id: verbId, display: { "en-US": correct >= 2 ? "passed" : "failed" } },
-      object:{ id: "https://acbl.wirelxdfirm.com/activities/" + compId + "/quiz" },
-      result:{
+      verb: { id: verbId, display: { "en-US": correct >= 2 ? "passed" : "failed" } },
+      object: { id: `https://acbl.wirelxdfirm.com/activities/${compId}/quiz` },
+      result: {
         score: { raw: correct, min: 0, max: 3 },
-        success: (correct >= 2),
+        success: correct >= 2,
         completion: true,
         extensions: {
           "https://acbl.wirelxdfirm.com/extensions/learnerName": learnerName,
@@ -876,11 +885,11 @@ window.Script14 = function()
           "https://acbl.wirelxdfirm.com/extensions/missed": missedSubs,
           "https://acbl.wirelxdfirm.com/extensions/testedOut": testedOut,
           "https://acbl.wirelxdfirm.com/extensions/finalized": finalized,
-          "https://acbl.wirelxdfirm.com/extensions/scorePercent": window.__SL_RESULTS__?.scorePercent || 0,
-          "https://acbl.wirelxdfirm.com/extensions/scorePoints":  window.__SL_RESULTS__?.scorePoints  || 0,
-          "https://acbl.wirelxdfirm.com/extensions/maxPoints":    window.__SL_RESULTS__?.maxPoints    || 0,
-          "https://acbl.wirelxdfirm.com/extensions/passFail":     window.__SL_RESULTS__?.passFail     || false,
-          "https://acbl.wirelxdfirm.com/extensions/questionData": window.__QUESTION_DATA__ || []
+          "https://acbl.wirelxdfirm.com/extensions/scorePercent": slResults.scorePercent,
+          "https://acbl.wirelxdfirm.com/extensions/scorePoints": slResults.scorePoints,
+          "https://acbl.wirelxdfirm.com/extensions/maxPoints": slResults.maxPoints,
+          "https://acbl.wirelxdfirm.com/extensions/passFail": slResults.passFail,
+          "https://acbl.wirelxdfirm.com/extensions/questionData": questionRows
         }
       },
       timestamp: new Date().toISOString()
@@ -897,14 +906,7 @@ window.Script14 = function()
     }).then(r => console.log(`✅ Sent ${verbId.split('/').pop()} (${mastery}) for ${compId}:`, r.status))
       .catch(e => console.warn("❌ LRS send failed:", e));
 
-    // --- 8. Send terminated verb ---
-    var terminatedStmt = {
-      actor: { name: learnerName, mbox: mbox },
-      verb:  { id: "http://adlnet.gov/expapi/verbs/terminated", display: { "en-US": "terminated" } },
-      object:{ id: "https://acbl.wirelxdfirm.com/activities/" + compId + "/quiz" },
-      context:{ registration: sessionId },
-      timestamp: new Date().toISOString()
-    };
+    // --- 8. Terminated statement ---
     fetch(endpoint + "statements", {
       method: "POST",
       headers: {
@@ -912,30 +914,48 @@ window.Script14 = function()
         "Content-Type": "application/json",
         "X-Experience-API-Version": "1.0.3"
       },
-      body: JSON.stringify(terminatedStmt),
+      body: JSON.stringify({
+        actor: { name: learnerName, mbox: mbox },
+        verb: { id: "http://adlnet.gov/expapi/verbs/terminated", display: { "en-US": "terminated" } },
+        object: { id: `https://acbl.wirelxdfirm.com/activities/${compId}/quiz` },
+        context: { registration: sessionId },
+        timestamp: new Date().toISOString()
+      }),
       keepalive: true
-    }).then(r => console.log(`🧩 Terminated sent for ${compId}:`, r.status))
-      .catch(e => console.warn("Terminated send failed:", e));
+    });
 
-    // --- 9. Local storage (for dashboard) ---
-    localStorage.setItem(compId + ".mastery", mastery);
-    localStorage.setItem(compId + ".score", correct);
-    localStorage.setItem(compId + ".missed", JSON.stringify(missedSubs));
-    localStorage.setItem(compId + ".questionData", JSON.stringify(questionRows));
+    // --- 9. Local save ---
+    localStorage.setItem(`${compId}.mastery`, mastery);
+    localStorage.setItem(`${compId}.score`, correct);
+    localStorage.setItem(`${compId}.missed`, JSON.stringify(missedSubs));
+    localStorage.setItem(`${compId}.questionData`, JSON.stringify(questionRows));
 
-    // --- 10. Redirect ---
+    // --- 10. Redirect (escape Storyline iframe) ---
     var next = "https://www.wirelxdfirm.com/next.html";
     var qs = new URLSearchParams({
-      learnerName: learnerName,
+      learnerName,
       sid: sessionId,
       current: compId,
-      mastery: mastery,
+      mastery,
       missed: JSON.stringify(missedSubs),
-      testedOut: testedOut,
-      finalized: finalized,
+      testedOut,
+      finalized,
       score: correct
     });
-    window.location.href = next + "?" + qs.toString();
+
+    console.log("➡️ Redirecting to next.html with params:", qs.toString());
+    setTimeout(() => {
+      try {
+        if (window.top) {
+          window.top.location.href = next + "?" + qs.toString();
+        } else {
+          window.location.href = next + "?" + qs.toString();
+        }
+      } catch (err) {
+        console.warn("⚠️ Redirect blocked, opening new tab:", err);
+        window.open(next + "?" + qs.toString(), "_blank");
+      }
+    }, 600);
 
   } catch (e) {
     console.warn("Continue button error:", e);
