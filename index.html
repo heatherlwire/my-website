@@ -271,7 +271,7 @@
   const emailInput = document.getElementById("emailInput");
   const emailError = document.getElementById("emailError");
   const btn = document.getElementById("btnLaunch");
-  const emailRegex = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}$/;
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
   function isEmailValid(v){return emailRegex.test((v||"").trim());}
   function validate(){
     const nameOk = nameInput.value.trim().length>0;
