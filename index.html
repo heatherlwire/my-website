@@ -228,7 +228,7 @@
         <h1>Welcome to Adaptive Learning Unleashed</h1>
         <div class="badge" aria-live="polite">
             <span class="dot ok" id="connDot"></span>
-            <span id="connText">Connected to Wire Learning Solutions</span>
+            <span id="connText">Connected to the LRS</span>
         </div>
 
         <!-- New user -->
@@ -314,4 +314,38 @@
         function showReturning() {
             newUserSection.hidden = true;
             returningSection.hidden = false;
-            welcomeText.classList.add(
+            welcomeText.classList.add("fade-in");
+            btnContinue.classList.add("fade-in", "delay-1");
+            btnReset.classList.add("fade-in", "delay-2");
+        }
+
+        function checkReturning() {
+            const name = localStorage.getItem("learnerName");
+            const email = localStorage.getItem("learnerEmail");
+            if (name && email) {
+                welcomeText.textContent = `Welcome back, ${name}.`;
+                showReturning();
+            } else {
+                newUserSection.hidden = false;
+                returningSection.hidden = true;
+            }
+        }
+
+        window.addEventListener("pageshow", checkReturning);
+        document.addEventListener("DOMContentLoaded", checkReturning);
+
+        btnContinue.addEventListener("click", () => {
+            const name = localStorage.getItem("learnerName");
+            const sid = ensureSid();
+            const current = localStorage.getItem("currentCompetency") || "C1";
+            window.location.href = `next.html?learnerName=${encodeURIComponent(name)}&sid=${encodeURIComponent(sid)}&current=${encodeURIComponent(current)}`;
+        });
+
+        btnReset.addEventListener("click", () => {
+            if (confirm("Clear learner data and restart?")) {
+                localStorage.clear(); sessionStorage.clear(); location.reload();
+            }
+        });
+    </script>
+</body>
+</html>
