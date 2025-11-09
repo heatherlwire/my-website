@@ -145,11 +145,6 @@
                 transform: translateY(-2px);
             }
 
-            .btn-primary:focus-visible, .btn-outline:focus-visible {
-                outline: none;
-                box-shadow: 0 0 0 3px rgba(147,197,253,.25);
-            }
-
         .badge {
             display: inline-flex;
             align-items: center;
@@ -213,14 +208,6 @@
         .delay-2 {
             animation-delay: .12s;
         }
-
-        @media (prefers-reduced-motion: reduce) {
-            .fade-in, .delay-1, .delay-2 {
-                animation: none !important;
-                opacity: 1 !important;
-                transform: none !important;
-            }
-        }
     </style>
 </head>
 <body>
@@ -228,7 +215,7 @@
         <h1>Welcome to Adaptive Learning Unleashed</h1>
         <div class="badge" aria-live="polite">
             <span class="dot ok" id="connDot"></span>
-            <span id="connText">Connected to the LRS</span>
+            <span id="connText">Connected to Wire Learning Solutions</span>
         </div>
 
         <!-- New user -->
@@ -251,101 +238,100 @@
     </main>
 
     <script>
-        /* ===== Session Handling ===== */
-        function ensureSid() {
-            let sid = localStorage.getItem("sessionId");
-            if (!sid) { sid = self.crypto?.randomUUID?.() || String(Date.now()); localStorage.setItem("sessionId", sid); }
-            return sid;
-        }
+    // ===== Session Handling =====
+    function ensureSid() {
+      let sid = localStorage.getItem("sessionId");
+      if (!sid) { sid = self.crypto?.randomUUID?.() || String(Date.now()); localStorage.setItem("sessionId", sid); }
+      return sid;
+    }
 
-        /* ===== Validation ===== */
-        const nameInput = document.getElementById("nameInput");
-        const emailInput = document.getElementById("emailInput");
-        const emailError = document.getElementById("emailError");
-        const btn = document.getElementById("btnLaunch");
-        const emailRegex = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}$/;
+    // ===== Validation =====
+    const nameInput = document.getElementById("nameInput");
+    const emailInput = document.getElementById("emailInput");
+    const emailError = document.getElementById("emailError");
+    const btn = document.getElementById("btnLaunch");
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
-        function isEmailValid(v) {
-            const value = (v || "").trim().toLowerCase();
-            return emailRegex.test(value);
-        }
+    function isEmailValid(v) {
+      return emailRegex.test((v || "").trim());
+    }
 
-        function validate() {
-            const nameOk = nameInput.value.trim().length > 0;
-            const emailOk = isEmailValid(emailInput.value);
-            emailError.hidden = (emailInput.value.trim() === "" || emailOk);
-            btn.disabled = !(nameOk && emailOk);
-        }
+    function validate() {
+      const nameOk = nameInput.value.trim().length > 0;
+      const emailOk = isEmailValid(emailInput.value);
+      emailError.hidden = (emailInput.value.trim() === "" || emailOk);
+      btn.disabled = !(nameOk && emailOk);
+    }
 
-        ["input", "change", "blur"].forEach(evt => {
-            nameInput.addEventListener(evt, validate);
-            emailInput.addEventListener(evt, validate);
-        });
+    ["input", "change", "blur"].forEach(evt => {
+      nameInput.addEventListener(evt, validate);
+      emailInput.addEventListener(evt, validate);
+    });
 
-        document.addEventListener("DOMContentLoaded", () => { validate(); setTimeout(validate, 150); });
-        window.addEventListener("pageshow", validate);
-        document.addEventListener("keydown", e => { if (e.key === "Enter" && !btn.disabled) btn.click(); });
+    document.addEventListener("DOMContentLoaded", () => { validate(); });
+    window.addEventListener("pageshow", validate);
+    document.addEventListener("keydown", e => { if (e.key === "Enter" && !btn.disabled) btn.click(); });
 
-        /* ===== Launch Logic ===== */
-        btn.addEventListener("click", () => {
-            const name = nameInput.value.trim();
-            const email = emailInput.value.trim().toLowerCase();
-            if (!name || !isEmailValid(email)) { validate(); if (!isEmailValid(email)) emailInput.focus(); return; }
+    // ===== Launch Logic =====
+    btn.addEventListener("click", () => {
+      const name = nameInput.value.trim();
+      const email = emailInput.value.trim().toLowerCase();
+      if (!name || !isEmailValid(email)) { validate(); if (!isEmailValid(email)) emailInput.focus(); return; }
 
-            localStorage.setItem("learnerName", name);
-            localStorage.setItem("learnerEmail", email);
-            const sid = ensureSid();
-            localStorage.setItem("currentCompetency", "C1");
+      localStorage.setItem("learnerName", name);
+      localStorage.setItem("learnerEmail", email);
+      const sid = ensureSid();
+      localStorage.setItem("currentCompetency", "C1");
 
-            // --- Launch hosted C1-test HTML ---
-            const baseURL = "https://www.wirelearningsolutions.com/";
-            const c1LaunchUrl = `${baseURL}C1-test/story.html`;
-            const fullUrl = `${c1LaunchUrl}?learnerName=${encodeURIComponent(name)}&sid=${encodeURIComponent(sid)}`;
-            window.location.href = fullUrl;
-        });
+      // --- Launch hosted C1-test HTML ---
+      const baseURL = "https://www.wirelearningsolutions.com/";
+      const c1LaunchUrl = `${baseURL}C1-test/story.html`;
+      const fullUrl = `${c1LaunchUrl}?learnerName=${encodeURIComponent(name)}&sid=${encodeURIComponent(sid)}`;
+      window.location.href = fullUrl;
+    });
 
-        /* ===== Returning User Logic ===== */
-        const newUserSection = document.getElementById("newUserSection");
-        const returningSection = document.getElementById("returningSection");
-        const welcomeText = document.getElementById("welcomeText");
-        const btnContinue = document.getElementById("btnContinue");
-        const btnReset = document.getElementById("btnReset");
+    // ===== Returning User Logic =====
+    const newUserSection = document.getElementById("newUserSection");
+    const returningSection = document.getElementById("returningSection");
+    const welcomeText = document.getElementById("welcomeText");
+    const btnContinue = document.getElementById("btnContinue");
+    const btnReset = document.getElementById("btnReset");
 
-        function showReturning() {
-            newUserSection.hidden = true;
-            returningSection.hidden = false;
-            welcomeText.classList.add("fade-in");
-            btnContinue.classList.add("fade-in", "delay-1");
-            btnReset.classList.add("fade-in", "delay-2");
-        }
+    function showReturning() {
+      newUserSection.hidden = true;
+      returningSection.hidden = false;
+      welcomeText.classList.add("fade-in");
+      btnContinue.classList.add("fade-in", "delay-1");
+      btnReset.classList.add("fade-in", "delay-2");
+    }
 
-        function checkReturning() {
-            const name = localStorage.getItem("learnerName");
-            const email = localStorage.getItem("learnerEmail");
-            if (name && email) {
-                welcomeText.textContent = `Welcome back, ${name}.`;
-                showReturning();
-            } else {
-                newUserSection.hidden = false;
-                returningSection.hidden = true;
-            }
-        }
+    function checkReturning() {
+      const name = localStorage.getItem("learnerName");
+      const email = localStorage.getItem("learnerEmail");
+      if (name && email) {
+        welcomeText.textContent = `Welcome back, ${name}.`;
+        showReturning();
+      } else {
+        newUserSection.hidden = false;
+        returningSection.hidden = true;
+      }
+    }
 
-        window.addEventListener("pageshow", checkReturning);
-        document.addEventListener("DOMContentLoaded", checkReturning);
+    window.addEventListener("pageshow", checkReturning);
+    document.addEventListener("DOMContentLoaded", checkReturning);
 
-        btnContinue.addEventListener("click", () => {
-            const name = localStorage.getItem("learnerName");
-            const sid = ensureSid();
-            const current = localStorage.getItem("currentCompetency") || "C1";
-            window.location.href = `next.html?learnerName=${encodeURIComponent(name)}&sid=${encodeURIComponent(sid)}&current=${encodeURIComponent(current)}`;
-        });
+    btnContinue.addEventListener("click", () => {
+      const name = localStorage.getItem("learnerName");
+      const sid = ensureSid();
+      const current = localStorage.getItem("currentCompetency") || "C1";
+      window.location.href = `next.html?learnerName=${encodeURIComponent(name)}&sid=${encodeURIComponent(sid)}&current=${encodeURIComponent(current)}`;
+    });
 
-        btnReset.addEventListener("click", () => {
-            if (confirm("Clear learner data and restart?")) {
-                localStorage.clear(); sessionStorage.clear(); location.reload();
-            }
-        });
+    btnReset.addEventListener("click", () => {
+      if (confirm("Clear learner data and restart?")) {
+        localStorage.clear(); sessionStorage.clear(); location.reload();
+      }
+    });
     </script>
 </body>
 </html>
