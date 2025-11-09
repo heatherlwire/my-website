@@ -352,7 +352,7 @@ function evaluateAdaptiveRouting(compId, compState, ruleset) {
   return null;
 }
 
-// ---------- Render ----------
+// ---------- Render -----------
 function displayMastery(m){return m==="Mastery"?"Mastered":(m||"—");}
 function labelStatus(k){if(k==="NotStarted")return"Not Started";if(k==="InProgress")return"In Progress";if(k==="Completed")return"Completed";return k||"—";}
 function renderProgress(map){const tbody=document.getElementById("progressTable");tbody.innerHTML="";for(const comp of["C1","C2","C3"]){const s=map[comp]||{};const mastery=displayMastery(s.mastery);let status="NotStarted";if(s.finalized||s.mastery==="Mastery"||s.testedOut||s.completed)status="Completed";else if(s.mastery)status="InProgress";const tr=document.createElement("tr");tr.innerHTML=`<td>${comp}</td><td>${mastery}</td><td><span class="status ${status}"><span class="s-dot"></span>${labelStatus(status)}</span></td>`;tbody.appendChild(tr);}}
@@ -413,6 +413,6 @@ setInterval(() => {
   if (document.visibilityState === "visible") refreshAll();
 }, REFRESH_MS);
     </script>
-
+     
 </body>
 </html>
