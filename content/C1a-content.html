@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8" />
-    <title>Content Lesson</title>
+    <title>Lesson</title>
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <style>
         :root {
@@ -24,7 +24,7 @@
             min-height: 100dvh;
             color: var(--ink-0);
             font-family: ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;
-            background: radial-gradient(1200px 800px at 70% -10%, rgba(34,211,238,.10), transparent 60%), radial-gradient(1000px 600px at -10% 20%, rgba(14,165,233,.15), transparent 55%), linear-gradient(180deg,#07101e 0%,#0a1322 50%,#0b1628 100%);
+            background: radial-gradient(1200px 800px at 70% -10%,rgba(34,211,238,.10),transparent 60%), radial-gradient(1000px 600px at -10% 20%,rgba(14,165,233,.15),transparent 55%), linear-gradient(180deg,#07101e 0%,#0a1322 50%,#0b1628 100%);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -39,7 +39,6 @@
             padding: 20px;
             box-shadow: var(--shadow);
             backdrop-filter: blur(6px);
-            margin: 0 auto;
         }
 
         h1 {
@@ -72,8 +71,6 @@
             aspect-ratio: 16/9;
             width: 100%;
             max-height: calc(98vh - 260px);
-            margin-left: auto;
-            margin-right: auto;
         }
 
         #player, #player iframe {
@@ -98,7 +95,7 @@
             border: 1px solid rgba(148,163,184,.35);
             background: #0f1a2e;
             color: var(--ink-0);
-            transition: transform .05s ease, box-shadow .2s ease, border-color .2s ease, filter .2s ease, opacity .2s ease;
+            transition: transform .05s ease,box-shadow .2s ease,border-color .2s ease,filter .2s ease,opacity .2s ease;
         }
 
             button:disabled {
@@ -117,17 +114,14 @@
         @keyframes pulse-blue {
             0% {
                 box-shadow: 0 6px 24px rgba(14,165,233,.35);
-                transform: scale(1);
             }
 
             50% {
                 box-shadow: 0 10px 36px rgba(14,165,233,.55);
-                transform: scale(1.02);
             }
 
             100% {
                 box-shadow: 0 6px 24px rgba(14,165,233,.35);
-                transform: scale(1);
             }
         }
 
@@ -159,198 +153,199 @@
 </head>
 <body>
     <section class="card">
-        <h1 id="title">Content Lesson</h1>
+        <h1 id="title">Lesson</h1>
         <h2 id="subtitle" class="muted"></h2>
-        <p class="muted">Tip: Watch the entire video to unlock the next button. For the best view, click the fullscreen icon in the player.</p>
+        <p class="muted">Watch the full video to unlock the next button.</p>
 
         <div id="playerWrap"><div id="player"></div></div>
 
         <div class="row">
             <button id="nextBtn" disabled>Next: Application</button>
-            <button id="captionBtn" style="display:none;">Show Captions</button>
-            <button id="debugBtn" aria-pressed="false">Show Debug</button>
+            <button id="debugBtn" aria-pressed="false">Show debug</button>
             <div id="live" class="sr-only" aria-live="polite"></div>
         </div>
 
-        <div id="debugPanel" style="display:none;">
-            <pre id="dbg">Loading…</pre>
-        </div>
+        <div id="debugPanel" style="display:none;"><pre id="dbg">Loading…</pre></div>
     </section>
 
     <script>
-    // ===== LRS Config =====
-    const endpoint = "https://cloud.scorm.com/lrs/TENBKY6BZ6/sandbox/";
-    const key = "d_cPqAqYNvM3sMTyJ2M";
-    const secret = "rh70yfaxONPyu11z_vk";
-    const auth = "Basic " + btoa(`${key}:${secret}`);
+  // ===== LRS config (unchanged) =====
+  const endpoint = "https://cloud.scorm.com/lrs/TENBKY6BZ6/sandbox/";
+  const key = "d_cPqAqYNvM3sMTyJ2M";
+  const secret = "rh70yfaxONPyu11z_vk";
+  const auth = "Basic " + btoa(`${key}:${secret}`);
 
-    // Proper namespace + activity IDs under your domain
-    const NS = "https://wirelearningsolutions.com/xapi/extensions/";
-    const ACT_BASE = "https://wirelearningsolutions.com/xapi/activities/";
-    const EX = k => NS + k;
-    const ACT = p => ACT_BASE + String(p || "").replace(/^\/+/, "");
+  // Use your domain for activity/extension IRIs
+  const NS = "https://wirelearningsolutions.com/xapi/extensions/";
+  const ACT_BASE = "https://wirelearningsolutions.com/xapi/activities/";
+  const EX = k => NS + k;
+  const ACT = p => ACT_BASE + String(p || "").replace(/^\/+/, "");
 
-    // ===== Query + Local Storage =====
-    const qs = new URLSearchParams(location.search);
-    const fileKeyRaw = location.pathname.split("/").pop().replace(/\.html$/,"").trim();
-    const keyRaw = (qs.get("key") || fileKeyRaw).trim();
-    const learnerName = qs.get("learnerName") || localStorage.getItem("learnerName") || "Anonymous";
-    const sid = qs.get("sid") || localStorage.getItem("sessionId") || (crypto.randomUUID?.() || Date.now().toString());
-    localStorage.setItem("learnerName", learnerName);
-    localStorage.setItem("sessionId", sid);
+  // ===== Identify page & learner =====
+  const qs = new URLSearchParams(location.search);
+  const fileKeyRaw = location.pathname.split("/").pop().replace(/\.html$/,"").trim();  // e.g. "C1a-content"
+  // allow ?key= override if ever needed
+  let keyRaw = (qs.get("key") || fileKeyRaw).trim();
 
-    const FALLBACK_MAP = {
-      "C1a-content": { video:"olOSOl0YPL4", apply:"../apply/C1a-apply.html" },
-      "C1b-content": { video:"VnXdj0yqpzI", apply:"../apply/C1b-apply.html" },
-      "C1c-content": { video:"QXGOjzcQdhQ", apply:"../apply/C1c-apply.html" }
-    };
+  const learnerName = qs.get("learnerName") || localStorage.getItem("learnerName") || "Anonymous";
+  const sid = qs.get("sid") || localStorage.getItem("sessionId") || (crypto.randomUUID?.() || Date.now().toString());
+  localStorage.setItem("learnerName", learnerName);
+  localStorage.setItem("sessionId", sid);
 
-    const cfg = FALLBACK_MAP[keyRaw] || null;
-    const comp = (keyRaw.match(/(C\d)/i)?.[1] || "C1").toUpperCase();
-    document.getElementById("title").textContent = `${keyRaw.toUpperCase()} Content`;
+  // Title: show "C1a Lesson" etc (no duplicated “content”)
+  (function setTitle(){
+    const base = keyRaw.replace(/-content$/i,"");
+    document.getElementById("title").textContent = `${base} Lesson`;
+  })();
 
-    // ===== Debug Panel =====
-    const dbgEl = document.getElementById("dbg");
-    const debugBtn = document.getElementById("debugBtn");
-    const debugPanel = document.getElementById("debugPanel");
-    function logDebug(obj){ try{ dbgEl.textContent = JSON.stringify(obj,null,2); }catch{} }
-    debugBtn.addEventListener("click", () => {
-      const open = debugPanel.style.display !== "block";
-      debugPanel.style.display = open ? "block" : "none";
-      debugBtn.setAttribute("aria-pressed", open ? "true" : "false");
-      debugBtn.textContent = open ? "Hide Debug" : "Show Debug";
-    });
+  // ===== Map: exact keys with lowercase "-content" and "-apply" =====
+  const FALLBACK_MAP = {
+    // C1
+    "C1a-content": { video:"olOSOl0YPL4", apply:"../apply/C1a-apply.html" },
+    "C1b-content": { video:"VnXdj0yqpzI", apply:"../apply/C1b-apply.html" },
+    "C1c-content": { video:"QXGOjzcQdhQ", apply:"../apply/C1c-apply.html" },
+    // C2
+    "C2a-content": { video:"S6Y1QrQ-Wuw", apply:"../apply/C2a-apply.html" },
+    "C2b-content": { video:"VnXdj0yqpzI", apply:"../apply/C2b-apply.html" },
+    "C2c-content": { video:"XscUZ8dIa-8", apply:"../apply/C2c-apply.html" },
+    // C3
+    "C3a-content": { video:"VnXdj0yqpzI", apply:"../apply/C3a-apply.html" },
+    "C3b-content": { video:"6Pl3hPRwO-o", apply:"../apply/C3b-apply.html" },
+    "C3c-content": { video:"vswvFKIeMfg", apply:"../apply/C3c-apply.html" }
+  };
 
-    // ===== xAPI Sender (merged) =====
-    async function sendXAPI(verbId, verb, ext = {}) {
-      const stmt = {
-        actor: { name: learnerName, mbox: `mailto:${encodeURIComponent(learnerName)}@wirelearningsolutions.com` },
+  // Exact hit first; if not, try case-insensitive match once
+  let cfg = FALLBACK_MAP[keyRaw] || null;
+  if (!cfg) {
+    const ciKey = Object.keys(FALLBACK_MAP).find(k => k.toLowerCase() === keyRaw.toLowerCase());
+    if (ciKey) { keyRaw = ciKey; cfg = FALLBACK_MAP[ciKey]; }
+  }
+
+  // ===== Debug UI =====
+  const dbgEl = document.getElementById("dbg");
+  const debugBtn = document.getElementById("debugBtn");
+  const debugPanel = document.getElementById("debugPanel");
+  debugBtn.addEventListener("click", () => {
+    const open = debugPanel.style.display !== "block";
+    debugPanel.style.display = open ? "block" : "none";
+    debugBtn.setAttribute("aria-pressed", open ? "true" : "false");
+    debugBtn.textContent = open ? "Hide debug" : "Show debug";
+  });
+  const logDebug = (o) => { try { dbgEl.textContent = JSON.stringify(o,null,2); } catch {} };
+
+  // ===== xAPI sender =====
+  function sendXAPI(verbId, verb, ext = {}) {
+    return fetch(endpoint + "statements", {
+      method: "POST",
+      headers: {
+        "Authorization": auth,
+        "Content-Type": "application/json",
+        "X-Experience-API-Version": "1.0.3"
+      },
+      body: JSON.stringify({
+        actor: { name: learnerName, mbox: `mailto:${encodeURIComponent(learnerName)}@wirelxdfirm.com` },
         verb: { id: verbId, display: { "en-US": verb } },
         object: { id: ACT(keyRaw || "content") },
-        result: { extensions: { [EX("learnerName")]: learnerName, [EX("sessionId")]: sid, [EX("target")]: keyRaw, ...ext }},
+        result: { extensions: { [EX("learnerName")]: learnerName, [EX("sessionId")]: sid, [EX("target")]: keyRaw, ...ext } },
         timestamp: new Date().toISOString()
-      };
-      logDebug({ sending: stmt });
-      try {
-        const res = await fetch(endpoint + "statements", {
-          method: "POST",
-          headers: { "Authorization": auth, "Content-Type": "application/json", "X-Experience-API-Version": "1.0.3" },
-          body: JSON.stringify(stmt)
-        });
-        console.log("[xAPI]", verb, res.status);
-      } catch (e) { console.warn("xAPI send failed", e); }
-    }
+      })
+    }).catch(()=>{});
+  }
 
-    // ===== Button & Accessibility =====
-    const nextBtn = document.getElementById("nextBtn");
-    const captionBtn = document.getElementById("captionBtn");
-    const liveEl = document.getElementById("live");
+  // ===== Buttons =====
+  const nextBtn = document.getElementById("nextBtn");
+  const liveEl = document.getElementById("live");
+  function enableNext(){
+    if (!nextBtn.disabled) return;
+    nextBtn.disabled = false;
+    nextBtn.classList.add("ready");
+    if (liveEl) liveEl.textContent = "Next step unlocked";
+  }
+  nextBtn.addEventListener("click", () => {
+    if (!cfg?.apply) return alert("Apply URL missing for this lesson.");
+    const url = new URL(cfg.apply, location.href);
+    url.searchParams.set("learnerName", learnerName);
+    url.searchParams.set("sid", sid);
+    url.searchParams.set("source", keyRaw);
+    localStorage.setItem("lastApplyLaunched", keyRaw.replace("-content","-apply"));
+    location.href = url.toString();
+  });
 
-    function enableNext(){
-      if (!nextBtn.disabled) return;
-      nextBtn.disabled = false;
-      nextBtn.classList.add("ready");
-      if (liveEl) liveEl.textContent = "Next step unlocked";
-    }
+  // ===== YouTube title (no API key) =====
+  async function loadYouTubeTitle(videoId){
+    try{
+      const o = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`);
+      if (!o.ok) return;
+      const data = await o.json();
+      const h2 = document.getElementById("subtitle");
+      if (h2 && data?.title) h2.textContent = data.title;
+    } catch {}
+  }
 
-    nextBtn.addEventListener("click", () => {
-      if (!cfg?.apply) return alert("Apply URL missing.");
-      const url = new URL(cfg.apply, location.href);
-      url.searchParams.set("learnerName", learnerName);
-      url.searchParams.set("sid", sid);
-      url.searchParams.set("source", keyRaw);
-      location.href = url.toString();
-    });
+  // ===== YouTube + unlock 10s before end + xAPI =====
+  let player, started=false, totalWatch=0, lastTick=null, duration=0, unlockedEarly=false, pollTimer=null;
 
-    // ===== Load Captions =====
-    async function loadCaptions(videoId) {
-      try {
-        const res = await fetch(`https://video.google.com/timedtext?lang=en&v=${videoId}`);
-        const xml = await res.text();
-        if (!xml.includes("<text")) return;
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(xml, "text/xml");
-        const texts = [...doc.querySelectorAll("text")].map(n => n.textContent.replace(/&amp;/g,"&"));
-        const captions = texts.join(" ").replace(/\s+/g," ").trim();
-        const capBox = document.createElement("pre");
-        capBox.id = "captionsBox";
-        capBox.textContent = captions;
-        capBox.style.display = "none";
-        document.querySelector(".card").appendChild(capBox);
-        captionBtn.style.display = "inline-block";
-        captionBtn.addEventListener("click",()=>{
-          const vis = capBox.style.display==="block";
-          capBox.style.display = vis?"none":"block";
-          captionBtn.textContent = vis?"Show Captions":"Hide Captions";
-        });
-      } catch(e){ console.error("Captions load failed", e); }
-    }
+  function startPolling(){
+    stopPolling();
+    pollTimer = setInterval(() => {
+      if (!player || typeof player.getCurrentTime !== "function") return;
+      const cur = player.getCurrentTime() || 0;
+      const rem = Math.max(0, (duration || 0) - cur);
+      if (!unlockedEarly && rem <= 10) { unlockedEarly = true; enableNext(); }
+    }, 500);
+  }
+  function stopPolling(){ if (pollTimer) { clearInterval(pollTimer); pollTimer = null; } }
 
-    async function loadTitle(videoId){
-      try {
-        const o = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`);
-        if(!o.ok)return;
-        const data=await o.json();
-        document.getElementById("subtitle").textContent=data.title||"";
-      }catch{}
-    }
+  function onPlayerReady(e){
+    duration = e?.target?.getDuration?.() || 0;
+    loadYouTubeTitle(cfg.video);
+    logDebug({ file:keyRaw, learnerName, sid, duration, video:cfg.video, apply:cfg.apply });
+  }
 
-    // ===== YouTube Logic =====
-    let player, started=false, totalWatch=0, lastTick=null, duration=0;
-    let pollTimer=null, unlocked=false;
-
-    function startPoll(){
-      clearInterval(pollTimer);
-      pollTimer=setInterval(()=>{
-        if(!player)return;
-        const cur=player.getCurrentTime()||0;
-        const remain=Math.max(0,(duration||0)-cur);
-        if(!unlocked&&remain<=10){ unlocked=true; enableNext(); }
-      },500);
-    }
-
-    function onPlayerReady(e){
-      duration=e?.target?.getDuration?.()||0;
-      logDebug({ready:true, keyRaw, duration});
-      loadCaptions(cfg.video);
-      loadTitle(cfg.video);
-    }
-
-    async function onPlayerStateChange(e){
-      const s=e.data,now=Date.now();
-      if(s===YT.PlayerState.PLAYING){
-        if(!started){ started=true; sendXAPI("http://adlnet.gov/expapi/verbs/experienced","experienced",{[EX("duration")]:duration}); }
-        lastTick=now; startPoll();
+  async function onPlayerStateChange(e){
+    const s = e.data, now = Date.now();
+    if (s === YT.PlayerState.PLAYING){
+      if (!started){
+        started = true;
+        sendXAPI("http://adlnet.gov/expapi/verbs/experienced","experienced",{ [EX("duration")]: duration });
       }
-      if(s===YT.PlayerState.PAUSED){
-        if(lastTick){ totalWatch+=(now-lastTick)/1000; lastTick=null; }
-        clearInterval(pollTimer);
-        sendXAPI("http://id.tincanapi.com/verb/paused","paused",{[EX("watchedSeconds")]:Math.round(totalWatch)});
-      }
-      if(s===YT.PlayerState.ENDED){
-        if(lastTick){ totalWatch+=(now-lastTick)/1000; lastTick=null; }
-        clearInterval(pollTimer);
-        await sendXAPI("http://adlnet.gov/expapi/verbs/completed","completed",{[EX("watchedSeconds")]:Math.round(totalWatch),[EX("duration")]:duration});
-        enableNext();
-      }
+      lastTick = now; startPolling();
     }
-
-    function initYT(){
-      if(!cfg)return alert(`Missing config for key ${keyRaw}`);
-      if(!window.YT||!window.YT.Player){
-        const tag=document.createElement("script");
-        tag.src="https://www.youtube.com/iframe_api";
-        document.head.appendChild(tag);
-        window.onYouTubeIframeAPIReady=()=>{
-          player=new YT.Player("player",{videoId:cfg.video,playerVars:{rel:0,modestbranding:1,playsinline:1},events:{onReady:onPlayerReady,onStateChange:onPlayerStateChange}});
-        };
-      } else {
-        player=new YT.Player("player",{videoId:cfg.video,playerVars:{rel:0,modestbranding:1,playsinline:1},events:{onReady:onPlayerReady,onStateChange:onPlayerStateChange}});
-      }
+    if (s === YT.PlayerState.PAUSED){
+      if (lastTick){ totalWatch += (now - lastTick) / 1000; lastTick = null; }
+      stopPolling();
+      sendXAPI("http://id.tincanapi.com/verb/paused","paused",{ [EX("watchedSeconds")]: Math.round(totalWatch) });
     }
+    if (s === YT.PlayerState.ENDED){
+      if (lastTick){ totalWatch += (now - lastTick) / 1000; lastTick = null; }
+      stopPolling();
+      await sendXAPI("http://adlnet.gov/expapi/verbs/completed","completed",{
+        [EX("watchedSeconds")]: Math.round(totalWatch),
+        [EX("duration")]: duration
+      });
+      enableNext(); // still unlock on natural end
+    }
+  }
 
-    // Initialize
-    initYT();
+  function initYouTube(){
+    if (!cfg) {
+      alert(`Missing video/apply mapping for "${keyRaw}". Check FALLBACK_MAP or rename the file to C#x-content.html pattern.`);
+      return;
+    }
+    const tag = document.createElement("script");
+    tag.src = "https://www.youtube.com/iframe_api";
+    document.head.appendChild(tag);
+    window.onYouTubeIframeAPIReady = () => {
+      player = new YT.Player("player", {
+        videoId: cfg.video,
+        playerVars: { rel:0, modestbranding:1, playsinline:1 },
+        events: { onReady: onPlayerReady, onStateChange: onPlayerStateChange }
+      });
+    };
+  }
+
+  // Kickoff
+  initYouTube();
     </script>
 </body>
 </html>
