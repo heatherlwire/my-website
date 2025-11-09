@@ -298,15 +298,11 @@
     const BASE = "https://www.wirelearningsolutions.com/";
     const REFRESH_MS = 15000;
 
-    /* ===== 1) LRS / identity config (unchanged creds) ===== */
-    const endpoint = "https://cloud.scorm.com/lrs/TENBKY6BZ6/sandbox/";
-    const key = "d_cPqAqYNvM3sMTyJ2M";
-    const secret = "rh70yfaxONPyu11z_vk";
-    const auth = "Basic " + btoa(`${key}:${secret}`);
-
-    // IMPORTANT: use your domain for the extension namespace
+    /* ===== 1) LRS / identity config (via Lambda proxy) ===== */
+    const PROXY_URL = "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws/";
     const NS = "https://acbl.wirelearningsolutions.com/extensions/";
     const EX = k => NS + k;
+
 
     // Identity
     const qs = new URLSearchParams(location.search);
