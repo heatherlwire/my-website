@@ -636,7 +636,7 @@ window.Script13 = function()
 {
   (function () {
   try {
-    console.log("🚀 Sending adaptive xAPI via Lambda...");
+    console.log("🚀 Running adaptive continue script with retry...");
 
     var p = GetPlayer();
     if (!p) return;
@@ -663,14 +663,21 @@ window.Script13 = function()
     var finalized = false;
 
     // --- Identity & session ---
-    var learnerName = p.GetVar("learnerName") || localStorage.getItem("learnerName") || "Anonymous";
-    var sessionId = p.GetVar("sessionId") || localStorage.getItem("sessionId") || crypto.randomUUID();
+    var learnerName =
+      p.GetVar("learnerName") ||
+      localStorage.getItem("learnerName") ||
+      "Anonymous";
+    var sessionId =
+      p.GetVar("sessionId") ||
+      localStorage.getItem("sessionId") ||
+      crypto.randomUUID();
     localStorage.setItem("sessionId", sessionId);
     var mbox = "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com";
 
-    // --- Namespace ---
-    var NS = "https://acbl.wirelxdfirm.com/extensions/";
-    function EX(k){ return NS + k; }
+    // --- LRS endpoint/auth ---
+    var endpoint = "https://cloud.scorm.com/lrs/TENBKY6BZ6/sandbox"; // ✅ fixed
+    var key = "TENBKY6BZ6";
+    var secret = "DhCPfNueQRfb0TYn7EjwG7lOYwc5Fq6SkoPRKkHn";
 
     // --- Build per-question dataset (C#_QuestionData) ---
     var questionData = [];
@@ -679,16 +686,19 @@ window.Script13 = function()
       var cor = p.GetVar(compId + "_Q" + i + "_IsCorrect");
       var txt = p.GetVar(compId + "_Q" + i + "_Text");
       var sub = p.GetVar(compId + "_Q" + i + "_Sub");
-
-      if (typeof ans === "undefined" && typeof cor === "undefined" && typeof txt === "undefined") break;
+      if (
+        typeof ans === "undefined" &&
+        typeof cor === "undefined" &&
+        typeof txt === "undefined"
+      )
+        break;
       if (ans == null && cor == null && txt == null) continue;
-
       questionData.push({
         id: compId.toLowerCase() + "a" + i,
         sub: sub || null,
         text: txt || "Question " + i,
         response: ans || "",
-        correct: !!cor
+        correct: !!cor,
       });
     }
 
@@ -697,47 +707,118 @@ window.Script13 = function()
     window.__QUESTION_DATA__ = questionData;
 
     // --- Build primary (pass/fail) xAPI statement ---
-    var verbId = (correct >= 2)
-      ? "http://adlnet.gov/expapi/verbs/passed"
-      : "http://adlnet.gov/expapi/verbs/failed";
-    var verbDisplay = (correct >= 2) ? "passed" : "failed";
+    var verbId =
+      correct >= 2
+        ? "http://adlnet.gov/expapi/verbs/passed"
+        : "http://adlnet.gov/expapi/verbs/failed";
+    var verbDisplay = correct >= 2 ? "passed" : "failed";
 
     var stmt = {
       actor: { name: learnerName, mbox: mbox },
       verb: { id: verbId, display: { "en-US": verbDisplay } },
-      object: { id: "https://acbl.wirelxdfirm.com/activities/" + compId + "/quiz" },
+      object: {
+        id: "https://acbl.wirelxdfirm.com/activities/" + compId + "/quiz",
+        objectType: "Activity",
+        definition: {
+          name: { "en-US": compId + " Quiz Results" },
+          description: { "en-US": "Results of the adaptive quiz for " + compId },
+        },
+      },
       result: {
         score: { raw: correct, min: 0, max: 3 },
-        success: (correct >= 2),
+        success: correct >= 2,
         completion: true,
         extensions: {
-          [EX("learnerName")]: learnerName,
-          [EX("sessionId")]: sessionId,
-          [EX("competencyId")]: compId,
-          [EX("masteryLevel")]: mastery,
-          [EX("missed")]: missedSubs,
-          [EX("testedOut")]: testedOut,
-          [EX("finalized")]: finalized,
-          [EX("questionData")]: questionData,
-          [EX("scorePercent")]: window.__SL_RESULTS__?.scorePercent || 0,
-          [EX("scorePoints")]: window.__SL_RESULTS__?.scorePoints || 0,
-          [EX("maxPoints")]: window.__SL_RESULTS__?.maxPoints || 0,
-          [EX("passFail")]: window.__SL_RESULTS__?.passFail || false
-        }
+          "https://acbl.wirelxdfirm.com/extensions/learnerName": learnerName,
+          "https://acbl.wirelxdfirm.com/extensions/sessionId": sessionId,
+          "https://acbl.wirelxdfirm.com/extensions/competencyId": compId,
+          "https://acbl.wirelxdfirm.com/extensions/masteryLevel": mastery,
+          "https://acbl.wirelxdfirm.com/extensions/missed": missedSubs,
+          "https://acbl.wirelxdfirm.com/extensions/testedOut": testedOut,
+          "https://acbl.wirelxdfirm.com/extensions/finalized": finalized,
+          // ✅ stringify to prevent invalid JSON
+          "https://acbl.wirelxdfirm.com/extensions/questionData":
+            JSON.stringify(questionData),
+          "https://acbl.wirelxdfirm.com/extensions/scorePercent":
+            window.__SL_RESULTS__?.scorePercent || 0,
+          "https://acbl.wirelxdfirm.com/extensions/scorePoints":
+            window.__SL_RESULTS__?.scorePoints || 0,
+          "https://acbl.wirelxdfirm.com/extensions/maxPoints":
+            window.__SL_RESULTS__?.maxPoints || 0,
+          "https://acbl.wirelxdfirm.com/extensions/passFail":
+            window.__SL_RESULTS__?.passFail || false,
+        },
       },
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
 
-    // --- Send main statement via Lambda ---
-    const PROXY_URL = "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
-    fetch(PROXY_URL + "?mode=write", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(stmt)
-    }).then(r => console.log(`✅ Sent ${verbDisplay} (${mastery}) for ${compId} via Lambda | Status:`, r.status))
-      .catch(e => console.warn("❌ Lambda send failed:", e));
+    console.log("📤 Sending xAPI statement:", JSON.stringify(stmt, null, 2));
 
-    // --- Store local data for dashboard ---
+    // --- Helper: send statement with one retry ---
+    async function sendToLRS(statement, label) {
+      const send = async (attempt = 1) => {
+        try {
+          const res = await fetch(endpoint + "/statements", {
+            method: "POST",
+            headers: {
+              Authorization: "Basic " + btoa(key + ":" + secret),
+              "Content-Type": "application/json",
+              "X-Experience-API-Version": "1.0.3",
+            },
+            body: JSON.stringify(statement),
+            keepalive: true,
+          });
+
+          if (!res.ok) {
+            const text = await res.text();
+            console.warn(
+              `⚠️ LRS ${label} attempt ${attempt} failed:`,
+              res.status,
+              text
+            );
+            if (attempt < 2) {
+              console.log("🔁 Retrying in 2 seconds...");
+              await new Promise(r => setTimeout(r, 2000));
+              return await send(attempt + 1);
+            } else {
+              console.error("❌ Final failure sending to LRS:", label);
+            }
+          } else {
+            console.log(`✅ LRS ${label} success (${res.status})`);
+          }
+        } catch (e) {
+          console.error(`❌ Network error on ${label}:`, e);
+          if (attempt < 2) {
+            console.log("🔁 Retrying in 2 seconds...");
+            await new Promise(r => setTimeout(r, 2000));
+            return await send(attempt + 1);
+          }
+        }
+      };
+      await send();
+    }
+
+    // --- Send main statement ---
+    sendToLRS(stmt, `${verbDisplay} (${mastery}) for ${compId}`);
+
+    // --- Send terminated statement ---
+    var terminatedStmt = {
+      actor: { name: learnerName, mbox: mbox },
+      verb: {
+        id: "http://adlnet.gov/expapi/verbs/terminated",
+        display: { "en-US": "terminated" },
+      },
+      object: {
+        id: "https://acbl.wirelxdfirm.com/activities/" + compId + "/quiz",
+        objectType: "Activity",
+      },
+      context: { registration: sessionId },
+      timestamp: new Date().toISOString(),
+    };
+
+    sendToLRS(terminatedStmt, `terminated (${compId})`);
+
+    // --- Store local data for adaptive dashboard ---
     var keyBase = compId + ".";
     localStorage.setItem(keyBase + "mastery", mastery);
     localStorage.setItem(keyBase + "testedOut", testedOut);
@@ -751,12 +832,17 @@ window.Script13 = function()
     var qs = new URLSearchParams({
       learnerName: learnerName,
       sid: sessionId,
-      current: compId
+      current: compId,
+      mastery: mastery,
+      missed: JSON.stringify(missedSubs),
+      testedOut: testedOut,
+      finalized: finalized,
+      score: correct,
     });
     window.location.href = base + "?" + qs.toString();
 
   } catch (e) {
-    console.warn("Continue button error:", e);
+    console.warn("❌ Continue button error:", e);
   }
 })();
 
@@ -766,7 +852,7 @@ window.Script14 = function()
 {
   (function () {
   try {
-    console.log("🚀 Sending adaptive xAPI via Lambda...");
+    console.log("🚀 Running adaptive continue script with retry...");
 
     var p = GetPlayer();
     if (!p) return;
@@ -793,14 +879,21 @@ window.Script14 = function()
     var finalized = false;
 
     // --- Identity & session ---
-    var learnerName = p.GetVar("learnerName") || localStorage.getItem("learnerName") || "Anonymous";
-    var sessionId = p.GetVar("sessionId") || localStorage.getItem("sessionId") || crypto.randomUUID();
+    var learnerName =
+      p.GetVar("learnerName") ||
+      localStorage.getItem("learnerName") ||
+      "Anonymous";
+    var sessionId =
+      p.GetVar("sessionId") ||
+      localStorage.getItem("sessionId") ||
+      crypto.randomUUID();
     localStorage.setItem("sessionId", sessionId);
     var mbox = "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com";
 
-    // --- Namespace ---
-    var NS = "https://acbl.wirelxdfirm.com/extensions/";
-    function EX(k){ return NS + k; }
+    // --- LRS endpoint/auth ---
+    var endpoint = "https://cloud.scorm.com/lrs/TENBKY6BZ6/sandbox"; // ✅ fixed
+    var key = "TENBKY6BZ6";
+    var secret = "DhCPfNueQRfb0TYn7EjwG7lOYwc5Fq6SkoPRKkHn";
 
     // --- Build per-question dataset (C#_QuestionData) ---
     var questionData = [];
@@ -809,16 +902,19 @@ window.Script14 = function()
       var cor = p.GetVar(compId + "_Q" + i + "_IsCorrect");
       var txt = p.GetVar(compId + "_Q" + i + "_Text");
       var sub = p.GetVar(compId + "_Q" + i + "_Sub");
-
-      if (typeof ans === "undefined" && typeof cor === "undefined" && typeof txt === "undefined") break;
+      if (
+        typeof ans === "undefined" &&
+        typeof cor === "undefined" &&
+        typeof txt === "undefined"
+      )
+        break;
       if (ans == null && cor == null && txt == null) continue;
-
       questionData.push({
         id: compId.toLowerCase() + "a" + i,
         sub: sub || null,
         text: txt || "Question " + i,
         response: ans || "",
-        correct: !!cor
+        correct: !!cor,
       });
     }
 
@@ -827,47 +923,118 @@ window.Script14 = function()
     window.__QUESTION_DATA__ = questionData;
 
     // --- Build primary (pass/fail) xAPI statement ---
-    var verbId = (correct >= 2)
-      ? "http://adlnet.gov/expapi/verbs/passed"
-      : "http://adlnet.gov/expapi/verbs/failed";
-    var verbDisplay = (correct >= 2) ? "passed" : "failed";
+    var verbId =
+      correct >= 2
+        ? "http://adlnet.gov/expapi/verbs/passed"
+        : "http://adlnet.gov/expapi/verbs/failed";
+    var verbDisplay = correct >= 2 ? "passed" : "failed";
 
     var stmt = {
       actor: { name: learnerName, mbox: mbox },
       verb: { id: verbId, display: { "en-US": verbDisplay } },
-      object: { id: "https://acbl.wirelxdfirm.com/activities/" + compId + "/quiz" },
+      object: {
+        id: "https://acbl.wirelxdfirm.com/activities/" + compId + "/quiz",
+        objectType: "Activity",
+        definition: {
+          name: { "en-US": compId + " Quiz Results" },
+          description: { "en-US": "Results of the adaptive quiz for " + compId },
+        },
+      },
       result: {
         score: { raw: correct, min: 0, max: 3 },
-        success: (correct >= 2),
+        success: correct >= 2,
         completion: true,
         extensions: {
-          [EX("learnerName")]: learnerName,
-          [EX("sessionId")]: sessionId,
-          [EX("competencyId")]: compId,
-          [EX("masteryLevel")]: mastery,
-          [EX("missed")]: missedSubs,
-          [EX("testedOut")]: testedOut,
-          [EX("finalized")]: finalized,
-          [EX("questionData")]: questionData,
-          [EX("scorePercent")]: window.__SL_RESULTS__?.scorePercent || 0,
-          [EX("scorePoints")]: window.__SL_RESULTS__?.scorePoints || 0,
-          [EX("maxPoints")]: window.__SL_RESULTS__?.maxPoints || 0,
-          [EX("passFail")]: window.__SL_RESULTS__?.passFail || false
-        }
+          "https://acbl.wirelxdfirm.com/extensions/learnerName": learnerName,
+          "https://acbl.wirelxdfirm.com/extensions/sessionId": sessionId,
+          "https://acbl.wirelxdfirm.com/extensions/competencyId": compId,
+          "https://acbl.wirelxdfirm.com/extensions/masteryLevel": mastery,
+          "https://acbl.wirelxdfirm.com/extensions/missed": missedSubs,
+          "https://acbl.wirelxdfirm.com/extensions/testedOut": testedOut,
+          "https://acbl.wirelxdfirm.com/extensions/finalized": finalized,
+          // ✅ stringify to prevent invalid JSON
+          "https://acbl.wirelxdfirm.com/extensions/questionData":
+            JSON.stringify(questionData),
+          "https://acbl.wirelxdfirm.com/extensions/scorePercent":
+            window.__SL_RESULTS__?.scorePercent || 0,
+          "https://acbl.wirelxdfirm.com/extensions/scorePoints":
+            window.__SL_RESULTS__?.scorePoints || 0,
+          "https://acbl.wirelxdfirm.com/extensions/maxPoints":
+            window.__SL_RESULTS__?.maxPoints || 0,
+          "https://acbl.wirelxdfirm.com/extensions/passFail":
+            window.__SL_RESULTS__?.passFail || false,
+        },
       },
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
 
-    // --- Send main statement via Lambda ---
-    const PROXY_URL = "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
-    fetch(PROXY_URL + "?mode=write", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(stmt)
-    }).then(r => console.log(`✅ Sent ${verbDisplay} (${mastery}) for ${compId} via Lambda | Status:`, r.status))
-      .catch(e => console.warn("❌ Lambda send failed:", e));
+    console.log("📤 Sending xAPI statement:", JSON.stringify(stmt, null, 2));
 
-    // --- Store local data for dashboard ---
+    // --- Helper: send statement with one retry ---
+    async function sendToLRS(statement, label) {
+      const send = async (attempt = 1) => {
+        try {
+          const res = await fetch(endpoint + "/statements", {
+            method: "POST",
+            headers: {
+              Authorization: "Basic " + btoa(key + ":" + secret),
+              "Content-Type": "application/json",
+              "X-Experience-API-Version": "1.0.3",
+            },
+            body: JSON.stringify(statement),
+            keepalive: true,
+          });
+
+          if (!res.ok) {
+            const text = await res.text();
+            console.warn(
+              `⚠️ LRS ${label} attempt ${attempt} failed:`,
+              res.status,
+              text
+            );
+            if (attempt < 2) {
+              console.log("🔁 Retrying in 2 seconds...");
+              await new Promise(r => setTimeout(r, 2000));
+              return await send(attempt + 1);
+            } else {
+              console.error("❌ Final failure sending to LRS:", label);
+            }
+          } else {
+            console.log(`✅ LRS ${label} success (${res.status})`);
+          }
+        } catch (e) {
+          console.error(`❌ Network error on ${label}:`, e);
+          if (attempt < 2) {
+            console.log("🔁 Retrying in 2 seconds...");
+            await new Promise(r => setTimeout(r, 2000));
+            return await send(attempt + 1);
+          }
+        }
+      };
+      await send();
+    }
+
+    // --- Send main statement ---
+    sendToLRS(stmt, `${verbDisplay} (${mastery}) for ${compId}`);
+
+    // --- Send terminated statement ---
+    var terminatedStmt = {
+      actor: { name: learnerName, mbox: mbox },
+      verb: {
+        id: "http://adlnet.gov/expapi/verbs/terminated",
+        display: { "en-US": "terminated" },
+      },
+      object: {
+        id: "https://acbl.wirelxdfirm.com/activities/" + compId + "/quiz",
+        objectType: "Activity",
+      },
+      context: { registration: sessionId },
+      timestamp: new Date().toISOString(),
+    };
+
+    sendToLRS(terminatedStmt, `terminated (${compId})`);
+
+    // --- Store local data for adaptive dashboard ---
     var keyBase = compId + ".";
     localStorage.setItem(keyBase + "mastery", mastery);
     localStorage.setItem(keyBase + "testedOut", testedOut);
@@ -881,12 +1048,17 @@ window.Script14 = function()
     var qs = new URLSearchParams({
       learnerName: learnerName,
       sid: sessionId,
-      current: compId
+      current: compId,
+      mastery: mastery,
+      missed: JSON.stringify(missedSubs),
+      testedOut: testedOut,
+      finalized: finalized,
+      score: correct,
     });
     window.location.href = base + "?" + qs.toString();
 
   } catch (e) {
-    console.warn("Continue button error:", e);
+    console.warn("❌ Continue button error:", e);
   }
 })();
 
