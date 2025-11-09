@@ -133,201 +133,226 @@
 </head>
 
 <body>
-  <header>
-    <div class="title-row">
-      <h1>Analyzing your progress</h1>
-      <span class="badge"><span class="dot" id="connDot"></span><span id="connText">Checking connection…</span></span>
-    </div>
-  </header>
+    <header>
+        <div class="title-row">
+            <h1>Analyzing your progress</h1>
+            <span class="badge"><span class="dot" id="connDot"></span><span id="connText">Checking connection…</span></span>
+        </div>
+    </header>
 
-  <main class="wrap">
-    <section class="card" id="info">
-      <div><b>Learner:</b> <span id="learnerNameLabel">—</span></div>
-      <div class="muted">Session: <span id="sessionLabel">—</span></div>
-      <div id="anonWarn" class="muted" style="color:var(--err);display:none;">Actions are disabled until a learner is provided.</div>
-    </section>
+    <main class="wrap">
+        <section class="card" id="info">
+            <div><b>Learner:</b> <span id="learnerNameLabel">—</span></div>
+            <div class="muted">Session: <span id="sessionLabel">—</span></div>
+            <div id="anonWarn" class="muted" style="color:var(--err);display:none;">Actions are disabled until a learner is provided.</div>
+        </section>
 
-    <section class="card" id="summaryCard">
-      <div class="summary" id="summaryLine">Ready to continue your adaptive journey.</div>
-      <div class="upnext">
-        <strong>Up Next:</strong>
-        <span id="upNextComp" class="chip"><strong>—</strong></span>
-        <span id="upNextSub" class="chip"><strong>—</strong></span>
-        <span id="upNextType" class="chip"><strong>—</strong></span>
-      </div>
-      <div id="launchInfo">Click <b>Continue</b> when you’re ready to move on.</div>
-    </section>
+        <section class="card" id="summaryCard">
+            <div class="summary" id="summaryLine">Ready to continue your adaptive journey.</div>
+            <div class="upnext">
+                <strong>Up Next:</strong>
+                <span id="upNextComp" class="chip"><strong>—</strong></span>
+                <span id="upNextSub" class="chip"><strong>—</strong></span>
+                <span id="upNextType" class="chip"><strong>—</strong></span>
+            </div>
+            <div id="launchInfo">Click <b>Continue</b> when you’re ready to move on.</div>
+        </section>
 
-    <section class="card" id="actions">
-      <div class="row">
-        <button id="continueBtn" class="primary" disabled>Continue</button>
-        <button id="acceptBtn" disabled>Accept Mastery Level and Move On</button>
-        <button id="toggleDebug" aria-pressed="false">Show Debug Info</button>
-        <button id="resetBtn" style="background:linear-gradient(180deg,#5b6470,#3e4650);border-color:rgba(148,163,184,.55);">Reset Learner</button>
-      </div>
-    </section>
+        <section class="card" id="actions">
+            <div class="row">
+                <button id="continueBtn" class="primary" disabled>Continue</button>
+                <button id="acceptBtn" disabled>Accept Mastery Level and Move On</button>
+                <button id="toggleDebug" aria-pressed="false">Show Debug Info</button>
+                <button id="resetBtn" style="background:linear-gradient(180deg,#5b6470,#3e4650);border-color:rgba(148,163,184,.55);">Reset Learner</button>
+            </div>
+        </section>
 
-    <section class="card" id="progress">
-      <h3>Your Progress</h3>
-      <p class="muted">Real-time data from your learning record.</p>
-      <table>
-        <thead><tr><th>Competency</th><th>Mastery Level</th><th>Status</th></tr></thead>
-        <tbody id="progressTable"><tr><td colspan="3" class="muted">Loading…</td></tr></tbody>
-      </table>
-    </section>
+        <section class="card" id="progress">
+            <h3>Your Progress</h3>
+            <p class="muted">Real-time data from your learning record.</p>
+            <table>
+                <thead><tr><th>Competency</th><th>Mastery Level</th><th>Status</th></tr></thead>
+                <tbody id="progressTable"><tr><td colspan="3" class="muted">Loading…</td></tr></tbody>
+            </table>
+        </section>
 
-    <section class="card" id="debug" style="display:none;"></section>
-  </main>
+        <section class="card" id="debug" style="display:none;"></section>
+    </main>
 
-  <script>
-  const BASE = "https://www.wirelearningsolutions.com/";
-  const PROXY_URL = "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
-  const NS = "https://acbl.wirelearningsolutions.com/extensions/";
-  const EX = k => NS + k;
-  const REFRESH_MS = 15000;
+    <script>
+const BASE = "https://www.wirelearningsolutions.com/";
+const PROXY_URL = "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
+const NS = "https://acbl.wirelearningsolutions.com/extensions/";
+const EX = k => NS + k;
+const REFRESH_MS = 15000;
 
-  const qs = new URLSearchParams(location.search);
-  const learnerName = (qs.get("learnerName") || localStorage.getItem("learnerName") || "Anonymous").trim();
-  const sid = qs.get("sid") || localStorage.getItem("sessionId") || crypto.randomUUID();
-  const hintedComp = (qs.get("current") || "").toUpperCase();
-  if (hintedComp) localStorage.setItem("currentCompetency", hintedComp);
-  let currentComp = (localStorage.getItem("currentCompetency") || "C1").toUpperCase();
+const qs = new URLSearchParams(location.search);
+const learnerName = (qs.get("learnerName") || localStorage.getItem("learnerName") || "Anonymous").trim();
+const sid = qs.get("sid") || localStorage.getItem("sessionId") || crypto.randomUUID();
+const hintedComp = (qs.get("current") || "").toUpperCase();
+if (hintedComp) localStorage.setItem("currentCompetency", hintedComp);
+let currentComp = (localStorage.getItem("currentCompetency") || "C1").toUpperCase();
 
-  localStorage.setItem("learnerName", learnerName);
-  localStorage.setItem("sessionId", sid);
+localStorage.setItem("learnerName", learnerName);
+localStorage.setItem("sessionId", sid);
 
-  async function checkConnection() {
-    const dot = document.getElementById("connDot");
-    const txt = document.getElementById("connText");
-    try {
-      const r = await fetch(`${PROXY_URL}?learner=__ping__&limit=1`, {
-        method: "GET",
-        mode: "cors",
-        headers: { "Accept": "application/json" }
+// ---------- Connection Check ----------
+async function checkConnection() {
+  const dot = document.getElementById("connDot");
+  const txt = document.getElementById("connText");
+  try {
+    const r = await fetch(`${PROXY_URL}?learner=__ping__`, { method: "GET" });
+    const text = await r.text();
+    if (r.ok && text.includes("Lambda")) {
+      dot.classList.add("ok");
+      txt.textContent = "Connected";
+    } else {
+      txt.textContent = `Unstable (${r.status})`;
+      dot.style.background = "var(--warn)";
+    }
+  } catch (err) {
+    console.error("❌ Ping error:", err);
+    txt.textContent = "Offline";
+    dot.style.background = "var(--err)";
+  }
+}
+
+// ---------- Fetch summarized learner progress ----------
+async function fetchSummary() {
+  try {
+    const res = await fetch(`${PROXY_URL}?learner=${encodeURIComponent(learnerName)}&mode=summary`, {
+      method: "GET",
+      mode: "cors",
+      headers: { "Accept": "application/json" }
     });
-
-      const text = await r.text();
-      console.log("🔍 Ping result:", r.status, text);
-      if (r.ok && text.includes("Lambda")) {
-        dot.classList.add("ok");
-        txt.textContent = "Connected";
-      } else {
-        txt.textContent = `Unstable (${r.status})`;
-        dot.style.background = "var(--warn)";
-      }
-    } catch (err) {
-      console.error("❌ Ping error:", err);
-      txt.textContent = "Offline";
-      dot.style.background = "var(--err)";
-    }
+    const summary = await res.json();
+    console.log("📊 LRS Summary:", summary);
+    return summary;
+  } catch (err) {
+    console.error("❌ Summary fetch failed:", err);
+    return null;
   }
+}
 
-  async function fetchStatements(limit = 200) {
-    try {
-      const res = await fetch(`${PROXY_URL}?learner=${encodeURIComponent(learnerName)}&limit=${limit}`, {
-        method: "GET",
-        mode: "cors",
-        headers: { "Accept": "application/json" }
-    });
+// ---------- Render the Progress Table ----------
+function renderProgress(summary) {
+  const tbody = document.getElementById("progressTable");
+  tbody.innerHTML = "";
 
-      const data = await res.json().catch(() => []);
-      console.log("✅ Statements received:", data.length);
-      return Array.isArray(data) ? data : [];
-    } catch (err) {
-      console.error("❌ Fetch statements error:", err);
-      return [];
-    }
+  for (const comp of ["C1", "C2", "C3"]) {
+    const item = summary[comp] || {};
+    const mastery = item.mastery || "—";
+    const statusKey = item.completed
+      ? "Completed"
+      : mastery && mastery !== "—"
+      ? "InProgress"
+      : "NotStarted";
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${comp}</td>
+      <td>${mastery}</td>
+      <td>
+        <span class="status ${statusKey}">
+          <span class="s-dot"></span>${statusKey}
+        </span>
+      </td>`;
+    tbody.appendChild(tr);
   }
+}
 
-  function analyze(statements) {
-    const map = { C1:{}, C2:{}, C3:{} };
-    for (const s of statements) {
-      const id = s.object?.id || "";
-      const comp = (id.match(/(C\\d)/i)?.[1] || "").toUpperCase();
-      if (!map[comp]) continue;
-      const ex = s.result?.extensions || {};
-      map[comp].mastery = ex[EX("masteryLevel")] ?? map[comp].mastery ?? null;
-    }
-    return map;
-  }
-
-  function renderProgress(map) {
-    const tbody = document.getElementById("progressTable");
-    tbody.innerHTML = "";
-    for (const comp of ["C1","C2","C3"]) {
-      const s = map[comp] || {};
-      const mastery = s.mastery || "—";
-      const statusKey = s.mastery ? "Completed" : "NotStarted";
-      const tr = document.createElement("tr");
-      tr.innerHTML = `<td>${comp}</td><td>${mastery}</td>
-        <td><span class="status ${statusKey}"><span class="s-dot"></span>${statusKey}</span></td>`;
-      tbody.appendChild(tr);
-    }
-  }
-
-  async function sendFinalizeStatement(current) {
-    const stmt = {
-      actor: { name: learnerName, mbox: `mailto:${encodeURIComponent(learnerName)}@wirelxdfirm.com` },
-      verb: { id: "http://id.tincanapi.com/verb/completed", display: {"en-US": "completed"} },
-      object: { id: `https://acbl.wirelearningsolutions.com/activities/${current}/offramp` },
-      result: { completion: true, extensions: {
+// ---------- Send “finalized” statement ----------
+async function sendFinalizeStatement(current) {
+  const stmt = {
+    actor: { name: learnerName, mbox: `mailto:${encodeURIComponent(learnerName)}@wirelxdfirm.com` },
+    verb: { id: "http://id.tincanapi.com/verb/completed", display: { "en-US": "completed" } },
+    object: { id: `https://acbl.wirelearningsolutions.com/activities/${current}/offramp` },
+    result: {
+      completion: true,
+      extensions: {
         [EX("learnerName")]: learnerName,
         [EX("finalized")]: true,
         [EX("competencyId")]: current,
         [EX("masteryLevel")]: window.__MASTERY__ || "Unknown"
-      }}
-    };
-    await fetch(`${PROXY_URL}?mode=write`, {
-      method: "POST",
-      mode: "cors",
-      headers: {
-        "Accept": "application/json",
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(stmt)
-    });
+      }
+    }
+  };
 
-    localStorage.setItem(`${current}.finalized`, "true");
+  await fetch(`${PROXY_URL}?mode=write`, {
+    method: "POST",
+    mode: "cors",
+    headers: {
+      "Accept": "application/json",
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(stmt)
+  });
+
+  localStorage.setItem(`${current}.finalized`, "true");
+}
+
+// ---------- Determine next step ----------
+function getNextCompetency(summary) {
+  const order = ["C1", "C2", "C3"];
+  for (const comp of order) {
+    if (!summary[comp]?.completed) return comp;
   }
+  return "program-complete";
+}
 
-  function launchTarget(targetKey) {
-    const href = resolveTargetUrl(targetKey);
-    if (!href) { alert(`No route found for ${targetKey}`); return; }
-    const url = new URL(href);
-    url.searchParams.set("learnerName", learnerName);
-    url.searchParams.set("sid", sid);
-    window.location.href = url.toString();
-  }
+// ---------- Launch routing ----------
+function launchTarget(targetKey) {
+  const href = resolveTargetUrl(targetKey);
+  if (!href) { alert(`No route found for ${targetKey}`); return; }
+  const url = new URL(href);
+  url.searchParams.set("learnerName", learnerName);
+  url.searchParams.set("sid", sid);
+  window.location.href = url.toString();
+}
 
-  function resolveTargetUrl(targetKey) {
-    if (/-test$/i.test(targetKey)) return `${BASE}${targetKey.split("-")[0].toUpperCase()}-test/story.html`;
-    if (/-content$/i.test(targetKey)) return `${BASE}content/${targetKey}.html`;
-    if (/-apply$/i.test(targetKey)) return `${BASE}apply/${targetKey}.html`;
-    if (/program-complete/i.test(targetKey)) return `${BASE}thanks.html`;
-    return null;
-  }
+function resolveTargetUrl(targetKey) {
+  if (/-test$/i.test(targetKey)) return `${BASE}${targetKey.split("-")[0].toUpperCase()}-test/story.html`;
+  if (/-content$/i.test(targetKey)) return `${BASE}content/${targetKey}.html`;
+  if (/-apply$/i.test(targetKey)) return `${BASE}apply/${targetKey}.html`;
+  if (/program-complete/i.test(targetKey)) return `${BASE}thanks.html`;
+  return null;
+}
 
-  async function refreshAll() {
-    await checkConnection();
-    document.getElementById("learnerNameLabel").textContent = learnerName;
-    document.getElementById("sessionLabel").textContent = sid;
-    const stmts = await fetchStatements();
-    const map = analyze(stmts);
-    renderProgress(map);
+// ---------- Refresh and Populate ----------
+async function refreshAll() {
+  await checkConnection();
+  document.getElementById("learnerNameLabel").textContent = learnerName;
+  document.getElementById("sessionLabel").textContent = sid;
 
-    const btn = document.getElementById("continueBtn");
-    btn.disabled = learnerName === "Anonymous";
-    btn.onclick = () => launchTarget(`${currentComp}-test`);
+  const summary = await fetchSummary();
+  if (!summary) return;
 
-    const btnAccept = document.getElementById("acceptBtn");
-    btnAccept.onclick = async () => {
-      await sendFinalizeStatement(currentComp);
-      launchTarget(`${currentComp}-test`);
-    };
-  }
+  renderProgress(summary);
 
-  refreshAll();
-  setInterval(() => { if (document.visibilityState === "visible") refreshAll(); }, REFRESH_MS);
-  </script>
+  const nextComp = getNextCompetency(summary);
+  localStorage.setItem("currentCompetency", nextComp);
+
+  document.getElementById("upNextComp").textContent = nextComp;
+  document.getElementById("upNextSub").textContent = summary[nextComp]?.mastery || "—";
+  document.getElementById("upNextType").textContent = summary[nextComp]?.completed ? "Review" : "Test";
+
+  // --- Enable buttons ---
+  const continueBtn = document.getElementById("continueBtn");
+  continueBtn.disabled = learnerName === "Anonymous";
+  continueBtn.onclick = () => launchTarget(`${nextComp}-test`);
+
+  const acceptBtn = document.getElementById("acceptBtn");
+  acceptBtn.onclick = async () => {
+    await sendFinalizeStatement(nextComp);
+    launchTarget(`${nextComp}-test`);
+  };
+}
+
+refreshAll();
+setInterval(() => {
+  if (document.visibilityState === "visible") refreshAll();
+}, REFRESH_MS);
+    </script>
+
 </body>
 </html>

@@ -246,7 +246,7 @@
       console.log("🔍 Lambda ping:", r.status, text);
       if (r.ok && (text.includes("Lambda") || text.includes("OK"))) {
         dot.classList.add("ok");
-        txt.textContent = "Connected to Wire Learning Solutions";
+        txt.textContent = "Connected to the LRS";
       } else {
         txt.textContent = `Unstable (${r.status})`;
         dot.style.background = "var(--warn)";
