@@ -227,8 +227,8 @@
     <main class="wrap">
         <h1>Welcome to Adaptive Learning Unleashed</h1>
         <div class="badge" aria-live="polite">
-            <span class="dot" id="connDot"></span>
-            <span id="connText">Checking connection…</span>
+            <span class="dot ok" id="connDot"></span>
+            <span id="connText">Connected to Wire Learning Solutions</span>
         </div>
 
         <!-- New user -->
@@ -251,39 +251,23 @@
     </main>
 
     <script>
-        // ---------- Connection Check ----------
-        const endpoint = "https://cloud.scorm.com/lrs/TENBKY6BZ6/sandbox/";
-        const key = "d_cPqAqYNvM3sMTyJ2M";
-        const secret = "rh70yfaxONPyu11z_vk";
-        const auth = "Basic " + btoa(`${key}:${secret}`);
-        async function checkConnection() {
-            const dot = document.getElementById("connDot");
-            const txt = document.getElementById("connText");
-            try {
-                const r = await fetch(endpoint + "about", { headers: { Authorization: auth } });
-                if (r.ok) { dot.classList.add("ok"); txt.textContent = "Connected"; }
-                else { txt.textContent = "Connection unstable"; }
-            } catch { txt.textContent = "Offline"; dot.style.background = "var(--err)"; }
-        }
-        checkConnection();
-
-        // ---------- Session ----------
+        /* ===== Session Handling ===== */
         function ensureSid() {
             let sid = localStorage.getItem("sessionId");
             if (!sid) { sid = self.crypto?.randomUUID?.() || String(Date.now()); localStorage.setItem("sessionId", sid); }
             return sid;
         }
 
-        // ---------- Validation ----------
+        /* ===== Validation ===== */
         const nameInput = document.getElementById("nameInput");
         const emailInput = document.getElementById("emailInput");
         const emailError = document.getElementById("emailError");
         const btn = document.getElementById("btnLaunch");
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+        const emailRegex = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}$/;
 
         function isEmailValid(v) {
             const value = (v || "").trim().toLowerCase();
-            return (emailInput.type === "email" && emailInput.validity.valid) || emailRegex.test(value);
+            return emailRegex.test(value);
         }
 
         function validate() {
@@ -297,36 +281,30 @@
             nameInput.addEventListener(evt, validate);
             emailInput.addEventListener(evt, validate);
         });
+
         document.addEventListener("DOMContentLoaded", () => { validate(); setTimeout(validate, 150); });
         window.addEventListener("pageshow", validate);
+        document.addEventListener("keydown", e => { if (e.key === "Enter" && !btn.disabled) btn.click(); });
 
-        document.addEventListener("keydown", e => {
-            if (e.key === "Enter" && !btn.disabled) btn.click();
-        });
-
-        // ---------- Launch ----------
+        /* ===== Launch Logic ===== */
         btn.addEventListener("click", () => {
             const name = nameInput.value.trim();
             const email = emailInput.value.trim().toLowerCase();
-
-            if (!name || !isEmailValid(email)) {
-                validate();
-                if (!isEmailValid(email)) emailInput.focus();
-                return;
-            }
+            if (!name || !isEmailValid(email)) { validate(); if (!isEmailValid(email)) emailInput.focus(); return; }
 
             localStorage.setItem("learnerName", name);
             localStorage.setItem("learnerEmail", email);
             const sid = ensureSid();
             localStorage.setItem("currentCompetency", "C1");
 
-            // --- Directly launch C1-test in SCORM Cloud ---
-            const c1LaunchUrl = "https://app.cloud.scorm.com/sc/InvitationConfirmEmail?publicInvitationId=8207d2e5-4eed-4c70-9346-85ab1d91aca3";
-            const fullUrl = `${c1LaunchUrl}&learnerName=${encodeURIComponent(name)}&sid=${encodeURIComponent(sid)}`;
+            // --- Launch hosted C1-test HTML ---
+            const baseURL = "https://www.wirelearningsolutions.com/";
+            const c1LaunchUrl = `${baseURL}C1-test/story.html`;
+            const fullUrl = `${c1LaunchUrl}?learnerName=${encodeURIComponent(name)}&sid=${encodeURIComponent(sid)}`;
             window.location.href = fullUrl;
         });
 
-        // ---------- Returning User Logic ----------
+        /* ===== Returning User Logic ===== */
         const newUserSection = document.getElementById("newUserSection");
         const returningSection = document.getElementById("returningSection");
         const welcomeText = document.getElementById("welcomeText");
@@ -336,38 +314,4 @@
         function showReturning() {
             newUserSection.hidden = true;
             returningSection.hidden = false;
-            welcomeText.classList.add("fade-in");
-            btnContinue.classList.add("fade-in", "delay-1");
-            btnReset.classList.add("fade-in", "delay-2");
-        }
-
-        function checkReturning() {
-            const name = localStorage.getItem("learnerName");
-            const email = localStorage.getItem("learnerEmail");
-            if (name && email) {
-                welcomeText.textContent = `Welcome back, ${name}.`;
-                showReturning();
-            } else {
-                newUserSection.hidden = false;
-                returningSection.hidden = true;
-            }
-        }
-
-        window.addEventListener("pageshow", checkReturning);
-        document.addEventListener("DOMContentLoaded", checkReturning);
-
-        btnContinue.addEventListener("click", () => {
-            const name = localStorage.getItem("learnerName");
-            const sid = ensureSid();
-            const current = localStorage.getItem("currentCompetency") || "C1";
-            window.location.href = `next.html?learnerName=${encodeURIComponent(name)}&sid=${encodeURIComponent(sid)}&current=${encodeURIComponent(current)}`;
-        });
-
-        btnReset.addEventListener("click", () => {
-            localStorage.clear();
-            sessionStorage.clear();
-            location.reload();
-        });
-    </script>
-</body>
-</html>
+            welcomeText.classList.add(
