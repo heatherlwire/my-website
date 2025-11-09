@@ -636,31 +636,24 @@ window.Script13 = function()
 {
   (function () {
   try {
-    var p = (typeof GetPlayer === "function") && GetPlayer();
+    console.log("🚀 Sending adaptive xAPI via Lambda...");
+
+    var p = GetPlayer();
     if (!p) return;
 
-    // --- 0) Constants ---
-    var DOMAIN = "https://www.wirelearningsolutions.com";
-    var LRS_ENDPOINT = "https://cloud.scorm.com/lrs/TENBKY6BZ6/sandbox/statements";
-    var LRS_AUTH = "Basic " + btoa("d_cPqAqYNvM3sMTyJ2M:rh70yfaxONPyu11z_vk");
-    var NS = "https://acbl.wirelearningsolutions.com/extensions/";
-    var EX = function (k) { return NS + k; };
+    // --- Detect which competency this file represents ---
+    var url = window.location.href.toUpperCase();
+    var competencyMatch = url.match(/C[1-9]/);
+    var compId = competencyMatch ? competencyMatch[0] : "C1";
 
-    // --- 1) Detect competency ---
-    var href = (window.location && window.location.href || "").toUpperCase();
-    var compId = (href.match(/\/(C[123])[^/]*\//) || href.match(/(C[123])/) || ["", "C1"])[1];
-
-    // --- 2) Identity ---
-    var learnerName = p.GetVar("learnerName") || localStorage.getItem("learnerName") || "Anonymous";
-    var sessionId = p.GetVar("sessionId") || localStorage.getItem("sessionId") || (self.crypto?.randomUUID?.() || String(Date.now()));
-    localStorage.setItem("learnerName", learnerName);
-    localStorage.setItem("sessionId", sessionId);
-    var mbox = "mailto:" + encodeURIComponent(learnerName) + "@wirelearningsolutions.com";
-
-    // --- 3) Quiz results ---
+    // --- Gather Storyline variables ---
     var correct = Number(p.GetVar(compId + "_Correct") || 0);
-    var missedSubs = (p.GetVar(compId + "_missedSubs") || "").split(",").map(s => s.trim()).filter(Boolean);
+    var missedSubs = (p.GetVar(compId + "_missedSubs") || "")
+      .split(",")
+      .map(s => s.trim())
+      .filter(Boolean);
 
+    // --- Determine mastery level ---
     var mastery = "Failing";
     if (correct === 3) mastery = "Mastery";
     else if (correct === 2) mastery = "Proficient";
@@ -669,79 +662,98 @@ window.Script13 = function()
     var testedOut = (correct === 3);
     var finalized = false;
 
-    // --- 4) Send xAPI statement to LRS ---
+    // --- Identity & session ---
+    var learnerName = p.GetVar("learnerName") || localStorage.getItem("learnerName") || "Anonymous";
+    var sessionId = p.GetVar("sessionId") || localStorage.getItem("sessionId") || crypto.randomUUID();
+    localStorage.setItem("sessionId", sessionId);
+    var mbox = "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com";
+
+    // --- Namespace ---
+    var NS = "https://acbl.wirelxdfirm.com/extensions/";
+    function EX(k){ return NS + k; }
+
+    // --- Build per-question dataset (C#_QuestionData) ---
+    var questionData = [];
+    for (var i = 1; i <= 20; i++) {
+      var ans = p.GetVar(compId + "_Q" + i + "_Answer");
+      var cor = p.GetVar(compId + "_Q" + i + "_IsCorrect");
+      var txt = p.GetVar(compId + "_Q" + i + "_Text");
+      var sub = p.GetVar(compId + "_Q" + i + "_Sub");
+
+      if (typeof ans === "undefined" && typeof cor === "undefined" && typeof txt === "undefined") break;
+      if (ans == null && cor == null && txt == null) continue;
+
+      questionData.push({
+        id: compId.toLowerCase() + "a" + i,
+        sub: sub || null,
+        text: txt || "Question " + i,
+        response: ans || "",
+        correct: !!cor
+      });
+    }
+
+    // Save for Storyline + next.html
+    p.SetVar(compId + "_QuestionData", JSON.stringify(questionData));
+    window.__QUESTION_DATA__ = questionData;
+
+    // --- Build primary (pass/fail) xAPI statement ---
+    var verbId = (correct >= 2)
+      ? "http://adlnet.gov/expapi/verbs/passed"
+      : "http://adlnet.gov/expapi/verbs/failed";
+    var verbDisplay = (correct >= 2) ? "passed" : "failed";
+
     var stmt = {
-      actor: {
-        name: learnerName,
-        mbox: mbox
-      },
-      verb: {
-        id: "http://adlnet.gov/expapi/verbs/answered",
-        display: { "en-US": "answered" }
-      },
-      object: {
-        id: DOMAIN + "/activities/" + compId + "/quiz",
-        definition: {
-          name: { "en-US": compId + " quiz" },
-          description: { "en-US": "Competency quiz results for " + compId }
-        }
-      },
+      actor: { name: learnerName, mbox: mbox },
+      verb: { id: verbId, display: { "en-US": verbDisplay } },
+      object: { id: "https://acbl.wirelxdfirm.com/activities/" + compId + "/quiz" },
       result: {
-        score: { raw: correct },
-        success: correct >= 2,
+        score: { raw: correct, min: 0, max: 3 },
+        success: (correct >= 2),
         completion: true,
         extensions: {
           [EX("learnerName")]: learnerName,
+          [EX("sessionId")]: sessionId,
           [EX("competencyId")]: compId,
           [EX("masteryLevel")]: mastery,
           [EX("missed")]: missedSubs,
           [EX("testedOut")]: testedOut,
-          [EX("finalized")]: finalized
-        }
-      },
-      context: {
-        extensions: {
-          [EX("sessionId")]: sessionId
+          [EX("finalized")]: finalized,
+          [EX("questionData")]: questionData,
+          [EX("scorePercent")]: window.__SL_RESULTS__?.scorePercent || 0,
+          [EX("scorePoints")]: window.__SL_RESULTS__?.scorePoints || 0,
+          [EX("maxPoints")]: window.__SL_RESULTS__?.maxPoints || 0,
+          [EX("passFail")]: window.__SL_RESULTS__?.passFail || false
         }
       },
       timestamp: new Date().toISOString()
     };
 
-    fetch(LRS_ENDPOINT, {
+    // --- Send main statement via Lambda ---
+    const PROXY_URL = "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
+    fetch(PROXY_URL + "?mode=write", {
       method: "POST",
-      headers: {
-        "Authorization": LRS_AUTH,
-        "X-Experience-API-Version": "1.0.3",
-        "Content-Type": "application/json"
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(stmt)
-    }).then(r => console.log("✅ Sent xAPI:", r.status)).catch(e => console.warn("❌ LRS send failed:", e));
+    }).then(r => console.log(`✅ Sent ${verbDisplay} (${mastery}) for ${compId} via Lambda | Status:`, r.status))
+      .catch(e => console.warn("❌ Lambda send failed:", e));
 
-    // --- 5) Redirect to next.html ---
-    var NEXT_URL = DOMAIN + "/next.html";
-    var q = new URLSearchParams({
+    // --- Store local data for dashboard ---
+    var keyBase = compId + ".";
+    localStorage.setItem(keyBase + "mastery", mastery);
+    localStorage.setItem(keyBase + "testedOut", testedOut);
+    localStorage.setItem(keyBase + "finalized", finalized);
+    localStorage.setItem(keyBase + "score", correct.toString());
+    localStorage.setItem(keyBase + "missed", JSON.stringify(missedSubs));
+    localStorage.setItem(keyBase + "questionData", JSON.stringify(questionData));
+
+    // --- Redirect to next.html ---
+    var base = "https://www.wirelearningsolutions.com/next.html";
+    var qs = new URLSearchParams({
       learnerName: learnerName,
       sid: sessionId,
-      current: compId,
-      mastery: mastery,
-      missed: JSON.stringify(missedSubs),
-      testedOut: String(testedOut),
-      finalized: String(finalized),
-      score: String(correct)
+      current: compId
     });
-    var fullNext = NEXT_URL + "?" + q.toString();
-
-    setTimeout(function () {
-      try {
-        if (window.top && window.top !== window && window.top.location.hostname === window.location.hostname) {
-          window.top.location.href = fullNext;
-        } else {
-          window.location.href = fullNext;
-        }
-      } catch (e) {
-        window.location.href = fullNext;
-      }
-    }, 500); // small delay to ensure xAPI POST completes
+    window.location.href = base + "?" + qs.toString();
 
   } catch (e) {
     console.warn("Continue button error:", e);
@@ -754,31 +766,24 @@ window.Script14 = function()
 {
   (function () {
   try {
-    var p = (typeof GetPlayer === "function") && GetPlayer();
+    console.log("🚀 Sending adaptive xAPI via Lambda...");
+
+    var p = GetPlayer();
     if (!p) return;
 
-    // --- 0) Constants ---
-    var DOMAIN = "https://www.wirelearningsolutions.com";
-    var LRS_ENDPOINT = "https://cloud.scorm.com/lrs/TENBKY6BZ6/sandbox/statements";
-    var LRS_AUTH = "Basic " + btoa("d_cPqAqYNvM3sMTyJ2M:rh70yfaxONPyu11z_vk");
-    var NS = "https://acbl.wirelearningsolutions.com/extensions/";
-    var EX = function (k) { return NS + k; };
+    // --- Detect which competency this file represents ---
+    var url = window.location.href.toUpperCase();
+    var competencyMatch = url.match(/C[1-9]/);
+    var compId = competencyMatch ? competencyMatch[0] : "C1";
 
-    // --- 1) Detect competency ---
-    var href = (window.location && window.location.href || "").toUpperCase();
-    var compId = (href.match(/\/(C[123])[^/]*\//) || href.match(/(C[123])/) || ["", "C1"])[1];
-
-    // --- 2) Identity ---
-    var learnerName = p.GetVar("learnerName") || localStorage.getItem("learnerName") || "Anonymous";
-    var sessionId = p.GetVar("sessionId") || localStorage.getItem("sessionId") || (self.crypto?.randomUUID?.() || String(Date.now()));
-    localStorage.setItem("learnerName", learnerName);
-    localStorage.setItem("sessionId", sessionId);
-    var mbox = "mailto:" + encodeURIComponent(learnerName) + "@wirelearningsolutions.com";
-
-    // --- 3) Quiz results ---
+    // --- Gather Storyline variables ---
     var correct = Number(p.GetVar(compId + "_Correct") || 0);
-    var missedSubs = (p.GetVar(compId + "_missedSubs") || "").split(",").map(s => s.trim()).filter(Boolean);
+    var missedSubs = (p.GetVar(compId + "_missedSubs") || "")
+      .split(",")
+      .map(s => s.trim())
+      .filter(Boolean);
 
+    // --- Determine mastery level ---
     var mastery = "Failing";
     if (correct === 3) mastery = "Mastery";
     else if (correct === 2) mastery = "Proficient";
@@ -787,79 +792,98 @@ window.Script14 = function()
     var testedOut = (correct === 3);
     var finalized = false;
 
-    // --- 4) Send xAPI statement to LRS ---
+    // --- Identity & session ---
+    var learnerName = p.GetVar("learnerName") || localStorage.getItem("learnerName") || "Anonymous";
+    var sessionId = p.GetVar("sessionId") || localStorage.getItem("sessionId") || crypto.randomUUID();
+    localStorage.setItem("sessionId", sessionId);
+    var mbox = "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com";
+
+    // --- Namespace ---
+    var NS = "https://acbl.wirelxdfirm.com/extensions/";
+    function EX(k){ return NS + k; }
+
+    // --- Build per-question dataset (C#_QuestionData) ---
+    var questionData = [];
+    for (var i = 1; i <= 20; i++) {
+      var ans = p.GetVar(compId + "_Q" + i + "_Answer");
+      var cor = p.GetVar(compId + "_Q" + i + "_IsCorrect");
+      var txt = p.GetVar(compId + "_Q" + i + "_Text");
+      var sub = p.GetVar(compId + "_Q" + i + "_Sub");
+
+      if (typeof ans === "undefined" && typeof cor === "undefined" && typeof txt === "undefined") break;
+      if (ans == null && cor == null && txt == null) continue;
+
+      questionData.push({
+        id: compId.toLowerCase() + "a" + i,
+        sub: sub || null,
+        text: txt || "Question " + i,
+        response: ans || "",
+        correct: !!cor
+      });
+    }
+
+    // Save for Storyline + next.html
+    p.SetVar(compId + "_QuestionData", JSON.stringify(questionData));
+    window.__QUESTION_DATA__ = questionData;
+
+    // --- Build primary (pass/fail) xAPI statement ---
+    var verbId = (correct >= 2)
+      ? "http://adlnet.gov/expapi/verbs/passed"
+      : "http://adlnet.gov/expapi/verbs/failed";
+    var verbDisplay = (correct >= 2) ? "passed" : "failed";
+
     var stmt = {
-      actor: {
-        name: learnerName,
-        mbox: mbox
-      },
-      verb: {
-        id: "http://adlnet.gov/expapi/verbs/answered",
-        display: { "en-US": "answered" }
-      },
-      object: {
-        id: DOMAIN + "/activities/" + compId + "/quiz",
-        definition: {
-          name: { "en-US": compId + " quiz" },
-          description: { "en-US": "Competency quiz results for " + compId }
-        }
-      },
+      actor: { name: learnerName, mbox: mbox },
+      verb: { id: verbId, display: { "en-US": verbDisplay } },
+      object: { id: "https://acbl.wirelxdfirm.com/activities/" + compId + "/quiz" },
       result: {
-        score: { raw: correct },
-        success: correct >= 2,
+        score: { raw: correct, min: 0, max: 3 },
+        success: (correct >= 2),
         completion: true,
         extensions: {
           [EX("learnerName")]: learnerName,
+          [EX("sessionId")]: sessionId,
           [EX("competencyId")]: compId,
           [EX("masteryLevel")]: mastery,
           [EX("missed")]: missedSubs,
           [EX("testedOut")]: testedOut,
-          [EX("finalized")]: finalized
-        }
-      },
-      context: {
-        extensions: {
-          [EX("sessionId")]: sessionId
+          [EX("finalized")]: finalized,
+          [EX("questionData")]: questionData,
+          [EX("scorePercent")]: window.__SL_RESULTS__?.scorePercent || 0,
+          [EX("scorePoints")]: window.__SL_RESULTS__?.scorePoints || 0,
+          [EX("maxPoints")]: window.__SL_RESULTS__?.maxPoints || 0,
+          [EX("passFail")]: window.__SL_RESULTS__?.passFail || false
         }
       },
       timestamp: new Date().toISOString()
     };
 
-    fetch(LRS_ENDPOINT, {
+    // --- Send main statement via Lambda ---
+    const PROXY_URL = "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
+    fetch(PROXY_URL + "?mode=write", {
       method: "POST",
-      headers: {
-        "Authorization": LRS_AUTH,
-        "X-Experience-API-Version": "1.0.3",
-        "Content-Type": "application/json"
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(stmt)
-    }).then(r => console.log("✅ Sent xAPI:", r.status)).catch(e => console.warn("❌ LRS send failed:", e));
+    }).then(r => console.log(`✅ Sent ${verbDisplay} (${mastery}) for ${compId} via Lambda | Status:`, r.status))
+      .catch(e => console.warn("❌ Lambda send failed:", e));
 
-    // --- 5) Redirect to next.html ---
-    var NEXT_URL = DOMAIN + "/next.html";
-    var q = new URLSearchParams({
+    // --- Store local data for dashboard ---
+    var keyBase = compId + ".";
+    localStorage.setItem(keyBase + "mastery", mastery);
+    localStorage.setItem(keyBase + "testedOut", testedOut);
+    localStorage.setItem(keyBase + "finalized", finalized);
+    localStorage.setItem(keyBase + "score", correct.toString());
+    localStorage.setItem(keyBase + "missed", JSON.stringify(missedSubs));
+    localStorage.setItem(keyBase + "questionData", JSON.stringify(questionData));
+
+    // --- Redirect to next.html ---
+    var base = "https://www.wirelearningsolutions.com/next.html";
+    var qs = new URLSearchParams({
       learnerName: learnerName,
       sid: sessionId,
-      current: compId,
-      mastery: mastery,
-      missed: JSON.stringify(missedSubs),
-      testedOut: String(testedOut),
-      finalized: String(finalized),
-      score: String(correct)
+      current: compId
     });
-    var fullNext = NEXT_URL + "?" + q.toString();
-
-    setTimeout(function () {
-      try {
-        if (window.top && window.top !== window && window.top.location.hostname === window.location.hostname) {
-          window.top.location.href = fullNext;
-        } else {
-          window.location.href = fullNext;
-        }
-      } catch (e) {
-        window.location.href = fullNext;
-      }
-    }, 500); // small delay to ensure xAPI POST completes
+    window.location.href = base + "?" + qs.toString();
 
   } catch (e) {
     console.warn("Continue button error:", e);
