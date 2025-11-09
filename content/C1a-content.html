@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8" />
-    <title>Lesson</title>
+    <title>Content Lesson</title>
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <style>
         :root {
@@ -24,7 +24,7 @@
             min-height: 100dvh;
             color: var(--ink-0);
             font-family: ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;
-            background: radial-gradient(1200px 800px at 70% -10%,rgba(34,211,238,.10),transparent 60%), radial-gradient(1000px 600px at -10% 20%,rgba(14,165,233,.15),transparent 55%), linear-gradient(180deg,#07101e 0%,#0a1322 50%,#0b1628 100%);
+            background: radial-gradient(1200px 800px at 70% -10%, rgba(34,211,238,.10), transparent 60%), radial-gradient(1000px 600px at -10% 20%, rgba(14,165,233,.15), transparent 55%), linear-gradient(180deg,#07101e 0%,#0a1322 50%,#0b1628 100%);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -32,7 +32,7 @@
         }
 
         .card {
-            width: min(1200px,98vw);
+            width: min(980px,96vw);
             background: linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.015)),var(--bg-1);
             border: 1px solid rgba(148,163,184,.15);
             border-radius: 16px;
@@ -42,20 +42,12 @@
         }
 
         h1 {
-            margin: 0 0 6px;
+            margin: 0 0 8px;
             font-size: clamp(20px,2.2vw,26px);
             background: linear-gradient(90deg,var(--ink-0),#cfe8ff);
             -webkit-background-clip: text;
             background-clip: text;
             color: transparent;
-        }
-
-        h2#subtitle {
-            margin: 0 0 8px;
-            font-weight: 600;
-            font-size: clamp(16px,1.8vw,20px);
-            color: var(--ink-0);
-            opacity: .95;
         }
 
         .muted {
@@ -69,14 +61,6 @@
             overflow: hidden;
             background: #0b1222;
             aspect-ratio: 16/9;
-            width: 100%;
-            max-height: calc(98vh - 260px);
-        }
-
-        #player, #player iframe {
-            width: 100% !important;
-            height: 100% !important;
-            display: block;
         }
 
         .row {
@@ -84,7 +68,6 @@
             gap: 12px;
             flex-wrap: wrap;
             margin-top: 14px;
-            align-items: center;
         }
 
         button {
@@ -95,7 +78,7 @@
             border: 1px solid rgba(148,163,184,.35);
             background: #0f1a2e;
             color: var(--ink-0);
-            transition: transform .05s ease,box-shadow .2s ease,border-color .2s ease,filter .2s ease,opacity .2s ease;
+            transition: transform .05s ease, box-shadow .2s ease, border-color .2s ease, filter .2s ease, opacity .2s ease;
         }
 
             button:disabled {
@@ -114,14 +97,17 @@
         @keyframes pulse-blue {
             0% {
                 box-shadow: 0 6px 24px rgba(14,165,233,.35);
+                transform: scale(1);
             }
 
             50% {
                 box-shadow: 0 10px 36px rgba(14,165,233,.55);
+                transform: scale(1.02);
             }
 
             100% {
                 box-shadow: 0 6px 24px rgba(14,165,233,.35);
+                transform: scale(1);
             }
         }
 
@@ -129,223 +115,146 @@
             white-space: pre-wrap;
             word-break: break-word;
             background: #0b1222;
-            color: #b9c8e8;
+            color: #dbeafe;
             border: 1px solid rgba(148,163,184,.2);
             border-radius: 12px;
             padding: 12px;
             margin-top: 10px;
-            max-height: 250px;
+            max-height: 260px;
             overflow: auto;
-        }
-
-        .sr-only {
-            position: absolute !important;
-            width: 1px;
-            height: 1px;
-            padding: 0;
-            margin: -1px;
-            overflow: hidden;
-            clip: rect(0,0,1px,1px);
-            white-space: nowrap;
-            border: 0;
         }
     </style>
 </head>
 <body>
     <section class="card">
-        <h1 id="title">Lesson</h1>
-        <h2 id="subtitle" class="muted"></h2>
-        <p class="muted">Watch the full video to unlock the next button.</p>
+        <h1 id="title">Content Lesson</h1>
+        <p class="muted">Watch the video. When it ends, the next step will unlock.</p>
 
         <div id="playerWrap"><div id="player"></div></div>
 
         <div class="row">
             <button id="nextBtn" disabled>Next: Application</button>
             <button id="debugBtn" aria-pressed="false">Show debug</button>
-            <div id="live" class="sr-only" aria-live="polite"></div>
         </div>
 
         <div id="debugPanel" style="display:none;"><pre id="dbg">Loading…</pre></div>
     </section>
 
     <script>
-  // ===== LRS config (unchanged) =====
-  const endpoint = "https://cloud.scorm.com/lrs/TENBKY6BZ6/sandbox/";
-  const key = "d_cPqAqYNvM3sMTyJ2M";
-  const secret = "rh70yfaxONPyu11z_vk";
-  const auth = "Basic " + btoa(`${key}:${secret}`);
+    // ====== LRS + namespace ======
+    const endpoint = "https://cloud.scorm.com/lrs/TENBKY6BZ6/sandbox/";
+    const key = "d_cPqAqYNvM3sMTyJ2M";
+    const secret = "rh70yfaxONPyu11z_vk";
+    const auth = "Basic " + btoa(`${key}:${secret}`);
+    const NS = "https://wirelearningsolutions.com/xapi/extensions/";
+    const ACT_BASE = "https://wirelearningsolutions.com/xapi/activities/";
+    const EX  = k => NS + k;
+    const ACT = p => ACT_BASE + String(p || "").replace(/^\/+/, "");
 
-  // Use your domain for activity/extension IRIs
-  const NS = "https://wirelearningsolutions.com/xapi/extensions/";
-  const ACT_BASE = "https://wirelearningsolutions.com/xapi/activities/";
-  const EX = k => NS + k;
-  const ACT = p => ACT_BASE + String(p || "").replace(/^\/+/, "");
+    // ====== Identify page, learner, and session ======
+    const qs = new URLSearchParams(location.search);
+    const keyParam = (qs.get("key") || location.pathname.split("/").pop().replace(/\.html$/,"")).trim();
+    const comp = (keyParam.match(/(C\\d)/i)?.[1] || "C1").toUpperCase();
+    document.getElementById("title").textContent = `${keyParam.toUpperCase()} Content`;
 
-  // ===== Identify page & learner =====
-  const qs = new URLSearchParams(location.search);
-  const fileKeyRaw = location.pathname.split("/").pop().replace(/\.html$/,"").trim();  // e.g. "C1a-content"
-  // allow ?key= override if ever needed
-  let keyRaw = (qs.get("key") || fileKeyRaw).trim();
+    const learnerName = qs.get("learnerName") || localStorage.getItem("learnerName") || "Anonymous";
+    const sid = qs.get("sid") || localStorage.getItem("sessionId") || (crypto.randomUUID?.() || Date.now().toString());
+    localStorage.setItem("learnerName", learnerName);
+    localStorage.setItem("sessionId", sid);
 
-  const learnerName = qs.get("learnerName") || localStorage.getItem("learnerName") || "Anonymous";
-  const sid = qs.get("sid") || localStorage.getItem("sessionId") || (crypto.randomUUID?.() || Date.now().toString());
-  localStorage.setItem("learnerName", learnerName);
-  localStorage.setItem("sessionId", sid);
-
-  // Title: show "C1a Lesson" etc (no duplicated “content”)
-  (function setTitle(){
-    const base = keyRaw.replace(/-content$/i,"");
-    document.getElementById("title").textContent = `${base} Lesson`;
-  })();
-
-  // ===== Map: exact keys with lowercase "-content" and "-apply" =====
-  const FALLBACK_MAP = {
-    // C1
-    "C1a-content": { video:"olOSOl0YPL4", apply:"../apply/C1a-apply.html" },
-    "C1b-content": { video:"VnXdj0yqpzI", apply:"../apply/C1b-apply.html" },
-    "C1c-content": { video:"QXGOjzcQdhQ", apply:"../apply/C1c-apply.html" },
-    // C2
-    "C2a-content": { video:"S6Y1QrQ-Wuw", apply:"../apply/C2a-apply.html" },
-    "C2b-content": { video:"VnXdj0yqpzI", apply:"../apply/C2b-apply.html" },
-    "C2c-content": { video:"XscUZ8dIa-8", apply:"../apply/C2c-apply.html" },
-    // C3
-    "C3a-content": { video:"VnXdj0yqpzI", apply:"../apply/C3a-apply.html" },
-    "C3b-content": { video:"6Pl3hPRwO-o", apply:"../apply/C3b-apply.html" },
-    "C3c-content": { video:"vswvFKIeMfg", apply:"../apply/C3c-apply.html" }
-  };
-
-  // Exact hit first; if not, try case-insensitive match once
-  let cfg = FALLBACK_MAP[keyRaw] || null;
-  if (!cfg) {
-    const ciKey = Object.keys(FALLBACK_MAP).find(k => k.toLowerCase() === keyRaw.toLowerCase());
-    if (ciKey) { keyRaw = ciKey; cfg = FALLBACK_MAP[ciKey]; }
-  }
-
-  // ===== Debug UI =====
-  const dbgEl = document.getElementById("dbg");
-  const debugBtn = document.getElementById("debugBtn");
-  const debugPanel = document.getElementById("debugPanel");
-  debugBtn.addEventListener("click", () => {
-    const open = debugPanel.style.display !== "block";
-    debugPanel.style.display = open ? "block" : "none";
-    debugBtn.setAttribute("aria-pressed", open ? "true" : "false");
-    debugBtn.textContent = open ? "Hide debug" : "Show debug";
-  });
-  const logDebug = (o) => { try { dbgEl.textContent = JSON.stringify(o,null,2); } catch {} };
-
-  // ===== xAPI sender =====
-  function sendXAPI(verbId, verb, ext = {}) {
-    return fetch(endpoint + "statements", {
-      method: "POST",
-      headers: {
-        "Authorization": auth,
-        "Content-Type": "application/json",
-        "X-Experience-API-Version": "1.0.3"
-      },
-      body: JSON.stringify({
-        actor: { name: learnerName, mbox: `mailto:${encodeURIComponent(learnerName)}@wirelxdfirm.com` },
-        verb: { id: verbId, display: { "en-US": verb } },
-        object: { id: ACT(keyRaw || "content") },
-        result: { extensions: { [EX("learnerName")]: learnerName, [EX("sessionId")]: sid, [EX("target")]: keyRaw, ...ext } },
-        timestamp: new Date().toISOString()
-      })
-    }).catch(()=>{});
-  }
-
-  // ===== Buttons =====
-  const nextBtn = document.getElementById("nextBtn");
-  const liveEl = document.getElementById("live");
-  function enableNext(){
-    if (!nextBtn.disabled) return;
-    nextBtn.disabled = false;
-    nextBtn.classList.add("ready");
-    if (liveEl) liveEl.textContent = "Next step unlocked";
-  }
-  nextBtn.addEventListener("click", () => {
-    if (!cfg?.apply) return alert("Apply URL missing for this lesson.");
-    const url = new URL(cfg.apply, location.href);
-    url.searchParams.set("learnerName", learnerName);
-    url.searchParams.set("sid", sid);
-    url.searchParams.set("source", keyRaw);
-    localStorage.setItem("lastApplyLaunched", keyRaw.replace("-content","-apply"));
-    location.href = url.toString();
-  });
-
-  // ===== YouTube title (no API key) =====
-  async function loadYouTubeTitle(videoId){
-    try{
-      const o = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`);
-      if (!o.ok) return;
-      const data = await o.json();
-      const h2 = document.getElementById("subtitle");
-      if (h2 && data?.title) h2.textContent = data.title;
-    } catch {}
-  }
-
-  // ===== YouTube + unlock 10s before end + xAPI =====
-  let player, started=false, totalWatch=0, lastTick=null, duration=0, unlockedEarly=false, pollTimer=null;
-
-  function startPolling(){
-    stopPolling();
-    pollTimer = setInterval(() => {
-      if (!player || typeof player.getCurrentTime !== "function") return;
-      const cur = player.getCurrentTime() || 0;
-      const rem = Math.max(0, (duration || 0) - cur);
-      if (!unlockedEarly && rem <= 10) { unlockedEarly = true; enableNext(); }
-    }, 500);
-  }
-  function stopPolling(){ if (pollTimer) { clearInterval(pollTimer); pollTimer = null; } }
-
-  function onPlayerReady(e){
-    duration = e?.target?.getDuration?.() || 0;
-    loadYouTubeTitle(cfg.video);
-    logDebug({ file:keyRaw, learnerName, sid, duration, video:cfg.video, apply:cfg.apply });
-  }
-
-  async function onPlayerStateChange(e){
-    const s = e.data, now = Date.now();
-    if (s === YT.PlayerState.PLAYING){
-      if (!started){
-        started = true;
-        sendXAPI("http://adlnet.gov/expapi/verbs/experienced","experienced",{ [EX("duration")]: duration });
-      }
-      lastTick = now; startPolling();
-    }
-    if (s === YT.PlayerState.PAUSED){
-      if (lastTick){ totalWatch += (now - lastTick) / 1000; lastTick = null; }
-      stopPolling();
-      sendXAPI("http://id.tincanapi.com/verb/paused","paused",{ [EX("watchedSeconds")]: Math.round(totalWatch) });
-    }
-    if (s === YT.PlayerState.ENDED){
-      if (lastTick){ totalWatch += (now - lastTick) / 1000; lastTick = null; }
-      stopPolling();
-      await sendXAPI("http://adlnet.gov/expapi/verbs/completed","completed",{
-        [EX("watchedSeconds")]: Math.round(totalWatch),
-        [EX("duration")]: duration
-      });
-      enableNext(); // still unlock on natural end
-    }
-  }
-
-  function initYouTube(){
-    if (!cfg) {
-      alert(`Missing video/apply mapping for "${keyRaw}". Check FALLBACK_MAP or rename the file to C#x-content.html pattern.`);
-      return;
-    }
-    const tag = document.createElement("script");
-    tag.src = "https://www.youtube.com/iframe_api";
-    document.head.appendChild(tag);
-    window.onYouTubeIframeAPIReady = () => {
-      player = new YT.Player("player", {
-        videoId: cfg.video,
-        playerVars: { rel:0, modestbranding:1, playsinline:1 },
-        events: { onReady: onPlayerReady, onStateChange: onPlayerStateChange }
-      });
+    // ====== Map of content to video + apply link ======
+    const FALLBACK_MAP = {
+      "C1a-content": { video:"olOSOl0YPL4", apply:"../apply/C1a-apply.html" },
+      "C1b-content": { video:"VnXdj0yqpzI", apply:"../apply/C1b-apply.html" },
+      "C1c-content": { video:"QXGOjzcQdhQ", apply:"../apply/C1c-apply.html" },
+      "C2a-content": { video:"S6Y1QrQ-Wuw", apply:"../apply/C2a-apply.html" },
+      "C2b-content": { video:"VnXdj0yqpzI", apply:"../apply/C2b-apply.html" },
+      "C2c-content": { video:"XscUZ8dIa-8", apply:"../apply/C2c-apply.html" },
+      "C3a-content": { video:"VnXdj0yqpzI", apply:"../apply/C3a-apply.html" },
+      "C3b-content": { video:"6Pl3hPRwO-o", apply:"../apply/C3b-apply.html" },
+      "C3c-content": { video:"vswvFKIeMfg", apply:"../apply/C3c-apply.html" }
     };
-  }
 
-  // Kickoff
-  initYouTube();
+    const cfg = FALLBACK_MAP[keyParam] || null;
+    if (!cfg) alert(`Missing config for ${keyParam}`);
+
+    // ====== Debug controls ======
+    const dbgEl = document.getElementById("dbg");
+    const debugBtn = document.getElementById("debugBtn");
+    const debugPanel = document.getElementById("debugPanel");
+    debugBtn.addEventListener("click", () => {
+      const open = debugPanel.style.display !== "block";
+      debugPanel.style.display = open ? "block" : "none";
+      debugBtn.textContent = open ? "Hide debug" : "Show debug";
+    });
+    const logDebug = o => { try { dbgEl.textContent = JSON.stringify(o,null,2); } catch{} };
+
+    // ====== xAPI helper ======
+    async function sendXAPI(verbId, verb, ext = {}) {
+      const stmt = {
+        actor: { name: learnerName, mbox: `mailto:${encodeURIComponent(learnerName)}@wirelearningsolutions.com` },
+        verb: { id: verbId, display: { "en-US": verb } },
+        object: { id: ACT(keyParam || "content") },
+        result: { extensions: { [EX("learnerName")]: learnerName, [EX("sessionId")]: sid, [EX("target")]: keyParam, ...ext } },
+        timestamp: new Date().toISOString()
+      };
+      try {
+        const res = await fetch(endpoint + "statements", {
+          method: "POST",
+          headers: {
+            "Authorization": auth,
+            "Content-Type": "application/json",
+            "X-Experience-API-Version": "1.0.3"
+          },
+          body: JSON.stringify(stmt)
+        });
+        console.log("xAPI sent:", res.status, stmt);
+        logDebug(stmt);
+      } catch(e) { console.warn("xAPI send failed", e); }
+    }
+
+    // ====== YouTube player setup ======
+    const nextBtn = document.getElementById("nextBtn");
+    function enableNext(){ nextBtn.disabled=false; nextBtn.classList.add("ready"); }
+    nextBtn.addEventListener("click", ()=>{
+      const url=new URL(cfg.apply,location.href);
+      url.searchParams.set("learnerName",learnerName);
+      url.searchParams.set("sid",sid);
+      url.searchParams.set("source",keyParam);
+      location.href=url.toString();
+    });
+
+    let player, started=false, totalWatch=0, lastTick=null, duration=0;
+    function onPlayerReady(e){ duration=e?.target?.getDuration?.()||0; logDebug({ready:true,keyParam,duration}); }
+    async function onPlayerStateChange(e){
+      const s=e.data, now=Date.now();
+      if(s===YT.PlayerState.PLAYING){
+        if(!started){started=true;sendXAPI("http://adlnet.gov/expapi/verbs/experienced","experienced",{[EX("duration")]:duration});}
+        lastTick=now;
+      }
+      if(s===YT.PlayerState.PAUSED){
+        if(lastTick){totalWatch+=(now-lastTick)/1000;lastTick=null;}
+        sendXAPI("http://id.tincanapi.com/verb/paused","paused",{[EX("watchedSeconds")]:Math.round(totalWatch)});
+      }
+      if(s===YT.PlayerState.ENDED){
+        if(lastTick){totalWatch+=(now-lastTick)/1000;lastTick=null;}
+        await sendXAPI("http://adlnet.gov/expapi/verbs/completed","completed",{[EX("watchedSeconds")]:Math.round(totalWatch),[EX("duration")]:duration});
+        localStorage.setItem(`${keyParam}.completed`,"true");
+        enableNext();
+      }
+    }
+
+    function initYouTube(){
+      if(!cfg?.video)return;
+      player=new YT.Player("player",{videoId:cfg.video,playerVars:{rel:0,modestbranding:1,playsinline:1},events:{onReady:onPlayerReady,onStateChange:onPlayerStateChange}});
+    }
+
+    if(!window.YT||!window.YT.Player){
+      const tag=document.createElement("script");
+      tag.src="https://www.youtube.com/iframe_api";
+      document.head.appendChild(tag);
+      window.onYouTubeIframeAPIReady=initYouTube;
+    } else { initYouTube(); }
     </script>
 </body>
 </html>
