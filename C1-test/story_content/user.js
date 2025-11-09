@@ -15,54 +15,52 @@ var slideWidth = player.slideWidth;
 var slideHeight = player.slideHeight;
 window.Script1 = function()
 {
-  // ===============================
-// Step 2: xAPI Send Helper
-// (follows Step 1: Actor Initialization)
-// ===============================
-window.sendXAPI = function (verbId, verbDisplay, objectId, objectName, resultData = {}) {
-  try {
-    var player = GetPlayer();
-    if (!player) return;
+  // Load once (Master fires on every slide)
+if (!window.__XAPI_HELPER_LOADED__) {
+  window.__XAPI_HELPER_LOADED__ = true;
 
-    // --- Pull the learner name from Storyline (set in Step 1) ---
-    var learnerName = player.GetVar("learnerName") || "Anonymous";
+  window.sendXAPI = async function (verbId, verbDisplay, objectId, objectName, resultData = {}) {
+    try {
+      const p = GetPlayer();
+      if (!p) return;
 
-    // --- Try to use actor from cmi5/xAPI launch context if present ---
-    var actor = window.cmi5?.actor || window.CMI5?.actor || window.ADL?.XAPIWrapper?.actor;
+      const learnerName = p.GetVar("learnerName") || localStorage.getItem("learnerName") || "Anonymous";
+      const sessionId   = p.GetVar("sessionId")   || localStorage.getItem("sessionId") || String(Date.now());
+      const mbox        = "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com";
 
-    // --- If no launch-supplied actor, build one using learnerName ---
-    if (!actor) {
-      actor = {
-        name: learnerName,
-        mbox: "mailto:" + learnerName.replace(/\s+/g, "").toLowerCase() + "@demo.com"
+      const statement = {
+        actor: { name: learnerName, mbox: mbox },
+        verb: { id: verbId, display: { "en-US": verbDisplay } },
+        object: {
+          id: objectId,
+          definition: { name: { "en-US": objectName } },
+          objectType: "Activity"
+        },
+        result: resultData,
+        context: { registration: sessionId },
+        timestamp: new Date().toISOString()
       };
-    } else {
-      // Ensure the actor name reflects learnerName for clarity in the LRS
-      actor.name = learnerName;
+
+      // Direct-post to your LRS (website-hosted courses)
+      const endpoint = "https://cloud.scorm.com/lrs/TENBKY6BZ6/sandbox/statements";
+      const auth = "Basic " + btoa("d_cPqAqYNvM3sMTyJ2M:rh70yfaxONPyu11z_vk");
+
+      const r = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Authorization": auth,
+          "Content-Type": "application/json",
+          "X-Experience-API-Version": "1.0.3"
+        },
+        body: JSON.stringify(statement),
+        keepalive: true
+      });
+      console.log(r.ok ? `✅ xAPI sent: ${verbDisplay}` : `⚠️ xAPI failed: ${r.status}`);
+    } catch (e) {
+      console.error("❌ sendXAPI error:", e);
     }
-
-    // --- Construct statement ---
-    var statement = {
-      actor: actor,
-      verb: {
-        id: verbId,
-        display: { "en-US": verbDisplay }
-      },
-      object: {
-        id: objectId,
-        definition: { name: { "en-US": objectName } },
-        objectType: "Activity"
-      },
-      result: resultData
-    };
-
-    // --- Send it ---
-    ADL.XAPIWrapper.sendStatement(statement);
-    console.log("xAPI sent for:", learnerName, "| verb:", verbDisplay);
-  } catch (e) {
-    console.error("Failed to send xAPI:", e);
-  }
-};
+  };
+}
 
 }
 
@@ -161,217 +159,332 @@ window.Script2 = function()
 
 window.Script3 = function()
 {
-  // ===============================
-// Step 2: xAPI Send Helper
-// (follows Step 1: Actor Initialization)
-// ===============================
-window.sendXAPI = function (verbId, verbDisplay, objectId, objectName, resultData = {}) {
-  try {
-    var player = GetPlayer();
-    if (!player) return;
+  var player = GetPlayer();
+var completed = player.GetVar("QuizCompleted");
+var suspend = window.localStorage.getItem("StorylineResumePrompt");
 
-    // --- Pull the learner name from Storyline (set in Step 1) ---
-    var learnerName = player.GetVar("learnerName") || "Anonymous";
-
-    // --- Try to use actor from cmi5/xAPI launch context if present ---
-    var actor = window.cmi5?.actor || window.CMI5?.actor || window.ADL?.XAPIWrapper?.actor;
-
-    // --- If no launch-supplied actor, build one using learnerName ---
-    if (!actor) {
-      actor = {
-        name: learnerName,
-        mbox: "mailto:" + learnerName.replace(/\s+/g, "").toLowerCase() + "@demo.com"
-      };
+if (completed) {
+    // Learner finished before — restart the quiz
+    player.SetVar("QuizCompleted", false);
+    window.localStorage.removeItem("StorylineResumePrompt");
+    window.location.reload(); // forces restart
+} else if (!suspend) {
+    // If mid-quiz and resume not yet asked
+    var resume = confirm("Do you want to resume your previous attempt?");
+    if (!resume) {
+        window.localStorage.removeItem("StorylineResumePrompt");
+        window.location.reload();
     } else {
-      // Ensure the actor name reflects learnerName for clarity in the LRS
-      actor.name = learnerName;
+        window.localStorage.setItem("StorylineResumePrompt", "yes");
     }
-
-    // --- Construct statement ---
-    var statement = {
-      actor: actor,
-      verb: {
-        id: verbId,
-        display: { "en-US": verbDisplay }
-      },
-      object: {
-        id: objectId,
-        definition: { name: { "en-US": objectName } },
-        objectType: "Activity"
-      },
-      result: resultData
-    };
-
-    // --- Send it ---
-    ADL.XAPIWrapper.sendStatement(statement);
-    console.log("xAPI sent for:", learnerName, "| verb:", verbDisplay);
-  } catch (e) {
-    console.error("Failed to send xAPI:", e);
-  }
-};
-
+}
 }
 
 window.Script4 = function()
 {
-  // ===============================
-// Step 2: xAPI Send Helper
-// (follows Step 1: Actor Initialization)
-// ===============================
-window.sendXAPI = function (verbId, verbDisplay, objectId, objectName, resultData = {}) {
-  try {
-    var player = GetPlayer();
-    if (!player) return;
+  // Load once (Master fires on every slide)
+if (!window.__XAPI_HELPER_LOADED__) {
+  window.__XAPI_HELPER_LOADED__ = true;
 
-    // --- Pull the learner name from Storyline (set in Step 1) ---
-    var learnerName = player.GetVar("learnerName") || "Anonymous";
+  window.sendXAPI = async function (verbId, verbDisplay, objectId, objectName, resultData = {}) {
+    try {
+      const p = GetPlayer();
+      if (!p) return;
 
-    // --- Try to use actor from cmi5/xAPI launch context if present ---
-    var actor = window.cmi5?.actor || window.CMI5?.actor || window.ADL?.XAPIWrapper?.actor;
+      const learnerName = p.GetVar("learnerName") || localStorage.getItem("learnerName") || "Anonymous";
+      const sessionId   = p.GetVar("sessionId")   || localStorage.getItem("sessionId") || String(Date.now());
+      const mbox        = "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com";
 
-    // --- If no launch-supplied actor, build one using learnerName ---
-    if (!actor) {
-      actor = {
-        name: learnerName,
-        mbox: "mailto:" + learnerName.replace(/\s+/g, "").toLowerCase() + "@demo.com"
+      const statement = {
+        actor: { name: learnerName, mbox: mbox },
+        verb: { id: verbId, display: { "en-US": verbDisplay } },
+        object: {
+          id: objectId,
+          definition: { name: { "en-US": objectName } },
+          objectType: "Activity"
+        },
+        result: resultData,
+        context: { registration: sessionId },
+        timestamp: new Date().toISOString()
       };
-    } else {
-      // Ensure the actor name reflects learnerName for clarity in the LRS
-      actor.name = learnerName;
+
+      // Direct-post to your LRS (website-hosted courses)
+      const endpoint = "https://cloud.scorm.com/lrs/TENBKY6BZ6/sandbox/statements";
+      const auth = "Basic " + btoa("d_cPqAqYNvM3sMTyJ2M:rh70yfaxONPyu11z_vk");
+
+      const r = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Authorization": auth,
+          "Content-Type": "application/json",
+          "X-Experience-API-Version": "1.0.3"
+        },
+        body: JSON.stringify(statement),
+        keepalive: true
+      });
+      console.log(r.ok ? `✅ xAPI sent: ${verbDisplay}` : `⚠️ xAPI failed: ${r.status}`);
+    } catch (e) {
+      console.error("❌ sendXAPI error:", e);
     }
-
-    // --- Construct statement ---
-    var statement = {
-      actor: actor,
-      verb: {
-        id: verbId,
-        display: { "en-US": verbDisplay }
-      },
-      object: {
-        id: objectId,
-        definition: { name: { "en-US": objectName } },
-        objectType: "Activity"
-      },
-      result: resultData
-    };
-
-    // --- Send it ---
-    ADL.XAPIWrapper.sendStatement(statement);
-    console.log("xAPI sent for:", learnerName, "| verb:", verbDisplay);
-  } catch (e) {
-    console.error("Failed to send xAPI:", e);
-  }
-};
+  };
+}
 
 }
 
 window.Script5 = function()
 {
-  // ===============================
-// Step 2: xAPI Send Helper
-// (follows Step 1: Actor Initialization)
-// ===============================
-window.sendXAPI = function (verbId, verbDisplay, objectId, objectName, resultData = {}) {
+  (function(){
+  var p = GetPlayer();
+  var slide = window.location.href.split("/").pop(); // e.g., "C1_Q1.html"
+  var qid = "C1_Q1"; // optional: rename per slide if you prefer consistent pattern
+
+  // Access Storyline built-in question data
+  var playerVars = p.GetVarNames ? p.GetVarNames() : [];
+  var answer = "";
+  var correct = false;
+
   try {
-    var player = GetPlayer();
-    if (!player) return;
-
-    // --- Pull the learner name from Storyline (set in Step 1) ---
-    var learnerName = player.GetVar("learnerName") || "Anonymous";
-
-    // --- Try to use actor from cmi5/xAPI launch context if present ---
-    var actor = window.cmi5?.actor || window.CMI5?.actor || window.ADL?.XAPIWrapper?.actor;
-
-    // --- If no launch-supplied actor, build one using learnerName ---
-    if (!actor) {
-      actor = {
-        name: learnerName,
-        mbox: "mailto:" + learnerName.replace(/\s+/g, "").toLowerCase() + "@demo.com"
-      };
-    } else {
-      // Ensure the actor name reflects learnerName for clarity in the LRS
-      actor.name = learnerName;
+    // Storyline stores recent interaction in cmi.interactions array (SCORM/xAPI runtime)
+    if (window.GetPlayer && p) {
+      answer = p.GetVar("TextEntry") || p.GetVar("SelectedAnswer") || ""; // fallback
     }
+  } catch(e) { console.warn("No interaction vars found:", e); }
 
-    // --- Construct statement ---
-    var statement = {
-      actor: actor,
-      verb: {
-        id: verbId,
-        display: { "en-US": verbDisplay }
-      },
-      object: {
-        id: objectId,
-        definition: { name: { "en-US": objectName } },
-        objectType: "Activity"
-      },
-      result: resultData
-    };
-
-    // --- Send it ---
-    ADL.XAPIWrapper.sendStatement(statement);
-    console.log("xAPI sent for:", learnerName, "| verb:", verbDisplay);
-  } catch (e) {
-    console.error("Failed to send xAPI:", e);
-  }
-};
+  // Save dynamic values to Storyline variables
+  p.SetVar(qid + "_Answer", answer);
+})();
 
 }
 
 window.Script6 = function()
 {
-  // ===============================
-// Step 2: xAPI Send Helper
-// (follows Step 1: Actor Initialization)
-// ===============================
-window.sendXAPI = function (verbId, verbDisplay, objectId, objectName, resultData = {}) {
-  try {
-    var player = GetPlayer();
-    if (!player) return;
+  // Load once (Master fires on every slide)
+if (!window.__XAPI_HELPER_LOADED__) {
+  window.__XAPI_HELPER_LOADED__ = true;
 
-    // --- Pull the learner name from Storyline (set in Step 1) ---
-    var learnerName = player.GetVar("learnerName") || "Anonymous";
+  window.sendXAPI = async function (verbId, verbDisplay, objectId, objectName, resultData = {}) {
+    try {
+      const p = GetPlayer();
+      if (!p) return;
 
-    // --- Try to use actor from cmi5/xAPI launch context if present ---
-    var actor = window.cmi5?.actor || window.CMI5?.actor || window.ADL?.XAPIWrapper?.actor;
+      const learnerName = p.GetVar("learnerName") || localStorage.getItem("learnerName") || "Anonymous";
+      const sessionId   = p.GetVar("sessionId")   || localStorage.getItem("sessionId") || String(Date.now());
+      const mbox        = "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com";
 
-    // --- If no launch-supplied actor, build one using learnerName ---
-    if (!actor) {
-      actor = {
-        name: learnerName,
-        mbox: "mailto:" + learnerName.replace(/\s+/g, "").toLowerCase() + "@demo.com"
+      const statement = {
+        actor: { name: learnerName, mbox: mbox },
+        verb: { id: verbId, display: { "en-US": verbDisplay } },
+        object: {
+          id: objectId,
+          definition: { name: { "en-US": objectName } },
+          objectType: "Activity"
+        },
+        result: resultData,
+        context: { registration: sessionId },
+        timestamp: new Date().toISOString()
       };
-    } else {
-      // Ensure the actor name reflects learnerName for clarity in the LRS
-      actor.name = learnerName;
+
+      // Direct-post to your LRS (website-hosted courses)
+      const endpoint = "https://cloud.scorm.com/lrs/TENBKY6BZ6/sandbox/statements";
+      const auth = "Basic " + btoa("d_cPqAqYNvM3sMTyJ2M:rh70yfaxONPyu11z_vk");
+
+      const r = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Authorization": auth,
+          "Content-Type": "application/json",
+          "X-Experience-API-Version": "1.0.3"
+        },
+        body: JSON.stringify(statement),
+        keepalive: true
+      });
+      console.log(r.ok ? `✅ xAPI sent: ${verbDisplay}` : `⚠️ xAPI failed: ${r.status}`);
+    } catch (e) {
+      console.error("❌ sendXAPI error:", e);
     }
-
-    // --- Construct statement ---
-    var statement = {
-      actor: actor,
-      verb: {
-        id: verbId,
-        display: { "en-US": verbDisplay }
-      },
-      object: {
-        id: objectId,
-        definition: { name: { "en-US": objectName } },
-        objectType: "Activity"
-      },
-      result: resultData
-    };
-
-    // --- Send it ---
-    ADL.XAPIWrapper.sendStatement(statement);
-    console.log("xAPI sent for:", learnerName, "| verb:", verbDisplay);
-  } catch (e) {
-    console.error("Failed to send xAPI:", e);
-  }
-};
+  };
+}
 
 }
 
 window.Script7 = function()
+{
+  (function(){
+  var p = GetPlayer();
+  var slide = window.location.href.split("/").pop(); // e.g., "C1_Q1.html"
+  var qid = "C1_Q2"; // optional: rename per slide if you prefer consistent pattern
+
+  // Access Storyline built-in question data
+  var playerVars = p.GetVarNames ? p.GetVarNames() : [];
+  var answer = "";
+  var correct = false;
+
+  try {
+    // Storyline stores recent interaction in cmi.interactions array (SCORM/xAPI runtime)
+    if (window.GetPlayer && p) {
+      answer = p.GetVar("TextEntry") || p.GetVar("SelectedAnswer") || ""; // fallback
+    }
+  } catch(e) { console.warn("No interaction vars found:", e); }
+
+  // Save dynamic values to Storyline variables
+  p.SetVar(qid + "_Answer", answer);
+})();
+
+}
+
+window.Script8 = function()
+{
+  // Load once (Master fires on every slide)
+if (!window.__XAPI_HELPER_LOADED__) {
+  window.__XAPI_HELPER_LOADED__ = true;
+
+  window.sendXAPI = async function (verbId, verbDisplay, objectId, objectName, resultData = {}) {
+    try {
+      const p = GetPlayer();
+      if (!p) return;
+
+      const learnerName = p.GetVar("learnerName") || localStorage.getItem("learnerName") || "Anonymous";
+      const sessionId   = p.GetVar("sessionId")   || localStorage.getItem("sessionId") || String(Date.now());
+      const mbox        = "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com";
+
+      const statement = {
+        actor: { name: learnerName, mbox: mbox },
+        verb: { id: verbId, display: { "en-US": verbDisplay } },
+        object: {
+          id: objectId,
+          definition: { name: { "en-US": objectName } },
+          objectType: "Activity"
+        },
+        result: resultData,
+        context: { registration: sessionId },
+        timestamp: new Date().toISOString()
+      };
+
+      // Direct-post to your LRS (website-hosted courses)
+      const endpoint = "https://cloud.scorm.com/lrs/TENBKY6BZ6/sandbox/statements";
+      const auth = "Basic " + btoa("d_cPqAqYNvM3sMTyJ2M:rh70yfaxONPyu11z_vk");
+
+      const r = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Authorization": auth,
+          "Content-Type": "application/json",
+          "X-Experience-API-Version": "1.0.3"
+        },
+        body: JSON.stringify(statement),
+        keepalive: true
+      });
+      console.log(r.ok ? `✅ xAPI sent: ${verbDisplay}` : `⚠️ xAPI failed: ${r.status}`);
+    } catch (e) {
+      console.error("❌ sendXAPI error:", e);
+    }
+  };
+}
+
+}
+
+window.Script9 = function()
+{
+  (function(){
+  var p = GetPlayer();
+  var slide = window.location.href.split("/").pop(); // e.g., "C1_Q1.html"
+  var qid = "C1_Q1"; // optional: rename per slide if you prefer consistent pattern
+
+  // Access Storyline built-in question data
+  var playerVars = p.GetVarNames ? p.GetVarNames() : [];
+  var answer = "";
+  var correct = false;
+
+  try {
+    // Storyline stores recent interaction in cmi.interactions array (SCORM/xAPI runtime)
+    if (window.GetPlayer && p) {
+      answer = p.GetVar("TextEntry") || p.GetVar("SelectedAnswer") || ""; // fallback
+    }
+  } catch(e) { console.warn("No interaction vars found:", e); }
+
+  // Save dynamic values to Storyline variables
+  p.SetVar(qid + "_Answer", answer);
+})();
+
+}
+
+window.Script10 = function()
+{
+  // Load once (Master fires on every slide)
+if (!window.__XAPI_HELPER_LOADED__) {
+  window.__XAPI_HELPER_LOADED__ = true;
+
+  window.sendXAPI = async function (verbId, verbDisplay, objectId, objectName, resultData = {}) {
+    try {
+      const p = GetPlayer();
+      if (!p) return;
+
+      const learnerName = p.GetVar("learnerName") || localStorage.getItem("learnerName") || "Anonymous";
+      const sessionId   = p.GetVar("sessionId")   || localStorage.getItem("sessionId") || String(Date.now());
+      const mbox        = "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com";
+
+      const statement = {
+        actor: { name: learnerName, mbox: mbox },
+        verb: { id: verbId, display: { "en-US": verbDisplay } },
+        object: {
+          id: objectId,
+          definition: { name: { "en-US": objectName } },
+          objectType: "Activity"
+        },
+        result: resultData,
+        context: { registration: sessionId },
+        timestamp: new Date().toISOString()
+      };
+
+      // Direct-post to your LRS (website-hosted courses)
+      const endpoint = "https://cloud.scorm.com/lrs/TENBKY6BZ6/sandbox/statements";
+      const auth = "Basic " + btoa("d_cPqAqYNvM3sMTyJ2M:rh70yfaxONPyu11z_vk");
+
+      const r = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Authorization": auth,
+          "Content-Type": "application/json",
+          "X-Experience-API-Version": "1.0.3"
+        },
+        body: JSON.stringify(statement),
+        keepalive: true
+      });
+      console.log(r.ok ? `✅ xAPI sent: ${verbDisplay}` : `⚠️ xAPI failed: ${r.status}`);
+    } catch (e) {
+      console.error("❌ sendXAPI error:", e);
+    }
+  };
+}
+
+}
+
+window.Script11 = function()
+{
+  (function () {
+  var p = GetPlayer();
+  if (!p) return;
+
+  // Built-in Storyline Results variables (from the Results slide)
+  window.__SL_RESULTS__ = {
+    scorePercent: Number(p.GetVar("Results.ScorePercent") || 0),
+    scorePoints:  Number(p.GetVar("Results.ScorePoints")  || 0),
+    maxPoints:    Number(p.GetVar("Results.MaxPoints")    || 0),
+    passPercent:  Number(p.GetVar("Results.PassPercent")  || 0),
+    passPoints:   Number(p.GetVar("Results.PassPoints")   || 0),
+    passFail:     !!p.GetVar("Results.PassFail"), // true if passed
+    slideCount:   Number(p.GetVar("Results.SlideCount")   || 0),
+    slidesViewed: Number(p.GetVar("Results.SlidesViewed") || 0),
+    viewedPercent:Number(p.GetVar("Results.SlidesViewedPercent") || 0)
+  };
+
+  // Optional: log it so you can verify
+  console.log("Results.* pulled:", window.__SL_RESULTS__);
+})();
+
+}
+
+window.Script12 = function()
 {
   (function () {
   try {
@@ -397,36 +510,81 @@ window.Script7 = function()
     else if (correct === 1) mastery = "Emerging";
 
     var testedOut = (correct === 3);
-    var finalized = false; // Off-ramp not used yet
+    var finalized = false;
 
-    // --- 3b. Write dynamic values back to Storyline for internal use ---
+    // --- 3b. Write dynamic values back to Storyline ---
     p.SetVar("currentComp", compId);
     p.SetVar("currentMasteryLevel", mastery);
 
     // --- 4. Actor + session info ---
-    var name =
-      localStorage.getItem("learnerName") ||
-      p.GetVar("actorName") ||
-      "Anonymous";
-    var sid =
-      localStorage.getItem("sessionId") ||
-      p.GetVar("sessionId") ||
-      Date.now().toString();
+    var name = localStorage.getItem("learnerName") || p.GetVar("actorName") || "Anonymous";
+    var sid = localStorage.getItem("sessionId") || p.GetVar("sessionId") || Date.now().toString();
     var mbox = "mailto:" + encodeURIComponent(name) + "@wirelxdfirm.com";
 
-    // --- 5. Build the xAPI statement ---
-    var verbId =
-      correct >= 2
-        ? "http://adlnet.gov/expapi/verbs/passed"
-        : "http://adlnet.gov/expapi/verbs/failed";
+    // --- 5. LRS connection details (declare before fetch calls) ---
+    var endpoint = "https://cloud.scorm.com/lrs/TENBKY6BZ6/sandbox/";
+    var key = "d_cPqAqYNvM3sMTyJ2M";
+    var secret = "rh70yfaxONPyu11z_vk";
+
+    // --- 5b. Send per-question xAPI statements (C1a-1..3 etc.) ---
+    for (let i = 1; i <= 3; i++) {
+      const qid = `${compId.toLowerCase()}a-${i}`;
+      const ansVar = `${compId}_Q${i}_Answer`;
+      const correctVar = `${compId}_Q${i}_IsCorrect`;
+      const textVar = `${compId}_Q${i}_Text`;
+
+      const answer = p.GetVar(ansVar) || "";
+      const isCorrect = !!p.GetVar(correctVar);
+      const qtext = p.GetVar(textVar) || `Question ${qid}`;
+
+      const qStmt = {
+        actor: { name: name, mbox: mbox },
+        verb: { id: "http://adlnet.gov/expapi/verbs/answered", display: { "en-US": "answered" } },
+        object: {
+          id: `https://acbl.wirelxdfirm.com/activities/${compId}/questions/${qid}`,
+          definition: {
+            name: { "en-US": qid },
+            description: { "en-US": qtext }
+          }
+        },
+        result: {
+          response: answer,
+          success: isCorrect,
+          extensions: {
+            "https://acbl.wirelxdfirm.com/extensions/learnerName": name,
+            "https://acbl.wirelxdfirm.com/extensions/sessionId": sid,
+            "https://acbl.wirelxdfirm.com/extensions/competencyId": compId,
+            "https://acbl.wirelxdfirm.com/extensions/questionId": qid
+          }
+        },
+        context: { registration: sid },
+        timestamp: new Date().toISOString()
+      };
+
+      fetch(endpoint + "statements", {
+        method: "POST",
+        headers: {
+          Authorization: "Basic " + btoa(key + ":" + secret),
+          "Content-Type": "application/json",
+          "X-Experience-API-Version": "1.0.3"
+        },
+        body: JSON.stringify(qStmt),
+        keepalive: true
+      })
+        .then(r => console.log(`📘 Sent question ${qid}:`, r.status))
+        .catch(e => console.warn(`❌ Question ${qid} failed:`, e));
+    }
+
+    // --- 6. Build and send summary statement ---
+    var verbId = correct >= 2
+      ? "http://adlnet.gov/expapi/verbs/passed"
+      : "http://adlnet.gov/expapi/verbs/failed";
     var verbDisplay = correct >= 2 ? "passed" : "failed";
 
     var stmt = {
       actor: { name: name, mbox: mbox },
       verb: { id: verbId, display: { "en-US": verbDisplay } },
-      object: {
-        id: "https://acbl.wirelxdfirm.com/activities/" + compId + "/quiz",
-      },
+      object: { id: `https://acbl.wirelxdfirm.com/activities/${compId}/quiz` },
       result: {
         score: { raw: correct, min: 0, max: 3 },
         success: correct >= 2,
@@ -438,32 +596,25 @@ window.Script7 = function()
           "https://acbl.wirelxdfirm.com/extensions/masteryLevel": mastery,
           "https://acbl.wirelxdfirm.com/extensions/missed": missedSubs,
           "https://acbl.wirelxdfirm.com/extensions/testedOut": testedOut,
-          "https://acbl.wirelxdfirm.com/extensions/finalized": finalized,
-        },
+          "https://acbl.wirelxdfirm.com/extensions/finalized": finalized
+        }
       },
-      timestamp: new Date().toISOString(),
+      timestamp: new Date().toISOString()
     };
-
-    // --- 6. Send to SCORM Cloud sandbox LRS ---
-    var endpoint = "https://cloud.scorm.com/lrs/TENBKY6BZ6/sandbox/";
-    var key = "d_cPqAqYNvM3sMTyJ2M";
-    var secret = "rh70yfaxONPyu11z_vk";
 
     fetch(endpoint + "statements", {
       method: "POST",
       headers: {
         Authorization: "Basic " + btoa(key + ":" + secret),
         "Content-Type": "application/json",
-        "X-Experience-API-Version": "1.0.3",
+        "X-Experience-API-Version": "1.0.3"
       },
-      body: JSON.stringify(stmt),
+      body: JSON.stringify(stmt)
     })
-      .then((r) =>
-        console.log(`✅ Sent ${verbDisplay} (${mastery}) for ${compId}. Status:`, r.status)
-      )
-      .catch((e) => console.warn("LRS send failed:", e));
+      .then(r => console.log(`✅ Sent ${verbDisplay} (${mastery}) for ${compId}. Status:`, r.status))
+      .catch(e => console.warn("LRS send failed:", e));
 
-    // --- 7. Store mastery data locally for instant dashboard updates ---
+    // --- 7. Store mastery data locally ---
     var keyBase = compId + ".";
     localStorage.setItem(keyBase + "mastery", mastery);
     localStorage.setItem(keyBase + "finalized", finalized);
@@ -473,13 +624,7 @@ window.Script7 = function()
     localStorage.setItem("currentCompetency", compId);
     localStorage.setItem("currentMasteryLevel", mastery);
 
-    console.log("💾 Stored locally:", {
-      compId,
-      mastery,
-      testedOut,
-      finalized,
-      missedSubs,
-    });
+    console.log("💾 Stored locally:", { compId, mastery, testedOut, finalized, missedSubs });
   } catch (e) {
     console.warn("xAPI quiz send failed:", e);
   }
@@ -487,50 +632,83 @@ window.Script7 = function()
 
 }
 
-window.Script8 = function()
+window.Script13 = function()
 {
   (function () {
   try {
-    var p = GetPlayer();
+    var p = GetPlayer && GetPlayer();
     if (!p) return;
 
-    // --- Detect competency dynamically ---
+    console.log("🚀 Sending adaptive + detailed xAPI...");
+
+    // --- 1. Detect competency ID ---
     var url = window.location.href.toUpperCase();
-    var competencyMatch = url.match(/C[123]/);
-    var compId = competencyMatch ? competencyMatch[0] : "C1";
+    var compId = (url.match(/C[123]/g) || ["C1"])[0];
 
-    // --- Gather Storyline data ---
-    var correct = Number(p.GetVar(compId + "_Correct") || 0);
+    // --- 2. Learner + session info ---
+    var learnerName = p.GetVar("learnerName") || localStorage.getItem("learnerName") || "Anonymous";
+    var sessionId   = p.GetVar("sessionId") || localStorage.getItem("sessionId") || crypto.randomUUID();
+    localStorage.setItem("sessionId", sessionId);
+    var mbox = "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com";
+
+    // --- 3. Quiz performance summary ---
+    var correct    = Number(p.GetVar(compId + "_Correct") || 0);
     var missedSubs = (p.GetVar(compId + "_missedSubs") || "")
-      .split(",")
-      .map(s => s.trim())
-      .filter(Boolean);
+                      .split(",").map(s => s.trim()).filter(Boolean);
 
-    // --- Determine mastery level ---
     var mastery = "Failing";
     if (correct === 3) mastery = "Mastery";
     else if (correct === 2) mastery = "Proficient";
     else if (correct === 1) mastery = "Emerging";
 
     var testedOut = (correct === 3);
-    var finalized = false; // Off-ramp not used yet
+    var finalized = false;
 
-    // --- Actor + session info ---
-    var learnerName = p.GetVar("learnerName") || localStorage.getItem("learnerName") || "Anonymous";
-    var sessionId = p.GetVar("sessionId") || localStorage.getItem("sessionId") || (Date.now().toString());
-    var mbox = "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com";
+    // --- 4. Collect per-question data into JSON array ---
+    var questionRows = [];
+    for (var i = 1; i <= 20; i++) {
+      var ans = p.GetVar(compId + "_Q" + i + "_Answer");
+      var cor = p.GetVar(compId + "_Q" + i + "_IsCorrect");
+      var txt = p.GetVar(compId + "_Q" + i + "_Text");
+      var sub = p.GetVar(compId + "_Q" + i + "_Sub"); // optional
 
-    // --- Build and send xAPI statement ---
+      if (typeof ans === "undefined" && typeof cor === "undefined" && typeof txt === "undefined") break;
+      if (ans == null && cor == null && txt == null) continue;
+
+      questionRows.push({
+        id:  (compId.toLowerCase() + "a" + i),
+        sub: (sub || null),
+        text: (txt || "Question " + i),
+        response: (ans || ""),
+        correct: !!cor
+      });
+    }
+    p.SetVar(compId + "_QuestionData", JSON.stringify(questionRows));
+    window.__QUESTION_DATA__ = questionRows;
+
+    // --- 5. Pull Storyline built-in Results variables ---
+    window.__SL_RESULTS__ = {
+      scorePercent: Number(p.GetVar("Results.ScorePercent") || 0),
+      scorePoints:  Number(p.GetVar("Results.ScorePoints")  || 0),
+      maxPoints:    Number(p.GetVar("Results.MaxPoints")    || 0),
+      passFail:     !!p.GetVar("Results.PassFail")
+    };
+
+    // --- 6. LRS credentials ---
+    var endpoint = "https://cloud.scorm.com/lrs/TENBKY6BZ6/sandbox/";
+    var key = "d_cPqAqYNvM3sMTyJ2M";
+    var secret = "rh70yfaxONPyu11z_vk";
+
+    // --- 7. Build main Passed/Failed xAPI statement ---
     var verbId = (correct >= 2)
       ? "http://adlnet.gov/expapi/verbs/passed"
       : "http://adlnet.gov/expapi/verbs/failed";
-    var verbDisplay = (correct >= 2) ? "passed" : "failed";
 
     var stmt = {
       actor: { name: learnerName, mbox: mbox },
-      verb: { id: verbId, display: { "en-US": verbDisplay } },
-      object: { id: "https://acbl.wirelxdfirm.com/activities/" + compId + "/quiz" },
-      result: {
+      verb:  { id: verbId, display: { "en-US": correct >= 2 ? "passed" : "failed" } },
+      object:{ id: "https://acbl.wirelxdfirm.com/activities/" + compId + "/quiz" },
+      result:{
         score: { raw: correct, min: 0, max: 3 },
         success: (correct >= 2),
         completion: true,
@@ -541,16 +719,16 @@ window.Script8 = function()
           "https://acbl.wirelxdfirm.com/extensions/masteryLevel": mastery,
           "https://acbl.wirelxdfirm.com/extensions/missed": missedSubs,
           "https://acbl.wirelxdfirm.com/extensions/testedOut": testedOut,
-          "https://acbl.wirelxdfirm.com/extensions/finalized": finalized
+          "https://acbl.wirelxdfirm.com/extensions/finalized": finalized,
+          "https://acbl.wirelxdfirm.com/extensions/scorePercent": window.__SL_RESULTS__?.scorePercent || 0,
+          "https://acbl.wirelxdfirm.com/extensions/scorePoints":  window.__SL_RESULTS__?.scorePoints  || 0,
+          "https://acbl.wirelxdfirm.com/extensions/maxPoints":    window.__SL_RESULTS__?.maxPoints    || 0,
+          "https://acbl.wirelxdfirm.com/extensions/passFail":     window.__SL_RESULTS__?.passFail     || false,
+          "https://acbl.wirelxdfirm.com/extensions/questionData": window.__QUESTION_DATA__ || []
         }
       },
       timestamp: new Date().toISOString()
     };
-
-    // --- Send to your conference LRS ---
-    var endpoint = "https://cloud.scorm.com/lrs/TENBKY6BZ6/sandbox/";
-    var key = "d_cPqAqYNvM3sMTyJ2M";
-    var secret = "rh70yfaxONPyu11z_vk";
 
     fetch(endpoint + "statements", {
       method: "POST",
@@ -560,19 +738,37 @@ window.Script8 = function()
         "X-Experience-API-Version": "1.0.3"
       },
       body: JSON.stringify(stmt)
-    }).then(r => console.log(`✅ Sent ${verbDisplay} (${mastery}) for ${compId}. Status:`, r.status))
-      .catch(e => console.warn("LRS send failed:", e));
+    }).then(r => console.log(`✅ Sent ${verbId.split('/').pop()} (${mastery}) for ${compId}:`, r.status))
+      .catch(e => console.warn("❌ LRS send failed:", e));
 
-    // --- Store locally for next page dashboard ---
-    var keyBase = compId + ".";
-    localStorage.setItem(keyBase + "mastery", mastery);
-    localStorage.setItem(keyBase + "finalized", finalized);
-    localStorage.setItem(keyBase + "testedOut", testedOut);
-    localStorage.setItem(keyBase + "score", correct.toString());
-    localStorage.setItem(keyBase + "missed", JSON.stringify(missedSubs));
+    // --- 8. Send terminated verb ---
+    var terminatedStmt = {
+      actor: { name: learnerName, mbox: mbox },
+      verb:  { id: "http://adlnet.gov/expapi/verbs/terminated", display: { "en-US": "terminated" } },
+      object:{ id: "https://acbl.wirelxdfirm.com/activities/" + compId + "/quiz" },
+      context:{ registration: sessionId },
+      timestamp: new Date().toISOString()
+    };
+    fetch(endpoint + "statements", {
+      method: "POST",
+      headers: {
+        "Authorization": "Basic " + btoa(key + ":" + secret),
+        "Content-Type": "application/json",
+        "X-Experience-API-Version": "1.0.3"
+      },
+      body: JSON.stringify(terminatedStmt),
+      keepalive: true
+    }).then(r => console.log(`🧩 Terminated sent for ${compId}:`, r.status))
+      .catch(e => console.warn("Terminated send failed:", e));
 
-    // --- Redirect to next page (pass all key data) ---
-    var base = "https://yourhost/next.html";
+    // --- 9. Local storage (for dashboard) ---
+    localStorage.setItem(compId + ".mastery", mastery);
+    localStorage.setItem(compId + ".score", correct);
+    localStorage.setItem(compId + ".missed", JSON.stringify(missedSubs));
+    localStorage.setItem(compId + ".questionData", JSON.stringify(questionRows));
+
+    // --- 10. Redirect ---
+    var next = "https://www.wirelxdfirm.com/next.html";
     var qs = new URLSearchParams({
       learnerName: learnerName,
       sid: sessionId,
@@ -583,59 +779,92 @@ window.Script8 = function()
       finalized: finalized,
       score: correct
     });
-    window.location.href = base + "?" + qs.toString();
+    window.location.href = next + "?" + qs.toString();
 
   } catch (e) {
-    console.warn("xAPI quiz send failed:", e);
+    console.warn("Continue button error:", e);
   }
 })();
 
 }
 
-window.Script9 = function()
+window.Script14 = function()
 {
   (function () {
   try {
-    var p = GetPlayer();
+    var p = GetPlayer && GetPlayer();
     if (!p) return;
 
-    // --- Detect competency dynamically ---
+    console.log("🚀 Sending adaptive + detailed xAPI...");
+
+    // --- 1. Detect competency ID ---
     var url = window.location.href.toUpperCase();
-    var competencyMatch = url.match(/C[123]/);
-    var compId = competencyMatch ? competencyMatch[0] : "C1";
+    var compId = (url.match(/C[123]/g) || ["C1"])[0];
 
-    // --- Gather Storyline data ---
-    var correct = Number(p.GetVar(compId + "_Correct") || 0);
+    // --- 2. Learner + session info ---
+    var learnerName = p.GetVar("learnerName") || localStorage.getItem("learnerName") || "Anonymous";
+    var sessionId   = p.GetVar("sessionId") || localStorage.getItem("sessionId") || crypto.randomUUID();
+    localStorage.setItem("sessionId", sessionId);
+    var mbox = "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com";
+
+    // --- 3. Quiz performance summary ---
+    var correct    = Number(p.GetVar(compId + "_Correct") || 0);
     var missedSubs = (p.GetVar(compId + "_missedSubs") || "")
-      .split(",")
-      .map(s => s.trim())
-      .filter(Boolean);
+                      .split(",").map(s => s.trim()).filter(Boolean);
 
-    // --- Determine mastery level ---
     var mastery = "Failing";
     if (correct === 3) mastery = "Mastery";
     else if (correct === 2) mastery = "Proficient";
     else if (correct === 1) mastery = "Emerging";
 
     var testedOut = (correct === 3);
-    var finalized = false; // Off-ramp not used yet
+    var finalized = false;
 
-    // --- Actor + session info ---
-    var learnerName = p.GetVar("learnerName") || localStorage.getItem("learnerName") || "Anonymous";
-    var sessionId = p.GetVar("sessionId") || localStorage.getItem("sessionId") || (Date.now().toString());
-    var mbox = "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com";
+    // --- 4. Collect per-question data into JSON array ---
+    var questionRows = [];
+    for (var i = 1; i <= 20; i++) {
+      var ans = p.GetVar(compId + "_Q" + i + "_Answer");
+      var cor = p.GetVar(compId + "_Q" + i + "_IsCorrect");
+      var txt = p.GetVar(compId + "_Q" + i + "_Text");
+      var sub = p.GetVar(compId + "_Q" + i + "_Sub"); // optional
 
-    // --- Build and send xAPI statement ---
+      if (typeof ans === "undefined" && typeof cor === "undefined" && typeof txt === "undefined") break;
+      if (ans == null && cor == null && txt == null) continue;
+
+      questionRows.push({
+        id:  (compId.toLowerCase() + "a" + i),
+        sub: (sub || null),
+        text: (txt || "Question " + i),
+        response: (ans || ""),
+        correct: !!cor
+      });
+    }
+    p.SetVar(compId + "_QuestionData", JSON.stringify(questionRows));
+    window.__QUESTION_DATA__ = questionRows;
+
+    // --- 5. Pull Storyline built-in Results variables ---
+    window.__SL_RESULTS__ = {
+      scorePercent: Number(p.GetVar("Results.ScorePercent") || 0),
+      scorePoints:  Number(p.GetVar("Results.ScorePoints")  || 0),
+      maxPoints:    Number(p.GetVar("Results.MaxPoints")    || 0),
+      passFail:     !!p.GetVar("Results.PassFail")
+    };
+
+    // --- 6. LRS credentials ---
+    var endpoint = "https://cloud.scorm.com/lrs/TENBKY6BZ6/sandbox/";
+    var key = "d_cPqAqYNvM3sMTyJ2M";
+    var secret = "rh70yfaxONPyu11z_vk";
+
+    // --- 7. Build main Passed/Failed xAPI statement ---
     var verbId = (correct >= 2)
       ? "http://adlnet.gov/expapi/verbs/passed"
       : "http://adlnet.gov/expapi/verbs/failed";
-    var verbDisplay = (correct >= 2) ? "passed" : "failed";
 
     var stmt = {
       actor: { name: learnerName, mbox: mbox },
-      verb: { id: verbId, display: { "en-US": verbDisplay } },
-      object: { id: "https://acbl.wirelxdfirm.com/activities/" + compId + "/quiz" },
-      result: {
+      verb:  { id: verbId, display: { "en-US": correct >= 2 ? "passed" : "failed" } },
+      object:{ id: "https://acbl.wirelxdfirm.com/activities/" + compId + "/quiz" },
+      result:{
         score: { raw: correct, min: 0, max: 3 },
         success: (correct >= 2),
         completion: true,
@@ -646,16 +875,16 @@ window.Script9 = function()
           "https://acbl.wirelxdfirm.com/extensions/masteryLevel": mastery,
           "https://acbl.wirelxdfirm.com/extensions/missed": missedSubs,
           "https://acbl.wirelxdfirm.com/extensions/testedOut": testedOut,
-          "https://acbl.wirelxdfirm.com/extensions/finalized": finalized
+          "https://acbl.wirelxdfirm.com/extensions/finalized": finalized,
+          "https://acbl.wirelxdfirm.com/extensions/scorePercent": window.__SL_RESULTS__?.scorePercent || 0,
+          "https://acbl.wirelxdfirm.com/extensions/scorePoints":  window.__SL_RESULTS__?.scorePoints  || 0,
+          "https://acbl.wirelxdfirm.com/extensions/maxPoints":    window.__SL_RESULTS__?.maxPoints    || 0,
+          "https://acbl.wirelxdfirm.com/extensions/passFail":     window.__SL_RESULTS__?.passFail     || false,
+          "https://acbl.wirelxdfirm.com/extensions/questionData": window.__QUESTION_DATA__ || []
         }
       },
       timestamp: new Date().toISOString()
     };
-
-    // --- Send to your conference LRS ---
-    var endpoint = "https://cloud.scorm.com/lrs/TENBKY6BZ6/sandbox/";
-    var key = "d_cPqAqYNvM3sMTyJ2M";
-    var secret = "rh70yfaxONPyu11z_vk";
 
     fetch(endpoint + "statements", {
       method: "POST",
@@ -665,19 +894,37 @@ window.Script9 = function()
         "X-Experience-API-Version": "1.0.3"
       },
       body: JSON.stringify(stmt)
-    }).then(r => console.log(`✅ Sent ${verbDisplay} (${mastery}) for ${compId}. Status:`, r.status))
-      .catch(e => console.warn("LRS send failed:", e));
+    }).then(r => console.log(`✅ Sent ${verbId.split('/').pop()} (${mastery}) for ${compId}:`, r.status))
+      .catch(e => console.warn("❌ LRS send failed:", e));
 
-    // --- Store locally for next page dashboard ---
-    var keyBase = compId + ".";
-    localStorage.setItem(keyBase + "mastery", mastery);
-    localStorage.setItem(keyBase + "finalized", finalized);
-    localStorage.setItem(keyBase + "testedOut", testedOut);
-    localStorage.setItem(keyBase + "score", correct.toString());
-    localStorage.setItem(keyBase + "missed", JSON.stringify(missedSubs));
+    // --- 8. Send terminated verb ---
+    var terminatedStmt = {
+      actor: { name: learnerName, mbox: mbox },
+      verb:  { id: "http://adlnet.gov/expapi/verbs/terminated", display: { "en-US": "terminated" } },
+      object:{ id: "https://acbl.wirelxdfirm.com/activities/" + compId + "/quiz" },
+      context:{ registration: sessionId },
+      timestamp: new Date().toISOString()
+    };
+    fetch(endpoint + "statements", {
+      method: "POST",
+      headers: {
+        "Authorization": "Basic " + btoa(key + ":" + secret),
+        "Content-Type": "application/json",
+        "X-Experience-API-Version": "1.0.3"
+      },
+      body: JSON.stringify(terminatedStmt),
+      keepalive: true
+    }).then(r => console.log(`🧩 Terminated sent for ${compId}:`, r.status))
+      .catch(e => console.warn("Terminated send failed:", e));
 
-    // --- Redirect to next page (pass all key data) ---
-    var base = "https://yourhost/next.html";
+    // --- 9. Local storage (for dashboard) ---
+    localStorage.setItem(compId + ".mastery", mastery);
+    localStorage.setItem(compId + ".score", correct);
+    localStorage.setItem(compId + ".missed", JSON.stringify(missedSubs));
+    localStorage.setItem(compId + ".questionData", JSON.stringify(questionRows));
+
+    // --- 10. Redirect ---
+    var next = "https://www.wirelxdfirm.com/next.html";
     var qs = new URLSearchParams({
       learnerName: learnerName,
       sid: sessionId,
@@ -688,10 +935,10 @@ window.Script9 = function()
       finalized: finalized,
       score: correct
     });
-    window.location.href = base + "?" + qs.toString();
+    window.location.href = next + "?" + qs.toString();
 
   } catch (e) {
-    console.warn("xAPI quiz send failed:", e);
+    console.warn("Continue button error:", e);
   }
 })();
 
