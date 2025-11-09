@@ -5,7 +5,6 @@
     <title>Analyzing your progress</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
-        /* --- your design preserved --- */
         :root {
             --bg-0: #0a0f1a;
             --bg-1: #0e1526;
@@ -234,11 +233,6 @@
             color: var(--ink-1);
             margin-top: 6px
         }
-
-        .count {
-            font-weight: 800;
-            color: #cfe8ff
-        }
     </style>
 </head>
 <body>
@@ -250,14 +244,12 @@
     </header>
 
     <main class="wrap">
-        <!-- Learner details -->
         <section class="card" id="info">
             <div><b>Learner:</b> <span id="learnerNameLabel">—</span></div>
             <div class="muted">Session: <span id="sessionLabel">—</span></div>
             <div id="anonWarn" class="muted" style="color:var(--err);display:none;">Actions are disabled until a learner is provided.</div>
         </section>
 
-        <!-- Summary + Up Next + Auto-launch -->
         <section class="card" id="summaryCard">
             <div class="summary" id="summaryLine">Ready to continue your adaptive journey.</div>
             <div class="upnext">
@@ -266,20 +258,21 @@
                 <span id="upNextSub" class="chip"><strong>—</strong></span>
                 <span id="upNextType" class="chip"><strong>—</strong></span>
             </div>
-            <div id="launchInfo" style="display:none;">Auto-launching in <span class="count" id="countdown">3</span> seconds… <button id="cancelAuto" style="margin-left:10px;">Cancel</button></div>
+            <div id="launchInfo">Click <b>Continue</b> when you’re ready to move on.</div>
         </section>
 
-        <!-- Actions -->
         <section class="card" id="actions">
             <div class="row">
                 <button id="continueBtn" class="primary" disabled>Continue</button>
                 <button id="acceptBtn" disabled>Accept Mastery Level and Move On</button>
                 <button id="toggleDebug" aria-pressed="false">Show Debug Info</button>
-                <button id="resetBtn" style="background:linear-gradient(180deg,#5b6470,#3e4650);border-color:rgba(148,163,184,.55);">Reset Learner</button>
+                <button id="resetBtn" style="background:linear-gradient(180deg,#5b6470,#3e4650);
+                border-color:rgba(148,163,184,.55);">
+                    Reset Learner
+                </button>
             </div>
         </section>
 
-        <!-- Progress table -->
         <section class="card" id="progress">
             <h3 style="margin:0 0 6px;">Your Progress</h3>
             <p class="muted" style="margin:0 0 8px;">Real-time data from your learning record.</p>
@@ -289,22 +282,16 @@
             </table>
         </section>
 
-        <!-- Debug -->
         <section class="card" id="debug" style="display:none;"></section>
     </main>
 
     <script>
-    /* ===== 0) Settings ===== */
     const BASE = "https://www.wirelearningsolutions.com/";
     const REFRESH_MS = 15000;
-
-    /* ===== 1) LRS / identity config (via Lambda proxy) ===== */
     const PROXY_URL = "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws/";
     const NS = "https://acbl.wirelearningsolutions.com/extensions/";
     const EX = k => NS + k;
 
-
-    // Identity
     const qs = new URLSearchParams(location.search);
     const learnerName = (qs.get("learnerName") || localStorage.getItem("learnerName") || "Anonymous").trim();
     const sid = qs.get("sid") || localStorage.getItem("sessionId") || (self.crypto?.randomUUID?.() || String(Date.now()));
@@ -315,378 +302,156 @@
     localStorage.setItem("learnerName", learnerName);
     localStorage.setItem("sessionId", sid);
 
-    /* ===== 2) Connection badge ===== */
-    async function checkConnection() {
-      const dot = document.getElementById("connDot");
-      const txt = document.getElementById("connText");
-      try {
-        // Lightweight GET to your proxy
-        const r = await fetch(`${PROXY_URL}?learner=__ping__&limit=1`, { method: "GET" });
-        if (r.ok) { dot.classList.add("ok"); txt.textContent = "Connected"; }
-        else { txt.textContent = "Connection unstable"; }
-      } catch {
-        txt.textContent = "Offline";
-        dot.style.background = "var(--err)";
-      }
+    async function checkConnection(){
+      const dot=document.getElementById("connDot"),txt=document.getElementById("connText");
+      try{
+        const r=await fetch(`${PROXY_URL}?learner=__ping__&limit=1`);
+        if(r.ok){dot.classList.add("ok");txt.textContent="Connected";}
+        else txt.textContent="Connection unstable";
+      }catch{txt.textContent="Offline";dot.style.background="var(--err)";}
     }
 
-
-    /* ===== 3) Link map (hosted HTML tests/content/apply) ===== */
-    // Tests are Storyline outputs inside /C1-test/, /C2-test/, /C3-test/ with story.html
-    // Content are your YouTube pages at /content/<key>.html (e.g., C1a-content.html)
-    // Apply are your Rise HTML pages at /apply/<key>.html (e.g., C1a-apply.html)
     function resolveTargetUrl(targetKey){
-      if(/-test$/i.test(targetKey)){
-        const comp = targetKey.split("-")[0].toUpperCase();        // C1, C2, C3
-        return `${BASE}${comp}-test/story.html`;
-      }
-      if(/-content$/i.test(targetKey)){
-        return `${BASE}content/${targetKey}.html`;
-      }
-      if(/-apply$/i.test(targetKey)){
-        return `${BASE}apply/${targetKey}.html`;
-      }
-      if(/program-complete/i.test(targetKey)){
-        return `${BASE}thanks.html`;
-      }
+      if(/-test$/i.test(targetKey)) return `${BASE}${targetKey.split("-")[0].toUpperCase()}-test/story.html`;
+      if(/-content$/i.test(targetKey)) return `${BASE}content/${targetKey}.html`;
+      if(/-apply$/i.test(targetKey)) return `${BASE}apply/${targetKey}.html`;
+      if(/program-complete/i.test(targetKey)) return `${BASE}thanks.html`;
       return null;
     }
 
-    /* ===== 4) Rules (fallback if no adaptive_rules.json) ===== */
-    const RULES_FALLBACK = {
-      C1: [
-        { if:{finalized:true}, then:[{route:{assessment:"C2-test"}}] },
-        { if:{testedOut:true}, then:[{route:{assessment:"C2-test"}}] },
-        { if:{mastery:"Mastery"}, then:[{route:{assessment:"C2-test"}}] },
-        { if:{mastery:"Proficient"}, then:[{forEach:"missed", do:[{route:{content:"{item}-content"}},{route:{apply:"{item}-apply"}}]}] },
-        { if:{ masteryIn:["Emerging","Failing"] }, then:[
-          {route:{content:"C1a-content"}},{route:{apply:"C1a-apply"}},
-          {route:{content:"C1b-content"}},{route:{apply:"C1b-apply"}},
-          {route:{content:"C1c-content"}},{route:{apply:"C1c-apply"}}
-        ]},
-        { if:{mastery:null}, then:[{route:{assessment:"C1-test"}}] },
-        { if:{}, then:[{route:{assessment:"C1-test"}}] }
-      ],
-      C2: [
-        { if:{finalized:true}, then:[{route:{assessment:"C3-test"}}] },
-        { if:{testedOut:true}, then:[{route:{assessment:"C3-test"}}] },
-        { if:{mastery:"Mastery"}, then:[{route:{assessment:"C3-test"}}] },
-        { if:{mastery:"Proficient"}, then:[{forEach:"missed", do:[{route:{content:"{item}-content"}},{route:{apply:"{item}-apply"}}]}] },
-        { if:{ masteryIn:["Emerging","Failing"] }, then:[
-          {route:{content:"C2a-content"}},{route:{apply:"C2a-apply"}},
-          {route:{content:"C2b-content"}},{route:{apply:"C2b-apply"}},
-          {route:{content:"C2c-content"}},{route:{apply:"C2c-apply"}}
-        ]},
-        { if:{mastery:null}, then:[{route:{assessment:"C2-test"}}] },
-        { if:{}, then:[{route:{assessment:"C2-test"}}] }
-      ],
-      C3: [
-        { if:{finalized:true}, then:[{route:{finish:"program-complete"}}] },
-        { if:{testedOut:true}, then:[{route:{finish:"program-complete"}}] },
-        { if:{mastery:"Mastery"}, then:[{route:{finish:"program-complete"}}] },
-        { if:{mastery:"Proficient"}, then:[{forEach:"missed", do:[{route:{content:"{item}-content"}},{route:{apply:"{item}-apply"}}]}] },
-        { if:{ masteryIn:["Emerging","Failing"] }, then:[
-          {route:{content:"C3a-content"}},{route:{apply:"C3a-apply"}},
-          {route:{content:"C3b-content"}},{route:{apply:"C3b-apply"}},
-          {route:{content:"C3c-content"}},{route:{apply:"C3c-apply"}}
-        ]},
-        { if:{mastery:null}, then:[{route:{assessment:"C3-test"}}] },
-        { if:{}, then:[{route:{assessment:"C3-test"}}] }
-      ]
-    };
-
-    async function loadAdaptiveRules(){
+    async function fetchStatements(limit=400){
       try{
-        const res = await fetch("adaptive_rules.json",{cache:"no-store"});
-        if(!res.ok) throw new Error("rules fetch failed");
-        const data = await res.json();
-        const { meta, ...rules } = data || {};
-        return rules || RULES_FALLBACK;
-      }catch{
-        return RULES_FALLBACK;
-      }
+        const res=await fetch(`${PROXY_URL}?learner=${encodeURIComponent(learnerName)}&limit=${limit}`);
+        const list=await res.json();
+        return Array.isArray(list)?list:[];
+      }catch{return [];}
     }
 
-    /* ===== 5) Fetch & analyze statements (via proxy) ===== */
-async function fetchStatements(limit = 400) {
-  try {
-    const res = await fetch(`${PROXY_URL}?learner=${encodeURIComponent(learnerName)}&limit=${limit}`);
-    const list = await res.json();
-    return Array.isArray(list) ? list : [];
-  } catch {
-    return [];
-  }
-}
-
-
     function analyze(statements){
-      const map = { C1:{}, C2:{}, C3:{} };
+      const map={C1:{},C2:{},C3:{}};
       for(const s of statements){
-        const id = s.object?.id || s.object?.definition?.name?.["en-US"] || "";
-        const comp = (id.match(/(C\d)/i)?.[1] || "").toUpperCase();
-        if(!map[comp]) continue;
-        const ex = s.result?.extensions || {};
-        map[comp].mastery   = ex[EX("masteryLevel")] ?? map[comp].mastery ?? null;
-        map[comp].finalized = ex[EX("finalized")] ?? map[comp].finalized ?? false;
-        map[comp].testedOut = ex[EX("testedOut")] ?? map[comp].testedOut ?? false;
-        const missedArr = Array.isArray(ex[EX("missed")]) ? ex[EX("missed")] : [];
-        if(missedArr.length) map[comp].missed = missedArr;
+        const id=s.object?.id||s.object?.definition?.name?.["en-US"]||"";
+        const comp=(id.match(/(C\d)/i)?.[1]||"").toUpperCase();
+        if(!map[comp])continue;
+        const ex=s.result?.extensions||{};
+        map[comp].mastery=ex[EX("masteryLevel")]??map[comp].mastery??null;
+        map[comp].finalized=ex[EX("finalized")]??map[comp].finalized??false;
+        map[comp].testedOut=ex[EX("testedOut")]??map[comp].testedOut??false;
+        const missedArr=Array.isArray(ex[EX("missed")])?ex[EX("missed")]:[];
+        if(missedArr.length)map[comp].missed=missedArr;
       }
-      // ensure shape
-      for(const k of ["C1","C2","C3"]){
-        map[k].mastery   = map[k].mastery   ?? null;
-        map[k].finalized = map[k].finalized ?? false;
-        map[k].testedOut = map[k].testedOut ?? false;
-        map[k].missed    = map[k].missed    ?? [];
+      for(const k of["C1","C2","C3"]){
+        map[k].mastery??=null;map[k].finalized??=false;map[k].testedOut??=false;map[k].missed??=[];
       }
       return map;
     }
 
-    /* ===== 6) Evaluate rules to get next target key ===== */
-    function evaluateAdaptiveRouting(compId, compState, ruleset){
-      const rules = ruleset[compId]; if(!rules) return null;
+    function evaluateAdaptiveRouting(compId,compState,ruleset){
+      const rules=ruleset[compId];if(!rules)return null;
       for(const rule of rules){
-        const cond = rule.if || {}; let match = true;
+        const cond=rule.if||{};let match=true;
         for(const k in cond){
-          if(k === "masteryIn"){
-            if(!Array.isArray(cond[k]) || !cond[k].includes(compState.mastery)){ match=false; break; }
-          }else{
-            if(compState[k] !== cond[k]){ match=false; break; }
-          }
+          if(k==="masteryIn"){
+            if(!Array.isArray(cond[k])||!cond[k].includes(compState.mastery)){match=false;break;}
+          }else if(compState[k]!==cond[k]){match=false;break;}
         }
-        if(!match) continue;
-
-        // first direct route wins
-        for(const action of (rule.then || [])){
+        if(!match)continue;
+        for(const action of(rule.then||[])){
           if(action.route){
-            const tKey = Object.values(action.route)[0]; // "C2-test" or "{item}-apply"
-            return tKey.replace("{item}", compState.missed?.[0] || "");
+            const tKey=Object.values(action.route)[0];
+            return tKey.replace("{item}",compState.missed?.[0]||"");
           }
-          if(action.forEach && Array.isArray(compState[action.forEach]) && action.do){
-            const first = compState[action.forEach][0]; // route first missed
+          if(action.forEach&&Array.isArray(compState[action.forEach])&&action.do){
+            const first=compState[action.forEach][0];
             if(first){
               for(const a of action.do){
                 if(a.route){
-                  const tk = Object.values(a.route)[0];
-                  return tk.replace("{item}", first);
+                  const tk=Object.values(a.route)[0];
+                  return tk.replace("{item}",first);
                 }
               }
             }
           }
         }
-      }
-      return null;
+      }return null;
     }
 
-    /* ===== 7) UI helpers ===== */
-    const displayMastery = m => (m === "Mastery" ? "Mastered" : (m || "—"));
-    function labelStatus(key){
-      if(key==="NotStarted") return "Not Started";
-      if(key==="InProgress") return "In Progress";
-      if(key==="Completed")  return "Completed";
-      return key || "—";
-    }
+    const displayMastery=m=>m==="Mastery"?"Mastered":(m||"—");
+    function labelStatus(k){return k==="NotStarted"?"Not Started":k==="InProgress"?"In Progress":k==="Completed"?"Completed":k||"—";}
+
     function writeLearner(){
-      document.getElementById("learnerNameLabel").textContent = learnerName || "—";
-      document.getElementById("sessionLabel").textContent = sid || "—";
-      const anon = (learnerName === "Anonymous" || !learnerName.trim());
-      document.getElementById("anonWarn").style.display = anon ? "block" : "none";
-      document.getElementById("continueBtn").disabled = anon;       // lock controls if no learner
-      document.getElementById("acceptBtn").disabled   = true;       // enabled later if mastery exists
+      document.getElementById("learnerNameLabel").textContent=learnerName||"—";
+      document.getElementById("sessionLabel").textContent=sid||"—";
+      const anon=(learnerName==="Anonymous"||!learnerName.trim());
+      document.getElementById("anonWarn").style.display=anon?"block":"none";
+      document.getElementById("continueBtn").disabled=anon;
+      document.getElementById("acceptBtn").disabled=true;
     }
-    function writeSummary(current, compState, nextTarget){
-      const line = document.getElementById("summaryLine");
-      const currentLabel = current==="C1"?"Competency 1":current==="C2"?"Competency 2":"Competency 3";
-      const masteryTxt = displayMastery(compState.mastery);
-      const statusTxt = compState.finalized ? "Completed" : (compState.mastery ? "In Progress" : "Not Started");
 
-      window.__CURRENT__ = current;
-      window.__MASTERY__ = compState.mastery || null;
-
-      line.innerHTML = `Current: <b>${currentLabel}</b> — <b>${masteryTxt}</b> (${statusTxt})`;
-
-      const comp = (nextTarget?.match(/(C\d)/i)?.[1] || current).toUpperCase();
-      const subMatch = nextTarget?.match(/C\d([a-c])/i);
-      const sub = subMatch ? `C${comp[1]}${subMatch[1]}` : "—";
-      let type = "—";
-      if(/-content$/i.test(nextTarget)) type="Content";
-      else if(/-apply$/i.test(nextTarget)) type="Application";
-      else if(/-test$/i.test(nextTarget)) type="Test";
-      else if(/program-complete/i.test(nextTarget)) type="Finish";
-
-      document.getElementById("upNextComp").innerHTML = `<strong>${comp}</strong>`;
-      document.getElementById("upNextSub").innerHTML  = `<strong>${sub}</strong>`;
-      document.getElementById("upNextType").innerHTML = `<strong>${type}</strong>`;
-    }
     function renderProgress(map){
-      const tbody = document.getElementById("progressTable");
-      tbody.innerHTML = "";
-      for(const comp of ["C1","C2","C3"]){
-        const s = map[comp] || {};
-        const mastery = displayMastery(s.mastery);
-        let statusKey = "NotStarted";
-        if(s.finalized || s.mastery==="Mastery" || s.testedOut) statusKey="Completed";
-        else if(s.mastery) statusKey="InProgress";
-        const tr = document.createElement("tr");
-        tr.innerHTML = `<td>${comp}</td><td>${mastery}</td>
+      const tbody=document.getElementById("progressTable");
+      tbody.innerHTML="";
+      for(const comp of["C1","C2","C3"]){
+        const s=map[comp]||{};
+        const mastery=displayMastery(s.mastery);
+        let statusKey="NotStarted";
+        if(s.finalized||s.mastery==="Mastery"||s.testedOut)statusKey="Completed";
+        else if(s.mastery)statusKey="InProgress";
+        const tr=document.createElement("tr");
+        tr.innerHTML=`<td>${comp}</td><td>${mastery}</td>
           <td><span class="status ${statusKey}"><span class="s-dot"></span>${labelStatus(statusKey)}</span></td>`;
         tbody.appendChild(tr);
       }
-      // enable Accept only when mastery exists and not Anonymous
-      const anon = (learnerName === "Anonymous" || !learnerName.trim());
-      document.getElementById("acceptBtn").disabled = anon || !(map[currentComp]?.mastery);
+      const anon=(learnerName==="Anonymous"||!learnerName.trim());
+      document.getElementById("acceptBtn").disabled=anon||!(map[currentComp]?.mastery);
     }
 
-     /* ===== 8) Off-ramp finalize statement (via proxy) ===== */
-    async function sendFinalizeStatement(current) {
-        const stmt = {
-        actor: {
-            name: learnerName,
-            mbox: `mailto:${encodeURIComponent(learnerName)}@wirelxdfirm.com`
-        },
-        verb: {
-            id: "http://id.tincanapi.com/verb/completed",
-            display: { "en-US": "completed" }
-        },
-        object: {
-            id: `https://acbl.wirelearningsolutions.com/activities/${current}/offramp`
-        },
-        result: {
-            completion: true,
-            extensions: {
-            [EX("learnerName")]: learnerName,
-            [EX("finalized")]: true,
-            [EX("competencyId")]: current,
-            [EX("masteryLevel")]: window.__MASTERY__ || "Unknown"
-            }
-        }
-        };
-
-        try {
-        await fetch(`${PROXY_URL}?mode=write`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(stmt)
-        });
-        localStorage.setItem(`${current}.finalized`, "true");
-        } catch (e) {
-        console.error("Finalize failed:", e);
-        }
+    async function sendFinalizeStatement(current){
+      const stmt={actor:{name:learnerName,mbox:`mailto:${encodeURIComponent(learnerName)}@wirelxdfirm.com`},
+        verb:{id:"http://id.tincanapi.com/verb/completed",display:{"en-US":"completed"}},
+        object:{id:`https://acbl.wirelearningsolutions.com/activities/${current}/offramp`},
+        result:{completion:true,extensions:{[EX("learnerName")]:learnerName,[EX("finalized")]:true,[EX("competencyId")]:current,[EX("masteryLevel")]:window.__MASTERY__||"Unknown"}}};
+      await fetch(`${PROXY_URL}?mode=write`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(stmt)});
+      localStorage.setItem(`${current}.finalized`,"true");
     }
 
-
-    /* ===== 9) Launch logic ===== */
     function launchTarget(targetKey){
-      const href = resolveTargetUrl(targetKey);
-      if(!href){ alert(`No route found for ${targetKey}`); return; }
-      const url = new URL(href);
-      url.searchParams.set("learnerName", learnerName);
-      url.searchParams.set("sid", sid);
-      window.location.href = url.toString();
+      const href=resolveTargetUrl(targetKey);
+      if(!href){alert(`No route found for ${targetKey}`);return;}
+      const url=new URL(href);
+      url.searchParams.set("learnerName",learnerName);
+      url.searchParams.set("sid",sid);
+      window.location.href=url.toString();
     }
 
-    /* ===== 10) Runtime ===== */
-    let rulesCache = null, autoTimer = null, countdownTimer = null;
-
-    async function refreshAll(autoLaunch=true){
+    let rulesCache=null;
+    async function refreshAll(){
       await checkConnection();
       writeLearner();
-
-      if(!rulesCache) rulesCache = await loadAdaptiveRules();
-
-      const stmts = await fetchStatements().catch(()=>[]);
-      const map = analyze(stmts);
+      if(!rulesCache)rulesCache={};
+      const stmts=await fetchStatements();
+      const map=analyze(stmts);
       renderProgress(map);
-
-      // guard: if user jumped ahead without data, pull back to C1
-      if(currentComp!=="C1"){
-        const s = map[currentComp] || {};
-        if(!s.mastery && !s.finalized && !s.testedOut){
-          currentComp = "C1";
-          localStorage.setItem("currentCompetency","C1");
-        }
-      }
-
-      const compState = map[currentComp] || { mastery:null, missed:[], finalized:false, testedOut:false };
-      const nextTarget = evaluateAdaptiveRouting(currentComp, compState, rulesCache) || `${currentComp}-test`;
-      writeSummary(currentComp, compState, nextTarget);
-
-      // wire controls
-      const btnCont = document.getElementById("continueBtn");
-      const btnAccept = document.getElementById("acceptBtn");
-      const btnDbg = document.getElementById("toggleDebug");
-      const dbg = document.getElementById("debug");
-      const btnReset = document.getElementById("resetBtn");
-      const cancelAuto = document.getElementById("cancelAuto");
-      const launchInfo = document.getElementById("launchInfo");
-      const countdownEl = document.getElementById("countdown");
-
-      dbg.innerHTML = `<pre>${JSON.stringify({ learnerName, sid, currentComp, compState, nextTarget }, null, 2)}</pre>`;
-
-      const anon = (learnerName === "Anonymous" || !learnerName.trim());
-      btnCont.disabled = anon;  // do not allow continue without learner
-
-      btnCont.onclick = () => launchTarget(nextTarget);
-      btnAccept.onclick = async () => {
-        const m = compState.mastery || "No recorded mastery";
-        if(!confirm(`You are accepting a "${displayMastery(m)}" level for ${currentComp}. Continue?`)) return;
+      const compState=map[currentComp]||{mastery:null,missed:[],finalized:false,testedOut:false};
+      const nextTarget=`${currentComp}-test`;
+      const dbg=document.getElementById("debug");
+      dbg.innerHTML=`<pre>${JSON.stringify({learnerName,sid,currentComp,compState,nextTarget},null,2)}</pre>`;
+      const btnCont=document.getElementById("continueBtn");
+      btnCont.disabled=(learnerName==="Anonymous"||!learnerName.trim());
+      btnCont.onclick=()=>launchTarget(nextTarget);
+      const btnAccept=document.getElementById("acceptBtn");
+      btnAccept.onclick=async()=>{
+        const m=compState.mastery||"No recorded mastery";
+        if(!confirm(`You are accepting a "${displayMastery(m)}" level for ${currentComp}. Continue?`))return;
         await sendFinalizeStatement(currentComp);
-        // after finalize, flow to the next comp/test or finish
-        const routed = evaluateAdaptiveRouting(currentComp, { ...compState, finalized:true }, rulesCache) || "program-complete";
-        launchTarget(routed);
+        launchTarget(nextTarget);
       };
-
-      // debug toggle
-      const syncDbg = () => {
-        const hidden = (dbg.style.display === "none" || !dbg.style.display);
-        btnDbg.textContent = hidden ? "Show Debug Info" : "Hide Debug Info";
-        btnDbg.setAttribute("aria-pressed", (!hidden).toString());
-      };
-      if(!btnDbg._init){
-        btnDbg._init = true;
-        btnDbg.addEventListener("click", ()=>{
-          const hidden = (dbg.style.display === "none" || !dbg.style.display);
-          dbg.style.display = hidden ? "block" : "none";
-          syncDbg();
-        });
-      }
-      syncDbg();
-
-      if(!btnReset._init){
-        btnReset._init = true;
-        btnReset.addEventListener("click", ()=>{
-          if(confirm("This will clear your local learner identity and session. Continue?")){
-            localStorage.clear(); sessionStorage.clear(); location.href="index.html";
-          }
-        });
-      }
-
-      // auto-launch with cancel (only if learner present)
-      clearInterval(countdownTimer); clearTimeout(autoTimer);
-      if(autoLaunch && !anon){
-        let left = 3;
-        launchInfo.style.display = "block";
-        countdownEl.textContent = String(left);
-        countdownTimer = setInterval(()=>{ left -= 1; countdownEl.textContent = String(Math.max(left,0)); if(left<=0) clearInterval(countdownTimer); },1000);
-        autoTimer = setTimeout(()=>{ launchTarget(nextTarget); }, 3000);
-        if(!cancelAuto._init){
-          cancelAuto._init = true;
-          cancelAuto.addEventListener("click", ()=>{
-            clearInterval(countdownTimer); clearTimeout(autoTimer);
-            launchInfo.style.display = "none";
-          });
-        }
-      }else{
-        launchInfo.style.display = "none";
-      }
     }
 
-    // Kickoff
-    document.getElementById("learnerNameLabel").textContent = learnerName || "—";
-    document.getElementById("sessionLabel").textContent = sid || "—";
-    refreshAll(true);
-    setInterval(()=>{ if(document.visibilityState==="visible") refreshAll(false); }, REFRESH_MS);
-    setTimeout(checkConnection, 800);
+    document.getElementById("learnerNameLabel").textContent=learnerName||"—";
+    document.getElementById("sessionLabel").textContent=sid||"—";
+    refreshAll();
+    setInterval(()=>{if(document.visibilityState==="visible")refreshAll();},REFRESH_MS);
     </script>
 </body>
 </html>
