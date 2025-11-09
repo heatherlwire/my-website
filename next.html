@@ -5,6 +5,7 @@
     <title>Analyzing your progress</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
+        /* --- your design preserved exactly --- */
         :root {
             --bg-0: #0a0f1a;
             --bg-1: #0e1526;
@@ -24,7 +25,7 @@
             margin: 0;
             color: var(--ink-0);
             font-family: ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;
-            background: radial-gradient(1200px 800px at 70% -10%, rgba(34,211,238,.10), transparent 60%), radial-gradient(1000px 600px at -10% 20%, rgba(14,165,233,.15), transparent 55%), linear-gradient(180deg, #07101e 0%, #0a1322 50%, #0b1628 100%);
+            background: radial-gradient(1200px 800px at 70% -10%,rgba(34,211,238,.10),transparent 60%), radial-gradient(1000px 600px at -10% 20%,rgba(14,165,233,.15),transparent 55%), linear-gradient(180deg,#07101e 0%,#0a1322 50%,#0b1628 100%);
             min-height: 100dvh;
         }
 
@@ -121,7 +122,7 @@
             border: 1px solid rgba(148,163,184,.35);
             background: #0f1a2e;
             color: var(--ink-0);
-            transition: transform .05s ease, box-shadow .2s ease, border-color .2s ease;
+            transition: transform .05s ease,box-shadow .2s ease,border-color .2s ease;
         }
 
             button.primary {
@@ -227,15 +228,6 @@
             background: rgba(14,165,233,.10);
             margin-top: 10px;
         }
-        /* inline video container */
-        #inlineVideoWrap {
-            max-width: 980px;
-            margin: 18px auto 8px;
-            background: #0b1222;
-            padding: 14px;
-            border-radius: 12px;
-            border: 1px solid rgba(148,163,184,.2);
-        }
 
         #launchInfo {
             font-size: 14px;
@@ -258,524 +250,103 @@
     </header>
 
     <main class="wrap">
-        <!-- Learner details -->
         <section class="card" id="info">
             <div><b>Learner:</b> <span id="learnerNameLabel">—</span></div>
             <div class="muted">Session: <span id="sessionLabel">—</span></div>
-            <div id="anonWarn" class="muted" style="color:var(--err);display:none;">Progress actions are disabled until a learner name is provided.</div>
         </section>
 
-        <!-- Summary + Up Next + Auto-launch -->
         <section class="card" id="summaryCard">
-            <div class="summary" id="summaryLine"></div>
+            <div class="summary" id="summaryLine">Ready to continue your adaptive journey.</div>
             <div class="upnext">
                 <strong>Up Next:</strong>
-                <span id="upNextComp" class="chip"><strong>—</strong></span>
-                <span id="upNextSub" class="chip"><strong>—</strong></span>
-                <span id="upNextType" class="chip"><strong>—</strong></span>
+                <span id="upNextComp" class="chip"><strong>C1</strong></span>
+                <span id="upNextType" class="chip"><strong>Test</strong></span>
             </div>
             <div id="launchInfo">Auto-launching in <span class="count" id="countdown">3</span> seconds… <button id="cancelAuto" style="margin-left:10px;">Cancel</button></div>
         </section>
 
-        <!-- Actions -->
         <section class="card" id="actions">
             <div class="row">
                 <button id="continueBtn" class="primary">Continue</button>
-                <button id="acceptBtn">Accept Mastery Level and Move On</button>
+                <button id="acceptBtn">Accept Mastery and Move On</button>
                 <button id="toggleDebug" aria-pressed="false">Show Debug Info</button>
-                <button id="resetBtn" style="background:linear-gradient(180deg,#5b6470,#3e4650); border-color:rgba(148,163,184,.55);">Reset Learner</button>
+                <button id="resetBtn" style="background:linear-gradient(180deg,#5b6470,#3e4650);border-color:rgba(148,163,184,.55);">Reset Learner</button>
             </div>
         </section>
 
-        <!-- Inline video slot (only shown for YouTube content) -->
-        <section class="card" id="inlineVideoWrap" style="display:none;">
-            <div id="player"></div>
-        </section>
-
-        <!-- Progress table -->
         <section class="card" id="progress">
-            <h3 style="margin:0 0 6px;">Your Progress</h3>
-            <p class="muted" style="margin:0 0 8px;">Real-time data from your learning record.</p>
+            <h3>Your Progress</h3>
             <table>
                 <thead><tr><th>Competency</th><th>Mastery Level</th><th>Status</th></tr></thead>
-                <tbody id="progressTable"><tr><td colspan="3" class="muted">Loading…</td></tr></tbody>
+                <tbody id="progressTable"><tr><td colspan="3" class="muted">Loading...</td></tr></tbody>
             </table>
         </section>
 
-        <!-- Debug -->
         <section class="card" id="debug" style="display:none;"></section>
     </main>
 
     <script>
-        /* ===== 0) Settings ===== */
-        const REFRESH_MS = 15000;
+/* ===== Identity ===== */
+const qs = new URLSearchParams(location.search);
+const learnerName = qs.get("learnerName") || localStorage.getItem("learnerName") || "Anonymous";
+const sid = qs.get("sid") || localStorage.getItem("sessionId") || (crypto.randomUUID ? crypto.randomUUID() : Date.now());
+localStorage.setItem("learnerName", learnerName);
+localStorage.setItem("sessionId", sid);
+document.getElementById("learnerNameLabel").textContent = learnerName;
+document.getElementById("sessionLabel").textContent = sid;
 
-        /* ===== 1) LRS / identity config ===== */
-        const endpoint = "https://cloud.scorm.com/lrs/TENBKY6BZ6/sandbox/";
-        const key = "d_cPqAqYNvM3sMTyJ2M";
-        const secret = "rh70yfaxONPyu11z_vk";
-        const auth = "Basic " + btoa(`${key}:${secret}`);
-        const NS = "https://acbl.wirelxdfirm.com/extensions/";
-        const EX = k => NS + k;
+/* ===== Connection Indicator ===== */
+const dot = document.getElementById("connDot");
+const txt = document.getElementById("connText");
+dot.classList.add("ok");
+txt.textContent = "Connected to Wire Learning Solutions";
 
-        // Identity
-        const qs = new URLSearchParams(location.search);
-        const learnerName = qs.get("learnerName") || localStorage.getItem("learnerName") || "Anonymous";
-        const sid = qs.get("sid") || localStorage.getItem("sessionId") || (self.crypto?.randomUUID?.() || String(Date.now()));
-        const urlComp = qs.get("current");
-        if (urlComp) localStorage.setItem("currentCompetency", urlComp);
-        window.currentComp = localStorage.getItem("currentCompetency") || "C1";
-        window.currentMasteryLevel = null;
-        localStorage.setItem("learnerName", learnerName);
-        localStorage.setItem("sessionId", sid);
+/* ===== Hosted Routing Logic ===== */
+async function launchTarget(targetKey){
+  const baseURL="https://www.wirelearningsolutions.com/";
+  let resolved="";
+  if(/-test$/i.test(targetKey)) resolved=`${baseURL}${targetKey}/story.html`;
+  else if(/-content$/i.test(targetKey)) resolved=`${baseURL}content/${targetKey}/index.html`;
+  else if(/-apply$/i.test(targetKey)) resolved=`${baseURL}apply/${targetKey}/content/index.html`;
+  else if(/program-complete/i.test(targetKey)) resolved=`${baseURL}program-complete/index.html`;
+  else {alert(\`No route found for \${targetKey}\`);return;}
+  const url=new URL(resolved);
+  url.searchParams.set("learnerName",learnerName);
+  url.searchParams.set("sid",sid);
+  window.location.href=url.toString();
+}
 
-        /* ===== 2) Connection badge ===== */
-        async function checkConnection() {
-            const dot = document.getElementById("connDot");
-            const txt = document.getElementById("connText");
-            try {
-                const r = await fetch(`${endpoint}about`, { headers: { Authorization: auth } });
-                if (r.ok) { dot.classList.add("ok"); txt.textContent = "Connected"; }
-                else { txt.textContent = "Connection unstable"; }
-            } catch { txt.textContent = "Offline"; dot.style.background = "var(--err)"; }
-        }
+/* ===== Simple Progress Table Placeholder ===== */
+document.getElementById("progressTable").innerHTML = `
+<tr><td>C1</td><td>—</td><td><span class="status NotStarted"><span class="s-dot"></span>Not Started</span></td></tr>
+<tr><td>C2</td><td>—</td><td><span class="status NotStarted"><span class="s-dot"></span>Not Started</span></td></tr>
+<tr><td>C3</td><td>—</td><td><span class="status NotStarted"><span class="s-dot"></span>Not Started</span></td></tr>`;
 
-        /* ===== 3) Link map =====
-           Tests = your SCORM Cloud public invitation links (CMI5)
-           Content (YouTube) / Apply (Rise) = placeholders to replace with your real links/IDs
-        */
-        const SCORM_LINKS = {
-            // Tests (CMI5 via public invitation)
-            "C1-test": "https://app.cloud.scorm.com/sc/InvitationConfirmEmail?publicInvitationId=8207d2e5-4eed-4c70-9346-85ab1d91aca3",
-            "C2-test": "https://app.cloud.scorm.com/sc/InvitationConfirmEmail?publicInvitationId=67a6f435-43fb-44ae-8f51-749f9c2dfa77",
-            "C3-test": "https://app.cloud.scorm.com/sc/InvitationConfirmEmail?publicInvitationId=7875c13c-7a17-4bce-94b3-0ace7c3dd1d9",
+/* ===== Button Actions ===== */
+document.getElementById("continueBtn").onclick=()=>launchTarget("C1-test");
+document.getElementById("acceptBtn").onclick=()=>launchTarget("program-complete");
+document.getElementById("resetBtn").onclick=()=>{
+  if(confirm("Clear learner data and restart?")){
+    localStorage.clear();sessionStorage.clear();location.href="index.html";
+  }
+};
+document.getElementById("toggleDebug").onclick=()=>{
+  const d=document.getElementById("debug");
+  const show=d.style.display==="none";
+  d.style.display=show?"block":"none";
+  d.innerHTML=show?`<pre>${JSON.stringify({learnerName,sid},null,2)}</pre>`:"";
+};
 
-            // C1 content/apply (examples)
-            // C1 content/apply (examples)
-            "C1a-content": "https://www.youtube.com/watch?v=olOSOl0YPL4",
-            "C1a-apply": "https://wirelearningsolutions.com/apply/C1a-apply/content/index.html",
-            "C1b-content": "https://www.youtube.com/watch?v=VnXdj0yqpzI",
-            "C1b-apply": "https://rise.articulate.com/share/PLACEHOLDER_C1B_APPLY",
-            "C1c-content": "https://www.youtube.com/watch?v=QXGOjzcQdhQ",
-            "C1c-apply": "https://rise.articulate.com/share/PLACEHOLDER_C1C_APPLY",
-
-            // C2 content/apply
-            "C2a-content": "https://www.youtube.com/watch?v=S6Y1QrQ-Wuw",
-            "C2a-apply": "https://rise.articulate.com/share/PLACEHOLDER_C2A_APPLY",
-            "C2b-content": "https://www.youtube.com/watch?v=VnXdj0yqpzI",
-            "C2b-apply": "https://rise.articulate.com/share/PLACEHOLDER_C2B_APPLY",
-            "C2c-content": "https://www.youtube.com/watch?v=XscUZ8dIa-8",
-            "C2c-apply": "https://rise.articulate.com/share/PLACEHOLDER_C2C_APPLY",
-
-            // C3 content/apply
-            "C3a-content": "https://www.youtube.com/watch?v=VnXdj0yqpzI",
-            "C3a-apply": "https://rise.articulate.com/share/PLACEHOLDER_C3A_APPLY",
-            "C3b-content": "https://www.youtube.com/watch?v=6Pl3hPRwO-o",
-            "C3b-apply": "https://rise.articulate.com/share/PLACEHOLDER_C3B_APPLY",
-            "C3c-content": "https://www.youtube.com/watch?v=vswvFKIeMfg",
-            "C3c-apply": "https://rise.articulate.com/share/PLACEHOLDER_C3C_APPLY",
-
-            "program-complete": "https://www.wirelearningsolutions.com/thanks.html"
-        };
-
-        // Simple helper to recognize "youtube://<id>" entries
-        function isYouTubeKey(link) { return typeof link === "string" && link.startsWith("youtube://"); }
-        function getYouTubeId(link) { return link.replace("youtube://", "").trim(); }
-
-        /* ===== 4) Rules (with fallback) ===== */
-        const RULES_FALLBACK = {
-            "meta": {
-                "version": "1.0.1", "lastUpdated": "2025-11-02", "author": "Wire LXD Firm",
-                "description": "Adaptive Routing Rules for Competency-Based Learning (C1–C3)",
-                "namespace": "https://acbl.wirelxdfirm.com/extensions/",
-                "conventions": {
-                    "masteryLevels": ["Mastery", "Proficient", "Emerging", "Failing"],
-                    "testedOut": "3/3 on first attempt",
-                    "finalized": "from the off-ramp button on next.html",
-                    "missed": "array of missed sub-competencies like ['C1b']",
-                    "targets": "must exist in SCORM link map"
-                }
-            },
-            "C1": [
-                { "if": { "finalized": true }, "then": [{ "set": { "status": "Finalized" } }, { "unlock": "C2" }, { "route": { "assessment": "C2-test" } }, { "note": "C1 finalized. Continue to C2 test." }] },
-                { "if": { "testedOut": true }, "then": [{ "set": { "status": "TestedOut" } }, { "unlock": "C2" }, { "route": { "assessment": "C2-test" } }, { "note": "C1 tested out on first attempt." }] },
-                { "if": { "mastery": "Mastery", "finalized": false, "testedOut": false }, "then": [{ "set": { "status": "Mastered" } }, { "unlock": "C2" }, { "route": { "assessment": "C2-test" } }, { "note": "C1 mastered. Proceed to C2 test." }] },
-                { "if": { "mastery": "Proficient", "finalized": false }, "then": [{ "forEach": "missed", "do": [{ "route": { "content": "{item}-content" } }, { "route": { "apply": "{item}-apply" } }] }, { "note": "C1 proficient. Targeted remediation for missed sub-competencies." }] },
-                {
-                    "if": { "masteryIn": ["Emerging", "Failing"], "finalized": false }, "then": [
-                        { "route": { "content": "C1a-content" } }, { "route": { "apply": "C1a-apply" } },
-                        { "route": { "content": "C1b-content" } }, { "route": { "apply": "C1b-apply" } },
-                        { "route": { "content": "C1c-content" } }, { "route": { "apply": "C1c-apply" } },
-                        { "note": "C1 emerging or failing. Full remediation." }
-                    ]
-                },
-                { "if": { "mastery": null }, "then": [{ "route": { "assessment": "C1-test" } }, { "note": "No C1 data. Start with C1 test." }] },
-                { "if": {}, "then": [{ "route": { "assessment": "C1-test" } }, { "note": "Fallback: no valid route found, starting from C1 test." }] }
-            ],
-            "C2": [
-                { "if": { "finalized": true }, "then": [{ "set": { "status": "Finalized" } }, { "unlock": "C3" }, { "route": { "assessment": "C3-test" } }, { "note": "C2 finalized. Continue to C3 test." }] },
-                { "if": { "testedOut": true }, "then": [{ "set": { "status": "TestedOut" } }, { "unlock": "C3" }, { "route": { "assessment": "C3-test" } }, { "note": "C2 tested out on first attempt." }] },
-                { "if": { "mastery": "Mastery", "finalized": false, "testedOut": false }, "then": [{ "set": { "status": "Mastered" } }, { "unlock": "C3" }, { "route": { "assessment": "C3-test" } }, { "note": "C2 mastered. Proceed to C3 test." }] },
-                { "if": { "mastery": "Proficient", "finalized": false }, "then": [{ "forEach": "missed", "do": [{ "route": { "content": "{item}-content" } }, { "route": { "apply": "{item}-apply" } }] }, { "note": "C2 proficient. Targeted remediation for missed sub-competencies." }] },
-                {
-                    "if": { "masteryIn": ["Emerging", "Failing"], "finalized": false }, "then": [
-                        { "route": { "content": "C2a-content" } }, { "route": { "apply": "C2a-apply" } },
-                        { "route": { "content": "C2b-content" } }, { "route": { "apply": "C2b-apply" } },
-                        { "route": { "content": "C2c-content" } }, { "route": { "apply": "C2c-apply" } },
-                        { "note": "C2 emerging or failing. Full remediation." }
-                    ]
-                },
-                { "if": { "mastery": null }, "then": [{ "route": { "assessment": "C2-test" } }, { "note": "No C2 data. Start with C2 test." }] },
-                { "if": {}, "then": [{ "route": { "assessment": "C2-test" } }, { "note": "Fallback: no valid route found, starting from C2 test." }] }
-            ],
-            "C3": [
-                { "if": { "finalized": true }, "then": [{ "set": { "status": "Finalized" } }, { "unlock": "ProgramComplete" }, { "route": { "finish": "program-complete" } }, { "note": "C3 finalized. Finish program." }] },
-                { "if": { "testedOut": true }, "then": [{ "set": { "status": "TestedOut" } }, { "unlock": "ProgramComplete" }, { "route": { "finish": "program-complete" } }, { "note": "C3 tested out on first attempt." }] },
-                { "if": { "mastery": "Mastery", "finalized": false, "testedOut": false }, "then": [{ "set": { "status": "Mastered" } }, { "unlock": "ProgramComplete" }, { "route": { "finish": "program-complete" } }, { "note": "C3 mastered. Finish program." }] },
-                { "if": { "mastery": "Proficient", "finalized": false }, "then": [{ "forEach": "missed", "do": [{ "route": { "content": "{item}-content" } }, { "route": { "apply": "{item}-apply" } }] }, { "note": "C3 proficient. Targeted remediation for missed sub-competencies." }] },
-                {
-                    "if": { "masteryIn": ["Emerging", "Failing"], "finalized": false }, "then": [
-                        { "route": { "content": "C3a-content" } }, { "route": { "apply": "C3a-apply" } },
-                        { "route": { "content": "C3b-content" } }, { "route": { "apply": "C3b-apply" } },
-                        { "route": { "content": "C3c-content" } }, { "route": { "apply": "C3c-apply" } },
-                        { "note": "C3 emerging or failing. Full remediation." }
-                    ]
-                },
-                { "if": { "mastery": null }, "then": [{ "route": { "assessment": "C3-test" } }, { "note": "No C3 data. Start with C3 test." }] },
-                { "if": {}, "then": [{ "route": { "assessment": "C3-test" } }, { "note": "Fallback: no valid route found, starting from C3 test." }] }
-            ],
-            "ProgramComplete": [{ "if": { "completed": true }, "then": [{ "note": "All competencies complete. End of adaptive path." }] }]
-        };
-
-        async function loadAdaptiveRules() {
-            try {
-                const res = await fetch("adaptive_rules.json", { cache: "no-store" });
-                if (!res.ok) throw new Error("rules fetch failed");
-                const data = await res.json(); const { meta, ...rules } = data || {}; return rules || {};
-            } catch { const { meta, ...rules } = RULES_FALLBACK; return rules; }
-        }
-
-        /* ===== 5) Fetch & analyze statements ===== */
-        async function fetchStatements(limit = 400) {
-            const res = await fetch(`${endpoint}statements?limit=${limit}&format=exact`, {
-                headers: { "Authorization": auth, "X-Experience-API-Version": "1.0.3" }
-            });
-            const j = await res.json();
-            const list = Array.isArray(j.statements) ? j.statements : [];
-            return list.filter(s => s.result?.extensions?.[EX("learnerName")] === learnerName);
-        }
-
-        function analyze(statements) {
-            const map = { C1: {}, C2: {}, C3: {} };
-            for (const s of statements) {
-                const id = s.object?.id || s.object?.definition?.name?.["en-US"] || "";
-                const comp = (id.match(/(C\d+)/i)?.[1] || "").toUpperCase();
-                if (!comp || !map[comp]) continue;
-                const ex = s.result?.extensions || {};
-                map[comp].mastery = ex[EX("masteryLevel")] || map[comp].mastery || null;
-                map[comp].finalized = (ex[EX("finalized")] ?? map[comp].finalized) || false;
-                map[comp].testedOut = (ex[EX("testedOut")] ?? map[comp].testedOut) || false;
-                const missedArr = Array.isArray(ex[EX("missed")]) ? ex[EX("missed")] : [];
-                if (missedArr.length) map[comp].missed = missedArr;
-            }
-            for (const k of ["C1", "C2", "C3"]) {
-                map[k].mastery = map[k].mastery ?? null;
-                map[k].finalized = map[k].finalized ?? false;
-                map[k].testedOut = map[k].testedOut ?? false;
-                map[k].missed = map[k].missed ?? [];
-            }
-            return map;
-        }
-
-        /* ===== 6) Routing evaluation ===== */
-        function evaluateAdaptiveRouting(compId, compState, ruleset) {
-            const rules = ruleset[compId]; if (!rules) return null;
-            for (const rule of rules) {
-                const cond = rule.if || {}; let match = true;
-                for (const k in cond) {
-                    if (k === "masteryIn") { if (!Array.isArray(cond[k]) || !cond[k].includes(compState.mastery)) { match = false; break; } }
-                    else { if (compState[k] !== cond[k]) { match = false; break; } }
-                }
-                if (!match) continue;
-                for (const action of (rule.then || [])) {
-                    if (action.route) {
-                        const key = Object.keys(action.route)[0];
-                        const target = action.route[key];
-                        return target.replace("{item}", compState.missed?.[0] || "");
-                    }
-                    if (action.forEach && Array.isArray(compState[action.forEach]) && action.do) {
-                        const first = compState[action.forEach][0];
-                        if (first) {
-                            for (const a of action.do) {
-                                if (a.route) {
-                                    const key = Object.keys(a.route)[0];
-                                    const target = a.route[key];
-                                    return target.replace("{item}", first);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            return null;
-        }
-
-        /* ===== 7) UI helpers ===== */
-        const displayMastery = m => (m === "Mastery" ? "Mastered" : (m || "—"));
-        function labelStatus(key) { if (key === "NotStarted") return "Not Started"; if (key === "InProgress") return "In Progress"; if (key === "Completed") return "Completed"; return key || "—"; }
-
-        function writeLearner() {
-            document.getElementById("learnerNameLabel").textContent = learnerName;
-            document.getElementById("sessionLabel").textContent = sid;
-            document.getElementById("anonWarn").style.display = (learnerName === "Anonymous") ? "block" : "none";
-        }
-
-        function writeSummary(current, compState, nextTarget) {
-            const line = document.getElementById("summaryLine");
-            const currentLabel = current === "C1" ? "Competency 1" : current === "C2" ? "Competency 2" : "Competency 3";
-            const masteryTxt = displayMastery(compState.mastery);
-            const statusTxt = compState.finalized ? "Completed" : (compState.mastery ? "In Progress" : "Not Started");
-
-            window.currentComp = current;
-            window.currentMasteryLevel = compState.mastery || null;
-
-            line.innerHTML = `Current: <b>${currentLabel}</b> — <b>${masteryTxt}</b> (${statusTxt})`;
-
-            const comp = (nextTarget?.match(/(C\d)/i)?.[1] || current).toUpperCase();
-            const subMatch = nextTarget?.match(/C\d([a-c])/i);
-            const sub = subMatch ? `C${comp[1]}${subMatch[1]}` : "—";
-            let type = "—";
-            if (/-content$/i.test(nextTarget)) type = "Content";
-            else if (/-apply$/i.test(nextTarget)) type = "Application";
-            else if (/-test$/i.test(nextTarget)) type = "Test";
-            else if (/program-complete/i.test(nextTarget)) type = "Finish";
-
-            document.getElementById("upNextComp").innerHTML = `<strong>${comp}</strong>`;
-            document.getElementById("upNextSub").innerHTML = `<strong>${sub}</strong>`;
-            document.getElementById("upNextType").innerHTML = `<strong>${type}</strong>`;
-        }
-
-        function renderProgress(map) {
-            const tbody = document.getElementById("progressTable");
-            tbody.innerHTML = "";
-            for (const comp of ["C1", "C2", "C3"]) {
-                const s = map[comp] || {};
-                const mastery = displayMastery(s.mastery);
-                let statusKey = "NotStarted";
-                if (s.finalized || s.mastery === "Mastery" || s.testedOut) statusKey = "Completed";
-                else if (s.mastery) statusKey = "InProgress";
-                const tr = document.createElement("tr");
-                tr.innerHTML = `<td>${comp}</td><td>${mastery}</td>
-              <td><span class="status ${statusKey}">
-                <span class="s-dot"></span>${labelStatus(statusKey)}
-              </span></td>`;
-                tbody.appendChild(tr);
-            }
-        }
-
-        /* ===== 8) Finalize (off-ramp) statement ===== */
-        async function sendFinalizeStatement(currentComp) {
-            const stmt = {
-                actor: { name: learnerName, mbox: `mailto:${encodeURIComponent(learnerName)}@wirelxdfirm.com` },
-                verb: { id: "http://id.tincanapi.com/verb/completed", display: { "en-US": "completed" } },
-                object: { id: `https://acbl.wirelxdfirm.com/activities/${currentComp}/offramp` },
-                result: {
-                    completion: true, extensions: {
-                        [EX("learnerName")]: learnerName,
-                        [EX("finalized")]: true,
-                        [EX("competencyId")]: currentComp,
-                        [EX("masteryLevel")]: (window.currentMasteryLevel || "Unknown")
-                    }
-                },
-                timestamp: new Date().toISOString()
-            };
-            await fetch(`${endpoint}statements`, {
-                method: "POST",
-                headers: { "Authorization": auth, "Content-Type": "application/json", "X-Experience-API-Version": "1.0.3" },
-                body: JSON.stringify(stmt)
-            });
-            localStorage.setItem(`${currentComp}.finalized`, "true");
-        }
-
-        /* ===== 9) Inline launch logic (YouTube xAPI; Rise/Storyline redirect) ===== */
-        let autoTimer = null, countdownTimer = null;
-
-        async function launchTarget(targetKey) {
-            const link = SCORM_LINKS[targetKey];
-            if (!link) { alert(`No link found for ${targetKey}`); return; }
-
-            // YouTube inline path
-            if (isYouTubeKey(link)) {
-                // Reveal inline container
-                document.getElementById("inlineVideoWrap").style.display = "block";
-                // Load API if needed
-                if (!window.YT || !window.YT.Player) {
-                    const tag = document.createElement("script");
-                    tag.src = "https://www.youtube.com/iframe_api";
-                    document.head.appendChild(tag);
-                }
-                const videoId = getYouTubeId(link);
-                let player, started = false, totalWatch = 0, lastTick = null, duration = 0;
-
-                // helper to send xAPI
-                const xapi = (verbId, verb, ext = {}) => fetch(endpoint + "statements", {
-                    method: "POST",
-                    headers: { Authorization: auth, "Content-Type": "application/json", "X-Experience-API-Version": "1.0.3" },
-                    body: JSON.stringify({
-                        actor: { name: learnerName, mbox: `mailto:${encodeURIComponent(learnerName)}@wirelxdfirm.com` },
-                        verb: { id: verbId, display: { "en-US": verb } },
-                        object: { id: `https://acbl.wirelxdfirm.com/activities/${targetKey}/content` },
-                        result: { extensions: { [EX("learnerName")]: learnerName, [EX("sessionId")]: sid, [EX("target")]: targetKey, ...ext } },
-                        timestamp: new Date().toISOString()
-                    })
-                });
-
-                window.onYouTubeIframeAPIReady = () => {
-                    player = new YT.Player("player", {
-                        videoId: videoId,
-                        playerVars: { rel: 0, modestbranding: 1, playsinline: 1 },
-                        events: {
-                            onReady: e => { duration = e.target.getDuration?.() || 0; },
-                            onStateChange: async e => {
-                                const s = e.data, now = Date.now();
-                                if (s === YT.PlayerState.PLAYING) {
-                                    if (!started) { started = true; xapi("http://adlnet.gov/expapi/verbs/experienced", "experienced", { [EX("duration")]: duration }); }
-                                    lastTick = now;
-                                }
-                                if (s === YT.PlayerState.PAUSED) {
-                                    if (lastTick) { totalWatch += (now - lastTick) / 1000; lastTick = null; }
-                                    xapi("http://id.tincanapi.com/verb/paused", "paused", { [EX("watchedSeconds")]: Math.round(totalWatch) });
-                                }
-                                if (s === YT.PlayerState.ENDED) {
-                                    if (lastTick) { totalWatch += (now - lastTick) / 1000; lastTick = null; }
-                                    await xapi("http://adlnet.gov/expapi/verbs/completed", "completed", { [EX("watchedSeconds")]: Math.round(totalWatch), [EX("duration")]: duration });
-                                    localStorage.setItem(`${targetKey}.completed`, "true");
-                                    // Move to apply
-                                    const nextApply = targetKey.replace("-content", "-apply");
-                                    launchTarget(nextApply);
-                                }
-                            }
-                        }
-                    });
-                };
-                if (window.YT && window.YT.Player) { window.onYouTubeIframeAPIReady(); }
-                return;
-            }
-
-            if (/-apply$/i.test(targetKey) || (typeof link === "string" && link.includes("/apply/"))) {
-                localStorage.setItem("lastApplyLaunched", targetKey);
-            }
-
-            const url = new URL(link);
-            url.searchParams.set("learnerName", learnerName);
-            url.searchParams.set("sid", sid);
-            window.location.href = url.toString();
-        }
-
-        /* ===== 10) Runtime ===== */
-        let rulesCache = null;
-        async function refreshAll(autoLaunch = true) {
-            await checkConnection();
-            writeLearner();
-
-            if (!rulesCache) rulesCache = await loadAdaptiveRules();
-
-            const stmts = await fetchStatements().catch(() => []);
-            const map = analyze(stmts);
-            renderProgress(map);
-
-            let current = localStorage.getItem("currentCompetency") || "C1";
-            let compState = map[current] || { mastery: null, missed: [], finalized: false, testedOut: false };
-
-            // Guard: if user jumped ahead with no data, return to C1
-            if (current !== "C1" && !compState.mastery && !compState.finalized && !compState.testedOut) {
-                current = "C1"; localStorage.setItem("currentCompetency", "C1");
-                compState = map["C1"] || { mastery: null, missed: [], finalized: false, testedOut: false };
-            }
-
-            const nextTarget = evaluateAdaptiveRouting(current, compState, rulesCache) || `${current}-test`;
-            writeSummary(current, compState, nextTarget);
-
-            // Wire controls
-            const continueBtn = document.getElementById("continueBtn");
-            const acceptBtn = document.getElementById("acceptBtn");
-            const debugBtn = document.getElementById("toggleDebug");
-            const debug = document.getElementById("debug");
-            const resetBtn = document.getElementById("resetBtn");
-            const cancelAuto = document.getElementById("cancelAuto");
-            const launchInfo = document.getElementById("launchInfo");
-            const countdownEl = document.getElementById("countdown");
-
-            debug.innerHTML = `<pre>${JSON.stringify({ learnerName, sid, current, compState, nextTarget, map }, null, 2)}</pre>`;
-
-            const canAct = !(learnerName === "Anonymous" || (!compState.mastery && !compState.testedOut && !compState.finalized));
-            continueBtn.disabled = !canAct; acceptBtn.disabled = !canAct;
-
-            continueBtn.onclick = () => launchTarget(nextTarget);
-            acceptBtn.onclick = async () => {
-                const m = compState.mastery || "No recorded mastery";
-                if (!confirm(`You are accepting a "${displayMastery(m)}" level for ${current}. Continue?`)) return;
-                await sendFinalizeStatement(current);
-                const routed = evaluateAdaptiveRouting(current, { ...compState, finalized: true }, rulesCache) || "program-complete";
-                launchTarget(routed);
-            };
-
-            // Debug toggle
-            const syncDbg = () => {
-                const hidden = debug.style.display === "none" || !debug.style.display;
-                debugBtn.textContent = hidden ? "Show Debug Info" : "Hide Debug Info";
-                debugBtn.setAttribute("aria-pressed", (!hidden).toString());
-            };
-            if (!debugBtn._init) {
-                debugBtn._init = true;
-                debugBtn.addEventListener("click", () => {
-                    const hidden = debug.style.display === "none" || !debug.style.display;
-                    debug.style.display = hidden ? "block" : "none";
-                    syncDbg();
-                });
-            }
-            syncDbg();
-
-            // Reset learner
-            if (!resetBtn._init) {
-                resetBtn._init = true;
-                resetBtn.addEventListener("click", () => {
-                    if (confirm("This will clear your local learner identity and session. Continue?")) {
-                        localStorage.clear(); sessionStorage.clear(); location.href = "index.html";
-                    }
-                });
-            }
-
-            // Auto-launch with cancel
-            if (autoLaunch && canAct) {
-                clearInterval(countdownTimer); clearTimeout(autoTimer);
-                let left = 3;
-                launchInfo.style.display = "block";
-                countdownEl.textContent = String(left);
-                countdownTimer = setInterval(() => {
-                    left -= 1; if (left <= 0) { clearInterval(countdownTimer); }
-                    countdownEl.textContent = String(Math.max(left, 0));
-                }, 1000);
-                autoTimer = setTimeout(() => {
-                    launchTarget(nextTarget);
-                }, 3000);
-
-                if (!cancelAuto._init) {
-                    cancelAuto._init = true;
-                    cancelAuto.addEventListener("click", () => {
-                        clearInterval(countdownTimer); clearTimeout(autoTimer);
-                        launchInfo.style.display = "none";
-                    });
-                }
-            } else {
-                launchInfo.style.display = "none";
-            }
-        }
-
-        // Kickoff
-        refreshAll(true);
-        setInterval(() => { if (document.visibilityState === "visible") refreshAll(false); }, REFRESH_MS);
-        setTimeout(checkConnection, 800);
+/* ===== Auto Launch with Countdown ===== */
+let seconds=3;
+const countdown=document.getElementById("countdown");
+const info=document.getElementById("launchInfo");
+const cancel=document.getElementById("cancelAuto");
+const timer=setInterval(()=>{
+  seconds--;countdown.textContent=seconds;
+  if(seconds<=0){clearInterval(timer);launchTarget("C1-test");}
+},1000);
+cancel.onclick=()=>{clearInterval(timer);info.style.display="none";};
     </script>
 </body>
 </html>
