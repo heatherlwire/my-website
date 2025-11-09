@@ -1,135 +1,231 @@
 ﻿<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Analyzing your progress</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>
-    :root {
-      --bg-0: #0a0f1a;
-      --bg-1: #0e1526;
-      --bg-2: #0f1b33;
-      --ink-0: #e8f1ff;
-      --ink-1: #b9c8e8;
-      --sky-1: #0ea5e9;
-      --sky-2: #22d3ee;
-      --ok: #22c55e;
-      --warn: #f59e0b;
-      --err: #ef4444;
-      --focus: #93c5fd;
-      --shadow: 0 10px 24px rgba(0,0,0,.35);
-    }
+    <meta charset="UTF-8" />
+    <title>Analyzing your progress</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+        :root {
+            --bg-0: #0a0f1a;
+            --bg-1: #0e1526;
+            --bg-2: #0f1b33;
+            --ink-0: #e8f1ff;
+            --ink-1: #b9c8e8;
+            --sky-1: #0ea5e9;
+            --sky-2: #22d3ee;
+            --ok: #22c55e;
+            --warn: #f59e0b;
+            --err: #ef4444;
+            --focus: #93c5fd;
+            --shadow: 0 10px 24px rgba(0,0,0,.35);
+        }
 
-    body {
-      margin: 0;
-      color: var(--ink-0);
-      font-family: ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;
-      background: radial-gradient(1200px 800px at 70% -10%,rgba(34,211,238,.10),transparent 60%),
-                  radial-gradient(1000px 600px at -10% 20%,rgba(14,165,233,.15),transparent 55%),
-                  linear-gradient(180deg,#07101e 0%,#0a1322 50%,#0b1628 100%);
-      min-height: 100dvh;
-    }
+        body {
+            margin: 0;
+            color: var(--ink-0);
+            font-family: ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;
+            background: radial-gradient(1200px 800px at 70% -10%,rgba(34,211,238,.10),transparent 60%), radial-gradient(1000px 600px at -10% 20%,rgba(14,165,233,.15),transparent 55%), linear-gradient(180deg,#07101e 0%,#0a1322 50%,#0b1628 100%);
+            min-height: 100dvh;
+        }
 
-    header { padding: 28px 24px 10px; }
-    .title-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-    h1 {
-      margin: 0;
-      font-size: clamp(22px,2.4vw,28px);
-      background: linear-gradient(90deg,var(--ink-0),#cfe8ff);
-      -webkit-background-clip: text;
-      color: transparent;
-    }
+        header {
+            padding: 28px 24px 10px;
+        }
 
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 14px;
-      padding: 8px 12px;
-      border-radius: 999px;
-      background: rgba(14,165,233,.10);
-      border: 1px solid rgba(34,211,238,.35);
-    }
+        .title-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
 
-    .dot {
-      width: 10px; height: 10px;
-      border-radius: 50%; background: var(--warn);
-    }
-    .dot.ok { background: var(--ok); box-shadow: 0 0 0 0 rgba(34,197,94,.6); animation: pulse 1.8s ease-out infinite; }
+        h1 {
+            margin: 0;
+            font-size: clamp(22px,2.4vw,28px);
+            background: linear-gradient(90deg,var(--ink-0),#cfe8ff);
+            -webkit-background-clip: text;
+            color: transparent;
+        }
 
-    @keyframes pulse {
-      0% { box-shadow: 0 0 0 0 rgba(34,197,94,.5); }
-      70% { box-shadow: 0 0 0 10px rgba(34,197,94,0); }
-      100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
-    }
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            padding: 8px 12px;
+            border-radius: 999px;
+            background: rgba(14,165,233,.10);
+            border: 1px solid rgba(34,211,238,.35);
+        }
 
-    .wrap { padding: 6px 24px 32px; max-width: 1100px; margin: 0 auto; }
-    .card {
-      background: linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.015)),var(--bg-1);
-      border: 1px solid rgba(148,163,184,.15);
-      border-radius: 14px; padding: 16px; margin: 16px 0;
-      box-shadow: var(--shadow); backdrop-filter: blur(6px);
-    }
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--warn);
+        }
 
-    .muted { color: var(--ink-1); }
-    .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+            .dot.ok {
+                background: var(--ok);
+                box-shadow: 0 0 0 0 rgba(34,197,94,.6);
+                animation: pulse 1.8s ease-out infinite;
+            }
 
-    button {
-      padding: 10px 16px; border-radius: 10px; cursor: pointer;
-      font-size: 15px; border: 1px solid rgba(148,163,184,.35);
-      background: #0f1a2e; color: var(--ink-0);
-      transition: transform .05s ease, box-shadow .2s ease, border-color .2s ease;
-    }
-    button.primary {
-      background: linear-gradient(180deg,#0e87c7,#0c6aa0);
-      border-color: rgba(34,211,238,.55);
-      box-shadow: 0 6px 24px rgba(14,165,233,.35);
-    }
-    button:hover { transform: translateY(-1px); }
-    button:disabled { opacity: .6; cursor: not-allowed; filter: saturate(.6); }
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(34,197,94,.5);
+            }
 
-    table { width: 100%; border-collapse: collapse; margin-top: 8px; }
-    thead th {
-      text-align: left; padding: 12px 10px; background: var(--bg-2);
-      border-bottom: 1px solid rgba(148,163,184,.25);
-    }
-    td { padding: 12px 10px; border-bottom: 1px solid rgba(148,163,184,.12); color: var(--ink-0); }
+            70% {
+                box-shadow: 0 0 0 10px rgba(34,197,94,0);
+            }
 
-    .status {
-      display: inline-flex; align-items: center; gap: 8px;
-      font-weight: 700; padding: 4px 10px; border-radius: 999px;
-      font-size: 13px; color: #fff;
-      background: rgba(255,255,255,.06);
-      border: 1px solid rgba(148,163,184,.25);
-    }
-    .s-dot { width: 8px; height: 8px; border-radius: 50%; }
-    .Completed .s-dot { background: var(--ok); animation: pulse 2s ease-out infinite; }
-    .InProgress .s-dot { background: var(--warn); }
-    .NotStarted .s-dot { background: var(--err); animation: pulse 2s ease-out infinite; }
+            100% {
+                box-shadow: 0 0 0 0 rgba(34,197,94,0);
+            }
+        }
 
-    pre {
-      white-space: pre-wrap; word-break: break-word;
-      background: #0b1222; color: #dbeafe;
-      padding: 12px; border-radius: 12px;
-      border: 1px solid rgba(148,163,184,.2);
-      max-height: 420px; overflow: auto;
-    }
+        .wrap {
+            padding: 6px 24px 32px;
+            max-width: 1100px;
+            margin: 0 auto;
+        }
 
-    .chip {
-      display: inline-flex; align-items: center; gap: 8px;
-      padding: 6px 10px; border-radius: 999px;
-      border: 1px solid rgba(148,163,184,.25);
-      background: rgba(255,255,255,.04); font-weight: 600;
-    }
-    .upnext {
-      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-      padding: 10px 12px; border-radius: 10px;
-      border: 1px dashed rgba(34,211,238,.35);
-      background: rgba(14,165,233,.10); margin-top: 10px;
-    }
+        .card {
+            background: linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.015)),var(--bg-1);
+            border: 1px solid rgba(148,163,184,.15);
+            border-radius: 14px;
+            padding: 16px;
+            margin: 16px 0;
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(6px);
+        }
 
-    #launchInfo { font-size: 14px; color: var(--ink-1); margin-top: 6px; }
-  </style>
+        .muted {
+            color: var(--ink-1);
+        }
+
+        .row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: center;
+        }
+
+        button {
+            padding: 10px 16px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 15px;
+            border: 1px solid rgba(148,163,184,.35);
+            background: #0f1a2e;
+            color: var(--ink-0);
+            transition: transform .05s ease, box-shadow .2s ease, border-color .2s ease;
+        }
+
+            button.primary {
+                background: linear-gradient(180deg,#0e87c7,#0c6aa0);
+                border-color: rgba(34,211,238,.55);
+                box-shadow: 0 6px 24px rgba(14,165,233,.35);
+            }
+
+            button:hover {
+                transform: translateY(-1px);
+            }
+
+            button:disabled {
+                opacity: .6;
+                cursor: not-allowed;
+                filter: saturate(.6);
+            }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 8px;
+        }
+
+        thead th {
+            text-align: left;
+            padding: 12px 10px;
+            background: var(--bg-2);
+            border-bottom: 1px solid rgba(148,163,184,.25);
+        }
+
+        td {
+            padding: 12px 10px;
+            border-bottom: 1px solid rgba(148,163,184,.12);
+            color: var(--ink-0);
+        }
+
+        .status {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 13px;
+            color: #fff;
+            background: rgba(255,255,255,.06);
+            border: 1px solid rgba(148,163,184,.25);
+        }
+
+        .s-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .Completed .s-dot {
+            background: var(--ok);
+            animation: pulse 2s ease-out infinite;
+        }
+
+        .InProgress .s-dot {
+            background: var(--warn);
+        }
+
+        .NotStarted .s-dot {
+            background: var(--err);
+            animation: pulse 2s ease-out infinite;
+        }
+
+        pre {
+            white-space: pre-wrap;
+            word-break: break-word;
+            background: #0b1222;
+            color: #dbeafe;
+            padding: 12px;
+            border-radius: 12px;
+            border: 1px solid rgba(148,163,184,.2);
+            max-height: 420px;
+            overflow: auto;
+        }
+
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            border: 1px solid rgba(148,163,184,.25);
+            background: rgba(255,255,255,.04);
+            font-weight: 600;
+        }
+
+        .upnext {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px dashed rgba(34,211,238,.35);
+            background: rgba(14,165,233,.10);
+            margin-top: 10px;
+        }
+    </style>
 </head>
 
 <body>
@@ -144,7 +240,7 @@
         <section class="card" id="info">
             <div><b>Learner:</b> <span id="learnerNameLabel">—</span></div>
             <div class="muted">Session: <span id="sessionLabel">—</span></div>
-            <div id="anonWarn" class="muted" style="color:var(--err);display:none;">Actions are disabled until a learner is provided.</div>
+            <div id="anonWarn" class="muted" style="color:var(--err);display:none;">Actions are disabled until a learner name is provided.</div>
         </section>
 
         <section class="card" id="summaryCard">
@@ -155,7 +251,7 @@
                 <span id="upNextSub" class="chip"><strong>—</strong></span>
                 <span id="upNextType" class="chip"><strong>—</strong></span>
             </div>
-            <div id="launchInfo">Click <b>Continue</b> when you’re ready to move on.</div>
+            <div id="launchInfo">Click <b>Continue</b> when you’re ready.</div>
         </section>
 
         <section class="card" id="actions">
@@ -192,162 +288,126 @@ const sid = qs.get("sid") || localStorage.getItem("sessionId") || crypto.randomU
 const hintedComp = (qs.get("current") || "").toUpperCase();
 if (hintedComp) localStorage.setItem("currentCompetency", hintedComp);
 let currentComp = (localStorage.getItem("currentCompetency") || "C1").toUpperCase();
-
 localStorage.setItem("learnerName", learnerName);
 localStorage.setItem("sessionId", sid);
 
-// ---------- Connection Check ----------
+// ---------- Connection ----------
 async function checkConnection() {
   const dot = document.getElementById("connDot");
   const txt = document.getElementById("connText");
   try {
-    const r = await fetch(`${PROXY_URL}?learner=__ping__`, { method: "GET" });
-    const text = await r.text();
-    if (r.ok && text.includes("Lambda")) {
-      dot.classList.add("ok");
-      txt.textContent = "Connected";
-    } else {
-      txt.textContent = `Unstable (${r.status})`;
-      dot.style.background = "var(--warn)";
-    }
-  } catch (err) {
-    console.error("❌ Ping error:", err);
-    txt.textContent = "Offline";
-    dot.style.background = "var(--err)";
-  }
+    const r = await fetch(`${PROXY_URL}?learner=__ping__`);
+    const j = await r.json().catch(() => ({}));
+    if (r.ok && j.message?.includes("Lambda OK")) { dot.classList.add("ok"); txt.textContent = "Connected"; }
+    else { txt.textContent = "Unstable"; dot.style.background = "var(--warn)"; }
+  } catch { txt.textContent = "Offline"; dot.style.background = "var(--err)"; }
 }
 
-// ---------- Fetch summarized learner progress ----------
+// ---------- Summary ----------
 async function fetchSummary() {
   try {
-    const res = await fetch(`${PROXY_URL}?learner=${encodeURIComponent(learnerName)}&mode=summary`, {
-      method: "GET",
-      mode: "cors",
-      headers: { "Accept": "application/json" }
-    });
-    const summary = await res.json();
-    console.log("📊 LRS Summary:", summary);
-    return summary;
-  } catch (err) {
-    console.error("❌ Summary fetch failed:", err);
-    return null;
-  }
+    const res = await fetch(`${PROXY_URL}?learner=${encodeURIComponent(learnerName)}&mode=summary`);
+    return await res.json();
+  } catch (e) { console.error(e); return {}; }
 }
 
-// ---------- Render the Progress Table ----------
-function renderProgress(summary) {
-  const tbody = document.getElementById("progressTable");
-  tbody.innerHTML = "";
-
-  for (const comp of ["C1", "C2", "C3"]) {
-    const item = summary[comp] || {};
-    const mastery = item.mastery || "—";
-    const statusKey = item.completed
-      ? "Completed"
-      : mastery && mastery !== "—"
-      ? "InProgress"
-      : "NotStarted";
-
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${comp}</td>
-      <td>${mastery}</td>
-      <td>
-        <span class="status ${statusKey}">
-          <span class="s-dot"></span>${statusKey}
-        </span>
-      </td>`;
-    tbody.appendChild(tr);
-  }
+// ---------- Adaptive rules ----------
+let rulesCache = null;
+async function loadAdaptiveRules() {
+  if (rulesCache) return rulesCache;
+  const res = await fetch("adaptive_rules.json", { cache: "no-store" });
+  const j = await res.json().catch(() => ({}));
+  rulesCache = j;
+  return j;
 }
-
-// ---------- Send “finalized” statement ----------
-async function sendFinalizeStatement(current) {
-  const stmt = {
-    actor: { name: learnerName, mbox: `mailto:${encodeURIComponent(learnerName)}@wirelxdfirm.com` },
-    verb: { id: "http://id.tincanapi.com/verb/completed", display: { "en-US": "completed" } },
-    object: { id: `https://acbl.wirelearningsolutions.com/activities/${current}/offramp` },
-    result: {
-      completion: true,
-      extensions: {
-        [EX("learnerName")]: learnerName,
-        [EX("finalized")]: true,
-        [EX("competencyId")]: current,
-        [EX("masteryLevel")]: window.__MASTERY__ || "Unknown"
+function evaluateAdaptiveRouting(compId, compState, ruleset) {
+  const rules = ruleset[compId];
+  if (!rules) return null;
+  for (const rule of rules) {
+    const cond = rule.if || {}; let match = true;
+    for (const k in cond) {
+      if (k === "masteryIn") {
+        if (!Array.isArray(cond[k]) || !cond[k].includes(compState.mastery)) match = false;
+      } else if (compState[k] !== cond[k]) match = false;
+    }
+    if (!match) continue;
+    for (const action of rule.then || []) {
+      if (action.route) {
+        const key = Object.keys(action.route)[0];
+        return action.route[key].replace("{item}", compState.missed?.[0] || "");
+      }
+      if (action.forEach && Array.isArray(compState[action.forEach]) && action.do) {
+        const first = compState[action.forEach][0];
+        if (first) {
+          for (const a of action.do) {
+            if (a.route) {
+              const key = Object.keys(a.route)[0];
+              return a.route[key].replace("{item}", first);
+            }
+          }
+        }
       }
     }
-  };
-
-  await fetch(`${PROXY_URL}?mode=write`, {
-    method: "POST",
-    mode: "cors",
-    headers: {
-      "Accept": "application/json",
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify(stmt)
-  });
-
-  localStorage.setItem(`${current}.finalized`, "true");
-}
-
-// ---------- Determine next step ----------
-function getNextCompetency(summary) {
-  const order = ["C1", "C2", "C3"];
-  for (const comp of order) {
-    if (!summary[comp]?.completed) return comp;
   }
-  return "program-complete";
-}
-
-// ---------- Launch routing ----------
-function launchTarget(targetKey) {
-  const href = resolveTargetUrl(targetKey);
-  if (!href) { alert(`No route found for ${targetKey}`); return; }
-  const url = new URL(href);
-  url.searchParams.set("learnerName", learnerName);
-  url.searchParams.set("sid", sid);
-  window.location.href = url.toString();
-}
-
-function resolveTargetUrl(targetKey) {
-  if (/-test$/i.test(targetKey)) return `${BASE}${targetKey.split("-")[0].toUpperCase()}-test/story.html`;
-  if (/-content$/i.test(targetKey)) return `${BASE}content/${targetKey}.html`;
-  if (/-apply$/i.test(targetKey)) return `${BASE}apply/${targetKey}.html`;
-  if (/program-complete/i.test(targetKey)) return `${BASE}thanks.html`;
   return null;
 }
 
-// ---------- Refresh and Populate ----------
-async function refreshAll() {
-  await checkConnection();
-  document.getElementById("learnerNameLabel").textContent = learnerName;
-  document.getElementById("sessionLabel").textContent = sid;
+// ---------- Render ----------
+function displayMastery(m){return m==="Mastery"?"Mastered":(m||"—");}
+function labelStatus(k){if(k==="NotStarted")return"Not Started";if(k==="InProgress")return"In Progress";if(k==="Completed")return"Completed";return k||"—";}
+function renderProgress(map){const tbody=document.getElementById("progressTable");tbody.innerHTML="";for(const comp of["C1","C2","C3"]){const s=map[comp]||{};const mastery=displayMastery(s.mastery);let status="NotStarted";if(s.finalized||s.mastery==="Mastery"||s.testedOut||s.completed)status="Completed";else if(s.mastery)status="InProgress";const tr=document.createElement("tr");tr.innerHTML=`<td>${comp}</td><td>${mastery}</td><td><span class="status ${status}"><span class="s-dot"></span>${labelStatus(status)}</span></td>`;tbody.appendChild(tr);}}
+function writeSummary(current,compState,next){const line=document.getElementById("summaryLine");const curLabel=current==="C1"?"Competency 1":current==="C2"?"Competency 2":"Competency 3";const masteryTxt=displayMastery(compState.mastery);const statusTxt=compState.finalized?"Completed":(compState.mastery?"In Progress":"Not Started");line.innerHTML=`Current: <b>${curLabel}</b> — <b>${masteryTxt}</b> (${statusTxt})`;const comp=(next?.match(/(C\d)/i)?.[1]||current).toUpperCase();const sub=next?.match(/C\d([a-c])/i)?`C${comp[1]}${next.match(/C\d([a-c])/i)[1]}`:"—";let type="—";if(/-content$/i.test(next))type="Content";else if(/-apply$/i.test(next))type="Application";else if(/-test$/i.test(next))type="Test";else if(/program-complete/i.test(next))type="Finish";document.getElementById("upNextComp").innerHTML=`<strong>${comp}</strong>`;document.getElementById("upNextSub").innerHTML=`<strong>${sub}</strong>`;document.getElementById("upNextType").innerHTML=`<strong>${type}</strong>`;}
 
-  const summary = await fetchSummary();
-  if (!summary) return;
+// ---------- Finalize ----------
+async function sendFinalizeStatement(current,mastery){const stmt={actor:{name:learnerName,mbox:`mailto:${encodeURIComponent(learnerName)}@wirelxdfirm.com`},verb:{id:"http://id.tincanapi.com/verb/completed",display:{"en-US":"completed"}},object:{id:`https://acbl.wirelearningsolutions.com/activities/${current}/offramp`},result:{completion:true,extensions:{[EX("learnerName")]:learnerName,[EX("finalized")]:true,[EX("competencyId")]:current,[EX("masteryLevel")]:mastery||"Unknown"}},timestamp:new Date().toISOString()};await fetch(`${PROXY_URL}?mode=write`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(stmt)});localStorage.setItem(`${current}.finalized`,"true");}
 
-  renderProgress(summary);
+// ---------- Launch ----------
+function resolveTargetUrl(k){if(/program-complete/i.test(k))return`${BASE}thanks.html`;if(/-test$/i.test(k))return`${BASE}${k.split("-")[0].toUpperCase()}-test/story.html`;if(/-content$/i.test(k))return`${BASE}content/${k}.html`;if(/-apply$/i.test(k))return`${BASE}apply/${k}.html`;return null;}
+function launchTarget(k){const href=resolveTargetUrl(k);if(!href){alert(`No route found for ${k}`);return;}const u=new URL(href);u.searchParams.set("learnerName",learnerName);u.searchParams.set("sid",sid);window.location.href=u.toString();}
 
-  const nextComp = getNextCompetency(summary);
-  localStorage.setItem("currentCompetency", nextComp);
+// ---------- Runtime ----------
+async function refreshAll(){await checkConnection();document.getElementById("learnerNameLabel").textContent=learnerName;document.getElementById("sessionLabel").textContent=sid;if(learnerName==="Anonymous"){document.getElementById("anonWarn").style.display="block";return;}const rules=await loadAdaptiveRules();const summary=await fetchSummary();renderProgress(summary);const compState=summary[currentComp]||{mastery:null,finalized:false,testedOut:false,missed:[],completed:false};const next=evaluateAdaptiveRouting(currentComp,compState,rules)||`${currentComp}-test`;writeSummary(currentComp,compState,next);const continueBtn=document.getElementById("continueBtn");const acceptBtn=document.getElementById("acceptBtn");const debug=document.getElementById("debug");const debugBtn=document.getElementById("toggleDebug");debug.innerHTML=`<pre>${JSON.stringify({learnerName,sid,currentComp,compState,next},null,2)}</pre>`;continueBtn.disabled=false;acceptBtn.disabled=false;continueBtn
+.onclick = () => {
+  launchTarget(next);
+};
 
-  document.getElementById("upNextComp").textContent = nextComp;
-  document.getElementById("upNextSub").textContent = summary[nextComp]?.mastery || "—";
-  document.getElementById("upNextType").textContent = summary[nextComp]?.completed ? "Review" : "Test";
+acceptBtn.onclick = async () => {
+  const mastery = compState.mastery || "No recorded mastery";
+  if (!confirm(`You are accepting a "${displayMastery(mastery)}" level for ${currentComp}. Continue?`)) return;
+  await sendFinalizeStatement(currentComp, mastery);
+  const routed = evaluateAdaptiveRouting(currentComp, { ...compState, finalized: true }, rules) || "program-complete";
+  launchTarget(routed);
+};
 
-  // --- Enable buttons ---
-  const continueBtn = document.getElementById("continueBtn");
-  continueBtn.disabled = learnerName === "Anonymous";
-  continueBtn.onclick = () => launchTarget(`${nextComp}-test`);
+// Debug toggle
+const syncDbg = () => {
+  const hidden = debug.style.display === "none" || !debug.style.display;
+  debugBtn.textContent = hidden ? "Show Debug Info" : "Hide Debug Info";
+  debugBtn.setAttribute("aria-pressed", (!hidden).toString());
+};
+if (!debugBtn._init) {
+  debugBtn._init = true;
+  debugBtn.addEventListener("click", () => {
+    const hidden = debug.style.display === "none" || !debug.style.display;
+    debug.style.display = hidden ? "block" : "none";
+    syncDbg();
+  });
+}
+syncDbg();
 
-  const acceptBtn = document.getElementById("acceptBtn");
-  acceptBtn.onclick = async () => {
-    await sendFinalizeStatement(nextComp);
-    launchTarget(`${nextComp}-test`);
-  };
+// Reset learner
+const resetBtn = document.getElementById("resetBtn");
+if (!resetBtn._init) {
+  resetBtn._init = true;
+  resetBtn.addEventListener("click", () => {
+    if (confirm("This will clear your learner identity and progress. Continue?")) {
+      localStorage.clear(); sessionStorage.clear(); location.href = "index.html";
+    }
+  });
+}
 }
 
+// Initialize and periodic refresh
 refreshAll();
 setInterval(() => {
   if (document.visibilityState === "visible") refreshAll();
