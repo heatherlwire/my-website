@@ -316,17 +316,20 @@
     localStorage.setItem("sessionId", sid);
 
     /* ===== 2) Connection badge ===== */
-    async function checkConnection(){
+    async function checkConnection() {
       const dot = document.getElementById("connDot");
       const txt = document.getElementById("connText");
-      try{
-        const r = await fetch(`${endpoint}about`,{headers:{Authorization:auth}});
-        if(r.ok){ dot.classList.add("ok"); txt.textContent="Connected"; }
-        else{ txt.textContent="Connection unstable"; }
-      }catch(e){
-        txt.textContent="Offline"; dot.style.background="var(--err)";
+      try {
+        // Lightweight GET to your proxy
+        const r = await fetch(`${PROXY_URL}?learner=__ping__&limit=1`, { method: "GET" });
+        if (r.ok) { dot.classList.add("ok"); txt.textContent = "Connected"; }
+        else { txt.textContent = "Connection unstable"; }
+      } catch {
+        txt.textContent = "Offline";
+        dot.style.background = "var(--err)";
       }
     }
+
 
     /* ===== 3) Link map (hosted HTML tests/content/apply) ===== */
     // Tests are Storyline outputs inside /C1-test/, /C2-test/, /C3-test/ with story.html
@@ -534,26 +537,43 @@ async function fetchStatements(limit = 400) {
       document.getElementById("acceptBtn").disabled = anon || !(map[currentComp]?.mastery);
     }
 
-    /* ===== 8) Off-ramp finalize statement ===== */
-    async function sendFinalizeStatement(current){
-      const stmt = {
-        actor:{ name: learnerName, mbox:`mailto:${encodeURIComponent(learnerName)}@wirelxdfirm.com` },
-        verb:{ id:"http://id.tincanapi.com/verb/completed", display:{ "en-US":"completed" } },
-        object:{ id:`https://acbl.wirelearningsolutions.com/activities/${current}/offramp` },
-        result:{ completion:true, extensions:{
-          [EX("learnerName")]: learnerName,
-          [EX("finalized")]: true,
-          [EX("competencyId")]: current,
-          [EX("masteryLevel")]: (window.__MASTERY__ || "Unknown")
-        }}
-      };
-      await fetch(`${endpoint}statements`,{
-        method:"POST",
-        headers:{ "Authorization":auth, "Content-Type":"application/json","X-Experience-API-Version":"1.0.3" },
-        body:JSON.stringify(stmt)
-      });
-      localStorage.setItem(`${current}.finalized`, "true");
+     /* ===== 8) Off-ramp finalize statement (via proxy) ===== */
+    async function sendFinalizeStatement(current) {
+        const stmt = {
+        actor: {
+            name: learnerName,
+            mbox: `mailto:${encodeURIComponent(learnerName)}@wirelxdfirm.com`
+        },
+        verb: {
+            id: "http://id.tincanapi.com/verb/completed",
+            display: { "en-US": "completed" }
+        },
+        object: {
+            id: `https://acbl.wirelearningsolutions.com/activities/${current}/offramp`
+        },
+        result: {
+            completion: true,
+            extensions: {
+            [EX("learnerName")]: learnerName,
+            [EX("finalized")]: true,
+            [EX("competencyId")]: current,
+            [EX("masteryLevel")]: window.__MASTERY__ || "Unknown"
+            }
+        }
+        };
+
+        try {
+        await fetch(`${PROXY_URL}?mode=write`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(stmt)
+        });
+        localStorage.setItem(`${current}.finalized`, "true");
+        } catch (e) {
+        console.error("Finalize failed:", e);
+        }
     }
+
 
     /* ===== 9) Launch logic ===== */
     function launchTarget(targetKey){
