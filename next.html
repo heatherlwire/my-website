@@ -12,7 +12,6 @@
             --ink-0: #e8f1ff;
             --ink-1: #b9c8e8;
             --sky-1: #0ea5e9;
-            --sky-2: #22d3ee;
             --ok: #22c55e;
             --warn: #f59e0b;
             --err: #ef4444;
@@ -29,14 +28,14 @@
         }
 
         header {
-            padding: 28px 24px 10px
+            padding: 28px 24px 10px;
         }
 
         .title-row {
             display: flex;
             align-items: center;
             gap: 12px;
-            flex-wrap: wrap
+            flex-wrap: wrap;
         }
 
         h1 {
@@ -44,8 +43,7 @@
             font-size: clamp(22px,2.4vw,28px);
             background: linear-gradient(90deg,var(--ink-0),#cfe8ff);
             -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent
+            color: transparent;
         }
 
         .badge {
@@ -56,40 +54,40 @@
             padding: 8px 12px;
             border-radius: 999px;
             background: rgba(14,165,233,.10);
-            border: 1px solid rgba(34,211,238,.35)
+            border: 1px solid rgba(34,211,238,.35);
         }
 
         .dot {
             width: 10px;
             height: 10px;
             border-radius: 50%;
-            background: var(--warn)
+            background: var(--warn);
         }
 
             .dot.ok {
                 background: var(--ok);
                 box-shadow: 0 0 0 0 rgba(34,197,94,.6);
-                animation: pulse 1.8s ease-out infinite
+                animation: pulse 1.8s ease-out infinite;
             }
 
         @keyframes pulse {
             0% {
-                box-shadow: 0 0 0 0 rgba(34,197,94,.5)
+                box-shadow: 0 0 0 0 rgba(34,197,94,.5);
             }
 
             70% {
-                box-shadow: 0 0 0 10px rgba(34,197,94,0)
+                box-shadow: 0 0 0 10px rgba(34,197,94,0);
             }
 
             100% {
-                box-shadow: 0 0 0 0 rgba(34,197,94,0)
+                box-shadow: 0 0 0 0 rgba(34,197,94,0);
             }
         }
 
         .wrap {
             padding: 6px 24px 32px;
             max-width: 1100px;
-            margin: 0 auto
+            margin: 0 auto;
         }
 
         .card {
@@ -99,18 +97,18 @@
             padding: 16px;
             margin: 16px 0;
             box-shadow: var(--shadow);
-            backdrop-filter: blur(6px)
+            backdrop-filter: blur(6px);
         }
 
         .muted {
-            color: var(--ink-1)
+            color: var(--ink-1);
         }
 
         .row {
             display: flex;
             flex-wrap: wrap;
             gap: 12px;
-            align-items: center
+            align-items: center;
         }
 
         button {
@@ -121,43 +119,42 @@
             border: 1px solid rgba(148,163,184,.35);
             background: #0f1a2e;
             color: var(--ink-0);
-            transition: transform .05s ease,box-shadow .2s ease,border-color .2s ease
+            transition: transform .05s ease, box-shadow .2s ease, border-color .2s ease;
         }
 
             button.primary {
                 background: linear-gradient(180deg,#0e87c7,#0c6aa0);
                 border-color: rgba(34,211,238,.55);
-                box-shadow: 0 6px 24px rgba(14,165,233,.35)
+                box-shadow: 0 6px 24px rgba(14,165,233,.35);
             }
 
             button:hover {
-                transform: translateY(-1px)
+                transform: translateY(-1px);
             }
 
             button:disabled {
                 opacity: .6;
                 cursor: not-allowed;
-                filter: saturate(.6)
+                filter: saturate(.6);
             }
 
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 8px
+            margin-top: 8px;
         }
 
         thead th {
             text-align: left;
             padding: 12px 10px;
             background: var(--bg-2);
-            color: var(--ink-0);
-            border-bottom: 1px solid rgba(148,163,184,.25)
+            border-bottom: 1px solid rgba(148,163,184,.25);
         }
 
         td {
             padding: 12px 10px;
             border-bottom: 1px solid rgba(148,163,184,.12);
-            color: var(--ink-0)
+            color: var(--ink-0);
         }
 
         .status {
@@ -170,27 +167,27 @@
             font-size: 13px;
             color: #fff;
             background: rgba(255,255,255,.06);
-            border: 1px solid rgba(148,163,184,.25)
+            border: 1px solid rgba(148,163,184,.25);
         }
 
         .s-dot {
             width: 8px;
             height: 8px;
-            border-radius: 50%
+            border-radius: 50%;
         }
 
         .Completed .s-dot {
             background: var(--ok);
-            animation: pulse 2s ease-out infinite
+            animation: pulse 2s ease-out infinite;
         }
 
         .InProgress .s-dot {
-            background: var(--warn)
+            background: var(--warn);
         }
 
         .NotStarted .s-dot {
             background: var(--err);
-            animation: pulse 2s ease-out infinite
+            animation: pulse 2s ease-out infinite;
         }
 
         pre {
@@ -202,7 +199,7 @@
             border-radius: 12px;
             border: 1px solid rgba(148,163,184,.2);
             max-height: 420px;
-            overflow: auto
+            overflow: auto;
         }
 
         .chip {
@@ -213,7 +210,7 @@
             border-radius: 999px;
             border: 1px solid rgba(148,163,184,.25);
             background: rgba(255,255,255,.04);
-            font-weight: 600
+            font-weight: 600;
         }
 
         .upnext {
@@ -225,17 +222,16 @@
             border-radius: 10px;
             border: 1px dashed rgba(34,211,238,.35);
             background: rgba(14,165,233,.10);
-            margin-top: 10px
+            margin-top: 10px;
         }
 
         #launchInfo {
             font-size: 14px;
             color: var(--ink-1);
-            margin-top: 6px
+            margin-top: 6px;
         }
     </style>
 </head>
-
 <body>
     <header>
         <div class="title-row">
@@ -248,9 +244,7 @@
         <section class="card" id="info">
             <div><b>Learner:</b> <span id="learnerNameLabel">—</span></div>
             <div class="muted">Session: <span id="sessionLabel">—</span></div>
-            <div id="anonWarn" class="muted" style="color:var(--err);display:none;">
-                Actions are disabled until a learner is provided.
-            </div>
+            <div id="anonWarn" class="muted" style="color:var(--err);display:none;">Actions are disabled until a learner is provided.</div>
         </section>
 
         <section class="card" id="summaryCard">
@@ -269,16 +263,13 @@
                 <button id="continueBtn" class="primary" disabled>Continue</button>
                 <button id="acceptBtn" disabled>Accept Mastery Level and Move On</button>
                 <button id="toggleDebug" aria-pressed="false">Show Debug Info</button>
-                <button id="resetBtn" style="background:linear-gradient(180deg,#5b6470,#3e4650);
-      border-color:rgba(148,163,184,.55);">
-                    Reset Learner
-                </button>
+                <button id="resetBtn" style="background:linear-gradient(180deg,#5b6470,#3e4650);border-color:rgba(148,163,184,.55);">Reset Learner</button>
             </div>
         </section>
 
         <section class="card" id="progress">
-            <h3 style="margin:0 0 6px;">Your Progress</h3>
-            <p class="muted" style="margin:0 0 8px;">Real-time data from your learning record.</p>
+            <h3>Your Progress</h3>
+            <p class="muted">Real-time data from your learning record.</p>
             <table>
                 <thead><tr><th>Competency</th><th>Mastery Level</th><th>Status</th></tr></thead>
                 <tbody id="progressTable"><tr><td colspan="3" class="muted">Loading…</td></tr></tbody>
@@ -289,153 +280,116 @@
     </main>
 
     <script>
-/* === CONFIG === */
-const BASE = "https://www.wirelearningsolutions.com/";
-const PROXY_URL = "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
-const NS = "https://acbl.wirelearningsolutions.com/extensions/";
-const EX = k => NS + k;
-const REFRESH_MS = 15000;
+    const BASE = "https://www.wirelearningsolutions.com/";
+    const PROXY_URL = "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws/";
+    const NS = "https://acbl.wirelearningsolutions.com/extensions/";
+    const EX = k => NS + k;
+    const REFRESH_MS = 15000;
 
-/* === Learner Info === */
-const qs = new URLSearchParams(location.search);
-const learnerName = (qs.get("learnerName") || localStorage.getItem("learnerName") || "Anonymous").trim();
-const sid = qs.get("sid") || localStorage.getItem("sessionId") || (crypto.randomUUID?.() || String(Date.now()));
-const hintedComp = (qs.get("current") || "").toUpperCase();
-if (hintedComp) localStorage.setItem("currentCompetency", hintedComp);
-let currentComp = (localStorage.getItem("currentCompetency") || "C1").toUpperCase();
-localStorage.setItem("learnerName", learnerName);
-localStorage.setItem("sessionId", sid);
+    const qs = new URLSearchParams(location.search);
+    const learnerName = (qs.get("learnerName") || localStorage.getItem("learnerName") || "Anonymous").trim();
+    const sid = qs.get("sid") || localStorage.getItem("sessionId") || crypto.randomUUID();
+    const hintedComp = (qs.get("current") || "").toUpperCase();
+    if (hintedComp) localStorage.setItem("currentCompetency", hintedComp);
+    let currentComp = (localStorage.getItem("currentCompetency") || "C1").toUpperCase();
+    localStorage.setItem("learnerName", learnerName);
+    localStorage.setItem("sessionId", sid);
 
-/* === Connection Check === */
-async function checkConnection(){
-  const dot=document.getElementById("connDot"),txt=document.getElementById("connText");
-  try{
-    const testUrl=`${PROXY_URL}?learner=__ping__&limit=1`;
-    const r=await fetch(testUrl,{method:"GET"});
-    const text=await r.text();
-    console.log("🟢 Connection check:",r.status,text);
-    if(r.ok && text.includes("Lambda")){
-      dot.classList.add("ok");txt.textContent="Connected";
-    }else{txt.textContent="Unstable ("+r.status+")";}
-  }catch(e){txt.textContent="Offline";dot.style.background="var(--err)";}
-}
+    // ✅ Updated connection check using Lambda test
+    async function checkConnection() {
+      const dot = document.getElementById("connDot");
+      const txt = document.getElementById("connText");
+      try {
+        const r = await fetch(`${PROXY_URL}?learner=__ping__&limit=1`);
+        const data = await r.json();
+        if (r.ok && data.ok) {
+          dot.classList.add("ok");
+          txt.textContent = "Connected";
+        } else {
+          txt.textContent = "Unstable Connection";
+          dot.style.background = "var(--warn)";
+        }
+      } catch (e) {
+        txt.textContent = "Offline";
+        dot.style.background = "var(--err)";
+      }
+    }
 
-/* === Helper Functions === */
-function resolveTargetUrl(targetKey){
-  if(/-test$/i.test(targetKey)) return `${BASE}${targetKey.split("-")[0].toUpperCase()}-test/story.html`;
-  if(/-content$/i.test(targetKey)) return `${BASE}content/${targetKey}.html`;
-  if(/-apply$/i.test(targetKey)) return `${BASE}apply/${targetKey}.html`;
-  if(/program-complete/i.test(targetKey)) return `${BASE}thanks.html`;
-  return null;
-}
+    function resolveTargetUrl(targetKey) {
+      if (/-test$/i.test(targetKey)) return `${BASE}${targetKey.split("-")[0].toUpperCase()}-test/story.html`;
+      if (/-content$/i.test(targetKey)) return `${BASE}content/${targetKey}.html`;
+      if (/-apply$/i.test(targetKey)) return `${BASE}apply/${targetKey}.html`;
+      if (/program-complete/i.test(targetKey)) return `${BASE}thanks.html`;
+      return null;
+    }
 
-async function fetchStatements(limit=200){
-  try{
-    const res=await fetch(`${PROXY_URL}?learner=${encodeURIComponent(learnerName)}&limit=${limit}`);
-    const list=await res.json();
-    return Array.isArray(list)?list:[];
-  }catch{return [];}
-}
+    async function fetchStatements(limit=200){
+      try{
+        const res=await fetch(`${PROXY_URL}?learner=${encodeURIComponent(learnerName)}&limit=${limit}`);
+        return await res.json();
+      }catch{return [];}
+    }
 
-function analyze(statements){
-  const map={C1:{},C2:{},C3:{}};
-  for(const s of statements){
-    const id=s.object?.id||s.object?.definition?.name?.["en-US"]||"";
-    const comp=(id.match(/(C\d)/i)?.[1]||"").toUpperCase();
-    if(!map[comp])continue;
-    const ex=s.result?.extensions||{};
-    map[comp].mastery=ex[EX("masteryLevel")]??map[comp].mastery??null;
-    map[comp].finalized=ex[EX("finalized")]??map[comp].finalized??false;
-    map[comp].testedOut=ex[EX("testedOut")]??map[comp].testedOut??false;
-  }
-  for(const k of["C1","C2","C3"]){
-    map[k].mastery??=null;map[k].finalized??=false;map[k].testedOut??=false;
-  }
-  return map;
-}
+    function analyze(statements){
+      const map={C1:{},C2:{},C3:{}};
+      for(const s of statements){
+        const id=s.object?.id||"";
+        const comp=(id.match(/(C\d)/i)?.[1]||"").toUpperCase();
+        if(!map[comp])continue;
+        const ex=s.result?.extensions||{};
+        map[comp].mastery=ex[EX("masteryLevel")]??map[comp].mastery??null;
+      }
+      return map;
+    }
 
-function displayMastery(m){return m==="Mastery"?"Mastered":(m||"—");}
-function labelStatus(k){return k==="NotStarted"?"Not Started":k==="InProgress"?"In Progress":k==="Completed"?"Completed":k||"—";}
+    function displayMastery(m){return m==="Mastery"?"Mastered":(m||"—");}
+    function labelStatus(k){return k==="Completed"?"Completed":k==="InProgress"?"In Progress":"Not Started";}
 
-function writeLearner(){
-  document.getElementById("learnerNameLabel").textContent=learnerName||"—";
-  document.getElementById("sessionLabel").textContent=sid||"—";
-  const anon=(learnerName==="Anonymous"||!learnerName.trim());
-  document.getElementById("anonWarn").style.display=anon?"block":"none";
-  document.getElementById("continueBtn").disabled=anon;
-}
+    function renderProgress(map){
+      const tbody=document.getElementById("progressTable");
+      tbody.innerHTML="";
+      for(const comp of["C1","C2","C3"]){
+        const s=map[comp]||{};
+        const mastery=displayMastery(s.mastery);
+        const statusKey=s.mastery?"Completed":"NotStarted";
+        const tr=document.createElement("tr");
+        tr.innerHTML=`<td>${comp}</td><td>${mastery}</td>
+          <td><span class="status ${statusKey}"><span class="s-dot"></span>${labelStatus(statusKey)}</span></td>`;
+        tbody.appendChild(tr);
+      }
+    }
 
-function renderProgress(map){
-  const tbody=document.getElementById("progressTable");
-  tbody.innerHTML="";
-  for(const comp of["C1","C2","C3"]){
-    const s=map[comp]||{};
-    const mastery=displayMastery(s.mastery);
-    let statusKey="NotStarted";
-    if(s.finalized||s.mastery==="Mastery"||s.testedOut)statusKey="Completed";
-    else if(s.mastery)statusKey="InProgress";
-    const tr=document.createElement("tr");
-    tr.innerHTML=`<td>${comp}</td><td>${mastery}</td>
-      <td><span class="status ${statusKey}"><span class="s-dot"></span>${labelStatus(statusKey)}</span></td>`;
-    tbody.appendChild(tr);
-  }
-}
+    function writeLearner(){
+      document.getElementById("learnerNameLabel").textContent=learnerName||"—";
+      document.getElementById("sessionLabel").textContent=sid||"—";
+      const anon=(learnerName==="Anonymous"||!learnerName.trim());
+      document.getElementById("anonWarn").style.display=anon?"block":"none";
+      document.getElementById("continueBtn").disabled=anon;
+    }
 
-/* === Finalize (Off-ramp) === */
-async function sendFinalizeStatement(current){
-  const stmt={
-    actor:{name:learnerName,mbox:`mailto:${encodeURIComponent(learnerName)}@wirelxdfirm.com`},
-    verb:{id:"http://id.tincanapi.com/verb/completed",display:{"en-US":"completed"}},
-    object:{id:`https://acbl.wirelearningsolutions.com/activities/${current}/offramp`},
-    result:{completion:true,extensions:{
-      [EX("learnerName")]:learnerName,[EX("finalized")]:true,
-      [EX("competencyId")]:current,[EX("masteryLevel")]:window.__MASTERY__||"Unknown"
-    }}
-  };
-  await fetch(`${PROXY_URL}?mode=write`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(stmt)});
-  localStorage.setItem(`${current}.finalized`,"true");
-}
+    async function refreshAll(){
+      await checkConnection();
+      writeLearner();
+      const stmts=await fetchStatements();
+      const map=analyze(stmts);
+      renderProgress(map);
 
-/* === Launch === */
-function launchTarget(targetKey){
-  const href=resolveTargetUrl(targetKey);
-  if(!href){alert(`No route found for ${targetKey}`);return;}
-  const url=new URL(href);
-  url.searchParams.set("learnerName",learnerName);
-  url.searchParams.set("sid",sid);
-  window.location.href=url.toString();
-}
+      const nextTarget=`${currentComp}-test`;
+      const btn=document.getElementById("continueBtn");
+      btn.onclick=()=>launchTarget(nextTarget);
+    }
 
-/* === Runtime === */
-async function refreshAll(){
-  await checkConnection();
-  writeLearner();
-  const stmts=await fetchStatements();
-  const map=analyze(stmts);
-  renderProgress(map);
+    function launchTarget(targetKey){
+      const href=resolveTargetUrl(targetKey);
+      if(!href){alert(`No route found for ${targetKey}`);return;}
+      const url=new URL(href);
+      url.searchParams.set("learnerName",learnerName);
+      url.searchParams.set("sid",sid);
+      window.location.href=url.toString();
+    }
 
-  const compState=map[currentComp]||{mastery:null,missed:[],finalized:false,testedOut:false};
-  const nextTarget=`${currentComp}-test`;
-
-  document.getElementById("debug").innerHTML=
-    `<pre>${JSON.stringify({learnerName,sid,currentComp,compState,nextTarget},null,2)}</pre>`;
-
-  const btnCont=document.getElementById("continueBtn");
-  btnCont.onclick=()=>launchTarget(nextTarget);
-  const btnAccept=document.getElementById("acceptBtn");
-  btnAccept.onclick=async()=>{
-    const m=compState.mastery||"No recorded mastery";
-    if(!confirm(`You are accepting a "${displayMastery(m)}" level for ${currentComp}. Continue?`))return;
-    await sendFinalizeStatement(currentComp);
-    launchTarget(nextTarget);
-  };
-}
-
-/* === Kickoff === */
-document.getElementById("learnerNameLabel").textContent=learnerName||"—";
-document.getElementById("sessionLabel").textContent=sid||"—";
-refreshAll();
-setInterval(()=>{if(document.visibilityState==="visible")refreshAll();},REFRESH_MS);
+    refreshAll();
+    setInterval(()=>{if(document.visibilityState==="visible")refreshAll();},REFRESH_MS);
     </script>
 </body>
 </html>
