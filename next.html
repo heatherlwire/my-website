@@ -12,6 +12,7 @@
             --ink-0: #e8f1ff;
             --ink-1: #b9c8e8;
             --sky-1: #0ea5e9;
+            --sky-2: #22d3ee;
             --ok: #22c55e;
             --warn: #f59e0b;
             --err: #ef4444;
@@ -232,6 +233,7 @@
         }
     </style>
 </head>
+
 <body>
     <header>
         <div class="title-row">
@@ -280,116 +282,135 @@
     </main>
 
     <script>
-    const BASE = "https://www.wirelearningsolutions.com/";
-    const PROXY_URL = "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws/";
-    const NS = "https://acbl.wirelearningsolutions.com/extensions/";
-    const EX = k => NS + k;
-    const REFRESH_MS = 15000;
+  const BASE = "https://www.wirelearningsolutions.com/";
+  const PROXY_URL = "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
+  const NS = "https://acbl.wirelearningsolutions.com/extensions/";
+  const EX = k => NS + k;
+  const REFRESH_MS = 15000;
 
-    const qs = new URLSearchParams(location.search);
-    const learnerName = (qs.get("learnerName") || localStorage.getItem("learnerName") || "Anonymous").trim();
-    const sid = qs.get("sid") || localStorage.getItem("sessionId") || crypto.randomUUID();
-    const hintedComp = (qs.get("current") || "").toUpperCase();
-    if (hintedComp) localStorage.setItem("currentCompetency", hintedComp);
-    let currentComp = (localStorage.getItem("currentCompetency") || "C1").toUpperCase();
-    localStorage.setItem("learnerName", learnerName);
-    localStorage.setItem("sessionId", sid);
+  const qs = new URLSearchParams(location.search);
+  const learnerName = (qs.get("learnerName") || localStorage.getItem("learnerName") || "Anonymous").trim();
+  const sid = qs.get("sid") || localStorage.getItem("sessionId") || crypto.randomUUID();
+  const hintedComp = (qs.get("current") || "").toUpperCase();
+  if (hintedComp) localStorage.setItem("currentCompetency", hintedComp);
+  let currentComp = (localStorage.getItem("currentCompetency") || "C1").toUpperCase();
 
-    // ✅ Updated connection check using Lambda test
-    async function checkConnection() {
-      const dot = document.getElementById("connDot");
-      const txt = document.getElementById("connText");
-      try {
-        const r = await fetch(`${PROXY_URL}?learner=__ping__&limit=1`);
-        const data = await r.json();
-        if (r.ok && data.ok) {
-          dot.classList.add("ok");
-          txt.textContent = "Connected";
-        } else {
-          txt.textContent = "Unstable Connection";
-          dot.style.background = "var(--warn)";
-        }
-      } catch (e) {
-        txt.textContent = "Offline";
-        dot.style.background = "var(--err)";
+  localStorage.setItem("learnerName", learnerName);
+  localStorage.setItem("sessionId", sid);
+
+  async function checkConnection() {
+    const dot = document.getElementById("connDot");
+    const txt = document.getElementById("connText");
+    try {
+      const r = await fetch(`${PROXY_URL}?learner=__ping__&limit=1`);
+      const text = await r.text();
+      console.log("🔍 Ping result:", r.status, text);
+      if (r.ok && text.includes("Lambda")) {
+        dot.classList.add("ok");
+        txt.textContent = "Connected";
+      } else {
+        txt.textContent = `Unstable (${r.status})`;
+        dot.style.background = "var(--warn)";
       }
+    } catch (err) {
+      console.error("❌ Ping error:", err);
+      txt.textContent = "Offline";
+      dot.style.background = "var(--err)";
     }
+  }
 
-    function resolveTargetUrl(targetKey) {
-      if (/-test$/i.test(targetKey)) return `${BASE}${targetKey.split("-")[0].toUpperCase()}-test/story.html`;
-      if (/-content$/i.test(targetKey)) return `${BASE}content/${targetKey}.html`;
-      if (/-apply$/i.test(targetKey)) return `${BASE}apply/${targetKey}.html`;
-      if (/program-complete/i.test(targetKey)) return `${BASE}thanks.html`;
-      return null;
+  async function fetchStatements(limit = 200) {
+    try {
+      const res = await fetch(`${PROXY_URL}?learner=${encodeURIComponent(learnerName)}&limit=${limit}`);
+      const data = await res.json().catch(() => []);
+      console.log("✅ Statements received:", data.length);
+      return Array.isArray(data) ? data : [];
+    } catch (err) {
+      console.error("❌ Fetch statements error:", err);
+      return [];
     }
+  }
 
-    async function fetchStatements(limit=200){
-      try{
-        const res=await fetch(`${PROXY_URL}?learner=${encodeURIComponent(learnerName)}&limit=${limit}`);
-        return await res.json();
-      }catch{return [];}
+  function analyze(statements) {
+    const map = { C1:{}, C2:{}, C3:{} };
+    for (const s of statements) {
+      const id = s.object?.id || "";
+      const comp = (id.match(/(C\\d)/i)?.[1] || "").toUpperCase();
+      if (!map[comp]) continue;
+      const ex = s.result?.extensions || {};
+      map[comp].mastery = ex[EX("masteryLevel")] ?? map[comp].mastery ?? null;
     }
+    return map;
+  }
 
-    function analyze(statements){
-      const map={C1:{},C2:{},C3:{}};
-      for(const s of statements){
-        const id=s.object?.id||"";
-        const comp=(id.match(/(C\d)/i)?.[1]||"").toUpperCase();
-        if(!map[comp])continue;
-        const ex=s.result?.extensions||{};
-        map[comp].mastery=ex[EX("masteryLevel")]??map[comp].mastery??null;
-      }
-      return map;
+  function renderProgress(map) {
+    const tbody = document.getElementById("progressTable");
+    tbody.innerHTML = "";
+    for (const comp of ["C1","C2","C3"]) {
+      const s = map[comp] || {};
+      const mastery = s.mastery || "—";
+      const statusKey = s.mastery ? "Completed" : "NotStarted";
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td>${comp}</td><td>${mastery}</td>
+        <td><span class="status ${statusKey}"><span class="s-dot"></span>${statusKey}</span></td>`;
+      tbody.appendChild(tr);
     }
+  }
 
-    function displayMastery(m){return m==="Mastery"?"Mastered":(m||"—");}
-    function labelStatus(k){return k==="Completed"?"Completed":k==="InProgress"?"In Progress":"Not Started";}
+  async function sendFinalizeStatement(current) {
+    const stmt = {
+      actor: { name: learnerName, mbox: `mailto:${encodeURIComponent(learnerName)}@wirelxdfirm.com` },
+      verb: { id: "http://id.tincanapi.com/verb/completed", display: {"en-US": "completed"} },
+      object: { id: `https://acbl.wirelearningsolutions.com/activities/${current}/offramp` },
+      result: { completion: true, extensions: {
+        [EX("learnerName")]: learnerName,
+        [EX("finalized")]: true,
+        [EX("competencyId")]: current,
+        [EX("masteryLevel")]: window.__MASTERY__ || "Unknown"
+      }}
+    };
+    await fetch(`${PROXY_URL}?mode=write`, { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify(stmt) });
+    localStorage.setItem(`${current}.finalized`, "true");
+  }
 
-    function renderProgress(map){
-      const tbody=document.getElementById("progressTable");
-      tbody.innerHTML="";
-      for(const comp of["C1","C2","C3"]){
-        const s=map[comp]||{};
-        const mastery=displayMastery(s.mastery);
-        const statusKey=s.mastery?"Completed":"NotStarted";
-        const tr=document.createElement("tr");
-        tr.innerHTML=`<td>${comp}</td><td>${mastery}</td>
-          <td><span class="status ${statusKey}"><span class="s-dot"></span>${labelStatus(statusKey)}</span></td>`;
-        tbody.appendChild(tr);
-      }
-    }
+  function launchTarget(targetKey) {
+    const href = resolveTargetUrl(targetKey);
+    if (!href) { alert(`No route found for ${targetKey}`); return; }
+    const url = new URL(href);
+    url.searchParams.set("learnerName", learnerName);
+    url.searchParams.set("sid", sid);
+    window.location.href = url.toString();
+  }
 
-    function writeLearner(){
-      document.getElementById("learnerNameLabel").textContent=learnerName||"—";
-      document.getElementById("sessionLabel").textContent=sid||"—";
-      const anon=(learnerName==="Anonymous"||!learnerName.trim());
-      document.getElementById("anonWarn").style.display=anon?"block":"none";
-      document.getElementById("continueBtn").disabled=anon;
-    }
+  function resolveTargetUrl(targetKey) {
+    if (/-test$/i.test(targetKey)) return `${BASE}${targetKey.split("-")[0].toUpperCase()}-test/story.html`;
+    if (/-content$/i.test(targetKey)) return `${BASE}content/${targetKey}.html`;
+    if (/-apply$/i.test(targetKey)) return `${BASE}apply/${targetKey}.html`;
+    if (/program-complete/i.test(targetKey)) return `${BASE}thanks.html`;
+    return null;
+  }
 
-    async function refreshAll(){
-      await checkConnection();
-      writeLearner();
-      const stmts=await fetchStatements();
-      const map=analyze(stmts);
-      renderProgress(map);
+  async function refreshAll() {
+    await checkConnection();
+    document.getElementById("learnerNameLabel").textContent = learnerName;
+    document.getElementById("sessionLabel").textContent = sid;
+    const stmts = await fetchStatements();
+    const map = analyze(stmts);
+    renderProgress(map);
 
-      const nextTarget=`${currentComp}-test`;
-      const btn=document.getElementById("continueBtn");
-      btn.onclick=()=>launchTarget(nextTarget);
-    }
+    const btn = document.getElementById("continueBtn");
+    btn.disabled = learnerName === "Anonymous";
+    btn.onclick = () => launchTarget(`${currentComp}-test`);
 
-    function launchTarget(targetKey){
-      const href=resolveTargetUrl(targetKey);
-      if(!href){alert(`No route found for ${targetKey}`);return;}
-      const url=new URL(href);
-      url.searchParams.set("learnerName",learnerName);
-      url.searchParams.set("sid",sid);
-      window.location.href=url.toString();
-    }
+    const btnAccept = document.getElementById("acceptBtn");
+    btnAccept.onclick = async () => {
+      await sendFinalizeStatement(currentComp);
+      launchTarget(`${currentComp}-test`);
+    };
+  }
 
-    refreshAll();
-    setInterval(()=>{if(document.visibilityState==="visible")refreshAll();},REFRESH_MS);
+  refreshAll();
+  setInterval(() => { if (document.visibilityState === "visible") refreshAll(); }, REFRESH_MS);
     </script>
 </body>
 </html>
