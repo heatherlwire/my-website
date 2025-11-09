@@ -404,17 +404,17 @@
       }
     }
 
-    /* ===== 5) Fetch & analyze statements (filter by learnerName extension) ===== */
-    async function fetchStatements(limit=400){
-      try{
-        const res = await fetch(`${endpoint}statements?limit=${limit}&format=exact`,{
-          headers:{ "Authorization":auth, "X-Experience-API-Version":"1.0.3" }
-        });
-        const j = await res.json();
-        const list = Array.isArray(j.statements) ? j.statements : [];
-        return list.filter(s => s?.result?.extensions?.[EX("learnerName")] === learnerName);
-      }catch{ return []; }
-    }
+    /* ===== 5) Fetch & analyze statements (via proxy) ===== */
+async function fetchStatements(limit = 400) {
+  try {
+    const res = await fetch(`${PROXY_URL}?learner=${encodeURIComponent(learnerName)}&limit=${limit}`);
+    const list = await res.json();
+    return Array.isArray(list) ? list : [];
+  } catch {
+    return [];
+  }
+}
+
 
     function analyze(statements){
       const map = { C1:{}, C2:{}, C3:{} };
