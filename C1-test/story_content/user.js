@@ -673,10 +673,45 @@ window.Script13 = function()
     localStorage.setItem("sessionId", sessionId);
     var mbox = "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com";
 
-    // --- LRS endpoint/auth ---
-    var endpoint = "https://cloud.scorm.com/lrs/TENBKY6BZ6/sandbox"; // ✅ no trailing slash
-    var key = "TENBKY6BZ6";
-    var secret = "DhCPfNueQRfb0TYn7EjwG7lOYwc5Fq6SkoPRKkHn";
+    // ✅ New: send via Lambda proxy instead
+var endpoint = "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
+
+// --- Helper: retryable LRS send ---
+async function sendToLRS(statement, label) {
+  const send = async (attempt = 1) => {
+    try {
+      const res = await fetch(endpoint + "?mode=write", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(statement),
+        keepalive: true
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        console.warn(`⚠️ ${label} attempt ${attempt} failed:`, res.status, text);
+        if (attempt < 2) {
+          console.log("🔁 Retrying in 2 s...");
+          await new Promise(r => setTimeout(r, 2000));
+          return await send(attempt + 1);
+        }
+      } else {
+        console.log(`✅ ${label} success (${res.status})`);
+      }
+    } catch (e) {
+      console.error(`❌ ${label} network error:`, e);
+      if (attempt < 2) {
+        console.log("🔁 Retrying in 2 s...");
+        await new Promise(r => setTimeout(r, 2000));
+        return await send(attempt + 1);
+      }
+    }
+  };
+  await send();
+}
+
 
     // --- Build per-question dataset ---
     var questionData = [];
@@ -898,10 +933,45 @@ window.Script14 = function()
     localStorage.setItem("sessionId", sessionId);
     var mbox = "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com";
 
-    // --- LRS endpoint/auth ---
-    var endpoint = "https://cloud.scorm.com/lrs/TENBKY6BZ6/sandbox"; // ✅ no trailing slash
-    var key = "TENBKY6BZ6";
-    var secret = "DhCPfNueQRfb0TYn7EjwG7lOYwc5Fq6SkoPRKkHn";
+    // ✅ New: send via Lambda proxy instead
+var endpoint = "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
+
+// --- Helper: retryable LRS send ---
+async function sendToLRS(statement, label) {
+  const send = async (attempt = 1) => {
+    try {
+      const res = await fetch(endpoint + "?mode=write", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(statement),
+        keepalive: true
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        console.warn(`⚠️ ${label} attempt ${attempt} failed:`, res.status, text);
+        if (attempt < 2) {
+          console.log("🔁 Retrying in 2 s...");
+          await new Promise(r => setTimeout(r, 2000));
+          return await send(attempt + 1);
+        }
+      } else {
+        console.log(`✅ ${label} success (${res.status})`);
+      }
+    } catch (e) {
+      console.error(`❌ ${label} network error:`, e);
+      if (attempt < 2) {
+        console.log("🔁 Retrying in 2 s...");
+        await new Promise(r => setTimeout(r, 2000));
+        return await send(attempt + 1);
+      }
+    }
+  };
+  await send();
+}
+
 
     // --- Build per-question dataset ---
     var questionData = [];
