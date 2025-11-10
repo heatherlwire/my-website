@@ -279,143 +279,237 @@
     </main>
 
     <script>
-const BASE = "https://www.wirelearningsolutions.com/";
-const PROXY_URL = "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
-const NS = "https://acbl.wirelearningsolutions.com/extensions/";
-const EX = k => NS + k;
-const REFRESH_MS = 15000;
+        const BASE = "https://www.wirelearningsolutions.com/";
+        const PROXY_URL = "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
+        const NS = "https://acbl.wirelearningsolutions.com/extensions/";
+        const EX = k => NS + k;
+        const REFRESH_MS = 15000;
 
-const qs = new URLSearchParams(location.search);
-const learnerName = (qs.get("learnerName") || localStorage.getItem("learnerName") || "Anonymous").trim();
-const sid = qs.get("sid") || localStorage.getItem("sessionId") || crypto.randomUUID();
-const hintedComp = (qs.get("current") || "").toUpperCase();
-if (hintedComp) localStorage.setItem("currentCompetency", hintedComp);
-let currentComp = (localStorage.getItem("currentCompetency") || "C1").toUpperCase();
-localStorage.setItem("learnerName", learnerName);
-localStorage.setItem("sessionId", sid);
+        const qs = new URLSearchParams(location.search);
+        const learnerName = (qs.get("learnerName") || localStorage.getItem("learnerName") || "Anonymous").trim();
+        const sid = qs.get("sid") || localStorage.getItem("sessionId") || crypto.randomUUID();
+        const hintedComp = (qs.get("current") || "").toUpperCase();
+        if (hintedComp) localStorage.setItem("currentCompetency", hintedComp);
+        let currentComp = (localStorage.getItem("currentCompetency") || "C1").toUpperCase();
+        localStorage.setItem("learnerName", learnerName);
+        localStorage.setItem("sessionId", sid);
 
-// ---------- Connection ----------
-async function checkConnection() {
-  const dot = document.getElementById("connDot");
-  const txt = document.getElementById("connText");
-  try {
-    const r = await fetch(`${PROXY_URL}?learner=__ping__`);
-    const j = await r.json().catch(() => ({}));
-    if (r.ok && j.message?.includes("Lambda OK")) { dot.classList.add("ok"); txt.textContent = "Connected"; }
-    else { txt.textContent = "Unstable"; dot.style.background = "var(--warn)"; }
-  } catch { txt.textContent = "Offline"; dot.style.background = "var(--err)"; }
-}
-
-// ---------- Summary ----------
-async function fetchSummary() {
-  try {
-    const res = await fetch(`${PROXY_URL}?learner=${encodeURIComponent(learnerName)}&mode=summary`);
-    return await res.json();
-  } catch (e) { console.error(e); return {}; }
-}
-
-// ---------- Adaptive rules ----------
-let rulesCache = null;
-async function loadAdaptiveRules() {
-  if (rulesCache) return rulesCache;
-  const res = await fetch("adaptive_rules.json", { cache: "no-store" });
-  const j = await res.json().catch(() => ({}));
-  rulesCache = j;
-  return j;
-}
-function evaluateAdaptiveRouting(compId, compState, ruleset) {
-  const rules = ruleset[compId];
-  if (!rules) return null;
-  for (const rule of rules) {
-    const cond = rule.if || {}; let match = true;
-    for (const k in cond) {
-      if (k === "masteryIn") {
-        if (!Array.isArray(cond[k]) || !cond[k].includes(compState.mastery)) match = false;
-      } else if (compState[k] !== cond[k]) match = false;
-    }
-    if (!match) continue;
-    for (const action of rule.then || []) {
-      if (action.route) {
-        const key = Object.keys(action.route)[0];
-        return action.route[key].replace("{item}", compState.missed?.[0] || "");
-      }
-      if (action.forEach && Array.isArray(compState[action.forEach]) && action.do) {
-        const first = compState[action.forEach][0];
-        if (first) {
-          for (const a of action.do) {
-            if (a.route) {
-              const key = Object.keys(a.route)[0];
-              return a.route[key].replace("{item}", first);
-            }
-          }
+        // ---------- Connection ----------
+        async function checkConnection() {
+            const dot = document.getElementById("connDot");
+            const txt = document.getElementById("connText");
+            try {
+                const r = await fetch(`${PROXY_URL}?learner=__ping__`);
+                const j = await r.json().catch(() => ({}));
+                if (r.ok && j.message?.includes("Lambda OK")) { dot.classList.add("ok"); txt.textContent = "Connected"; }
+                else { txt.textContent = "Unstable"; dot.style.background = "var(--warn)"; }
+            } catch { txt.textContent = "Offline"; dot.style.background = "var(--err)"; }
         }
-      }
-    }
-  }
-  return null;
-}
 
-// ---------- Render -----------
-function displayMastery(m){return m==="Mastery"?"Mastered":(m||"—");}
-function labelStatus(k){if(k==="NotStarted")return"Not Started";if(k==="InProgress")return"In Progress";if(k==="Completed")return"Completed";return k||"—";}
-function renderProgress(map){const tbody=document.getElementById("progressTable");tbody.innerHTML="";for(const comp of["C1","C2","C3"]){const s=map[comp]||{};const mastery=displayMastery(s.mastery);let status="NotStarted";if(s.finalized||s.mastery==="Mastery"||s.testedOut||s.completed)status="Completed";else if(s.mastery)status="InProgress";const tr=document.createElement("tr");tr.innerHTML=`<td>${comp}</td><td>${mastery}</td><td><span class="status ${status}"><span class="s-dot"></span>${labelStatus(status)}</span></td>`;tbody.appendChild(tr);}}
-function writeSummary(current,compState,next){const line=document.getElementById("summaryLine");const curLabel=current==="C1"?"Competency 1":current==="C2"?"Competency 2":"Competency 3";const masteryTxt=displayMastery(compState.mastery);const statusTxt=compState.finalized?"Completed":(compState.mastery?"In Progress":"Not Started");line.innerHTML=`Current: <b>${curLabel}</b> — <b>${masteryTxt}</b> (${statusTxt})`;const comp=(next?.match(/(C\d)/i)?.[1]||current).toUpperCase();const sub=next?.match(/C\d([a-c])/i)?`C${comp[1]}${next.match(/C\d([a-c])/i)[1]}`:"—";let type="—";if(/-content$/i.test(next))type="Content";else if(/-apply$/i.test(next))type="Application";else if(/-test$/i.test(next))type="Test";else if(/program-complete/i.test(next))type="Finish";document.getElementById("upNextComp").innerHTML=`<strong>${comp}</strong>`;document.getElementById("upNextSub").innerHTML=`<strong>${sub}</strong>`;document.getElementById("upNextType").innerHTML=`<strong>${type}</strong>`;}
+        // ---------- Summary ----------
+        async function fetchSummary() {
+            try {
+                const res = await fetch(`${PROXY_URL}?learner=${encodeURIComponent(learnerName)}&mode=summary`);
+                return await res.json();
+            } catch (e) { console.error(e); return {}; }
+        }
 
-// ---------- Finalize ----------
-async function sendFinalizeStatement(current,mastery){const stmt={actor:{name:learnerName,mbox:`mailto:${encodeURIComponent(learnerName)}@wirelxdfirm.com`},verb:{id:"http://id.tincanapi.com/verb/completed",display:{"en-US":"completed"}},object:{id:`https://acbl.wirelearningsolutions.com/activities/${current}/offramp`},result:{completion:true,extensions:{[EX("learnerName")]:learnerName,[EX("finalized")]:true,[EX("competencyId")]:current,[EX("masteryLevel")]:mastery||"Unknown"}},timestamp:new Date().toISOString()};await fetch(`${PROXY_URL}?mode=write`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(stmt)});localStorage.setItem(`${current}.finalized`,"true");}
+        // ---------- Adaptive rules ----------
+        let rulesCache = null;
+        async function loadAdaptiveRules() {
+            if (rulesCache) return rulesCache;
+            const res = await fetch("adaptive_rules.json", { cache: "no-store" });
+            const j = await res.json().catch(() => ({}));
+            rulesCache = j;
+            return j;
+        }
 
-// ---------- Launch ----------
-function resolveTargetUrl(k){if(/program-complete/i.test(k))return`${BASE}thanks.html`;if(/-test$/i.test(k))return`${BASE}${k.split("-")[0].toUpperCase()}-test/story.html`;if(/-content$/i.test(k))return`${BASE}content/${k}.html`;if(/-apply$/i.test(k))return`${BASE}apply/${k}.html`;return null;}
-function launchTarget(k){const href=resolveTargetUrl(k);if(!href){alert(`No route found for ${k}`);return;}const u=new URL(href);u.searchParams.set("learnerName",learnerName);u.searchParams.set("sid",sid);window.location.href=u.toString();}
+        // ---------- Adaptive Routing (multi-step + chaining) ----------
+        function evaluateAdaptiveRouting(compId, compState, ruleset) {
+            const rules = ruleset[compId];
+            if (!rules) return null;
 
-// ---------- Runtime ----------
-async function refreshAll(){await checkConnection();document.getElementById("learnerNameLabel").textContent=learnerName;document.getElementById("sessionLabel").textContent=sid;if(learnerName==="Anonymous"){document.getElementById("anonWarn").style.display="block";return;}const rules=await loadAdaptiveRules();const summary=await fetchSummary();renderProgress(summary);const compState=summary[currentComp]||{mastery:null,finalized:false,testedOut:false,missed:[],completed:false};const next=evaluateAdaptiveRouting(currentComp,compState,rules)||`${currentComp}-test`;writeSummary(currentComp,compState,next);const continueBtn=document.getElementById("continueBtn");const acceptBtn=document.getElementById("acceptBtn");const debug=document.getElementById("debug");const debugBtn=document.getElementById("toggleDebug");debug.innerHTML=`<pre>${JSON.stringify({learnerName,sid,currentComp,compState,next},null,2)}</pre>`;continueBtn.disabled=false;acceptBtn.disabled=false;continueBtn
-.onclick = () => {
-  launchTarget(next);
-};
+            const routes = [];
+            for (const rule of rules) {
+                const cond = rule.if || {};
+                let match = true;
+                for (const k in cond) {
+                    if (k === "masteryIn") {
+                        if (!Array.isArray(cond[k]) || !cond[k].includes(compState.mastery)) match = false;
+                    } else if (compState[k] !== cond[k]) match = false;
+                }
+                if (!match) continue;
 
-acceptBtn.onclick = async () => {
-  const mastery = compState.mastery || "No recorded mastery";
-  if (!confirm(`You are accepting a "${displayMastery(mastery)}" level for ${currentComp}. Continue?`)) return;
-  await sendFinalizeStatement(currentComp, mastery);
-  const routed = evaluateAdaptiveRouting(currentComp, { ...compState, finalized: true }, rules) || "program-complete";
-  launchTarget(routed);
-};
+                for (const action of rule.then || []) {
+                    if (action.route) {
+                        const key = Object.keys(action.route)[0];
+                        const routeStr = action.route[key].replace("{item}", compState.missed?.[0] || "");
+                        routes.push(routeStr);
+                    }
+                    if (action.forEach && Array.isArray(compState[action.forEach]) && action.do) {
+                        for (const item of compState[action.forEach]) {
+                            for (const a of action.do) {
+                                if (a.route) {
+                                    const key = Object.keys(a.route)[0];
+                                    const routeStr = a.route[key].replace("{item}", item);
+                                    routes.push(routeStr);
+                                }
+                            }
+                        }
+                    }
+                }
+                if (routes.length > 0) break;
+            }
 
-// Debug toggle
-const syncDbg = () => {
-  const hidden = debug.style.display === "none" || !debug.style.display;
-  debugBtn.textContent = hidden ? "Show Debug Info" : "Hide Debug Info";
-  debugBtn.setAttribute("aria-pressed", (!hidden).toString());
-};
-if (!debugBtn._init) {
-  debugBtn._init = true;
-  debugBtn.addEventListener("click", () => {
-    const hidden = debug.style.display === "none" || !debug.style.display;
-    debug.style.display = hidden ? "block" : "none";
-    syncDbg();
-  });
-}
-syncDbg();
+            if (routes.length === 0) return null;
+            if (routes.length === 1) return routes[0];
+            return routes;
+        }
 
-// Reset learner
-const resetBtn = document.getElementById("resetBtn");
-if (!resetBtn._init) {
-  resetBtn._init = true;
-  resetBtn.addEventListener("click", () => {
-    if (confirm("This will clear your learner identity and progress. Continue?")) {
-      localStorage.clear(); sessionStorage.clear(); location.href = "index.html";
-    }
-  });
-}
-}
+        // ---------- Render -----------
+        function displayMastery(m) { return m === "Mastery" ? "Mastered" : (m || "—"); }
+        function labelStatus(k) { if (k === "NotStarted") return "Not Started"; if (k === "InProgress") return "In Progress"; if (k === "Completed") return "Completed"; return k || "—"; }
+        function renderProgress(map) { const tbody = document.getElementById("progressTable"); tbody.innerHTML = ""; for (const comp of ["C1", "C2", "C3"]) { const s = map[comp] || {}; const mastery = displayMastery(s.mastery); let status = "NotStarted"; if (s.finalized || s.mastery === "Mastery" || s.testedOut || s.completed) status = "Completed"; else if (s.mastery) status = "InProgress"; const tr = document.createElement("tr"); tr.innerHTML = `<td>${comp}</td><td>${mastery}</td><td><span class="status ${status}"><span class="s-dot"></span>${labelStatus(status)}</span></td>`; tbody.appendChild(tr); } }
+        function writeSummary(current, compState, next) { const line = document.getElementById("summaryLine"); const curLabel = current === "C1" ? "Competency 1" : current === "C2" ? "Competency 2" : "Competency 3"; const masteryTxt = displayMastery(compState.mastery); const statusTxt = compState.finalized ? "Completed" : (compState.mastery ? "In Progress" : "Not Started"); line.innerHTML = `Current: <b>${curLabel}</b> — <b>${masteryTxt}</b> (${statusTxt})`; const comp = (next?.match(/(C\d)/i)?.[1] || current).toUpperCase(); const sub = next?.match(/C\d([a-c])/i) ? `C${comp[1]}${next.match(/C\d([a-c])/i)[1]}` : "—"; let type = "—"; if (/-content$/i.test(next)) type = "Content"; else if (/-apply$/i.test(next)) type = "Application"; else if (/-test$/i.test(next)) type = "Test"; else if (/program-complete/i.test(next)) type = "Finish"; document.getElementById("upNextComp").innerHTML = `<strong>${comp}</strong>`; document.getElementById("upNextSub").innerHTML = `<strong>${sub}</strong>`; document.getElementById("upNextType").innerHTML = `<strong>${type}</strong>`; }
 
-// Initialize and periodic refresh
-refreshAll();
-setInterval(() => {
-  if (document.visibilityState === "visible") refreshAll();
-}, REFRESH_MS);
+        // ---------- Finalize ----------
+        async function sendFinalizeStatement(current, mastery) {
+            const stmt = {
+                actor: { name: learnerName, mbox: `mailto:${encodeURIComponent(learnerName)}@wirelxdfirm.com` },
+                verb: { id: "http://id.tincanapi.com/verb/completed", display: { "en-US": "completed" } },
+                object: { id: `https://acbl.wirelearningsolutions.com/activities/${current}/offramp` },
+                result: {
+                    completion: true, extensions: {
+                        [EX("learnerName")]: learnerName,
+                        [EX("finalized")]: true,
+                        [EX("competencyId")]: current,
+                        [EX("masteryLevel")]: mastery || "Unknown"
+                    }
+                },
+                timestamp: new Date().toISOString()
+            };
+            await fetch(`${PROXY_URL}?mode=write`, {
+                method: "POST", headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(stmt)
+            });
+            localStorage.setItem(`${current}.finalized`, "true");
+        }
+
+        // ---------- Launch ----------
+        function resolveTargetUrl(k) {
+            if (/program-complete/i.test(k)) return `${BASE}thanks.html`;
+            if (/-test$/i.test(k)) return `${BASE}${k.split("-")[0].toUpperCase()}-test/story.html`;
+            if (/-content$/i.test(k)) return `${BASE}content/${k}.html`;
+            if (/-apply$/i.test(k)) return `${BASE}apply/${k}.html`;
+            return null;
+        }
+        function launchTarget(k) {
+            const href = resolveTargetUrl(k);
+            if (!href) { alert(`No route found for ${k}`); return; }
+            const u = new URL(href);
+            u.searchParams.set("learnerName", learnerName);
+            u.searchParams.set("sid", sid);
+            window.location.href = u.toString();
+        }
+
+        // ---------- Runtime ----------
+        async function refreshAll() {
+            await checkConnection();
+
+            document.getElementById("learnerNameLabel").textContent = learnerName;
+            document.getElementById("sessionLabel").textContent = sid;
+
+            if (learnerName === "Anonymous") { document.getElementById("anonWarn").style.display = "block"; return; }
+
+            const rules = await loadAdaptiveRules();
+            const summary = await fetchSummary();
+            renderProgress(summary);
+
+            const compState = summary[currentComp] || { mastery: null, finalized: false, testedOut: false, missed: [], completed: false };
+
+            let next = evaluateAdaptiveRouting(currentComp, compState, rules) || `${currentComp}-test`;
+
+            if (Array.isArray(next)) {
+                const [first, ...rest] = next;
+                if (rest.length > 0) localStorage.setItem("pendingRoutes", JSON.stringify(rest));
+                else localStorage.removeItem("pendingRoutes");
+                next = first;
+            } else {
+                localStorage.removeItem("pendingRoutes");
+            }
+
+            writeSummary(currentComp, compState, next);
+
+            const continueBtn = document.getElementById("continueBtn");
+            const acceptBtn = document.getElementById("acceptBtn");
+            const debug = document.getElementById("debug");
+            const debugBtn = document.getElementById("toggleDebug");
+
+            debug.innerHTML = `<pre>${JSON.stringify({ learnerName, sid, currentComp, compState, next }, null, 2)}</pre>`;
+
+            continueBtn.disabled = false;
+            acceptBtn.disabled = false;
+
+            continueBtn.onclick = () => {
+                const pending = JSON.parse(localStorage.getItem("pendingRoutes") || "[]");
+                if (pending.length > 0) {
+                    const nextRoute = pending.shift();
+                    localStorage.setItem("pendingRoutes", JSON.stringify(pending));
+                    launchTarget(nextRoute);
+                } else { launchTarget(next); }
+            };
+
+            acceptBtn.onclick = async () => {
+                const m = compState.mastery || "No recorded mastery";
+                if (!confirm(`You are accepting a "${displayMastery(m)}" level for ${currentComp}. Continue?`)) return;
+
+                await sendFinalizeStatement(currentComp, m);
+                const routed = evaluateAdaptiveRouting(currentComp, { ...compState, finalized: true }, rules) || "program-complete";
+
+                if (Array.isArray(routed)) {
+                    const [first, ...rest] = routed;
+                    if (rest.length > 0) localStorage.setItem("pendingRoutes", JSON.stringify(rest));
+                    else localStorage.removeItem("pendingRoutes");
+                    launchTarget(first);
+                } else {
+                    localStorage.removeItem("pendingRoutes");
+                    launchTarget(routed);
+                }
+            };
+
+            // Debug toggle
+            const syncDbg = () => {
+                const hidden = debug.style.display === "none" || !debug.style.display;
+                debugBtn.textContent = hidden ? "Show Debug Info" : "Hide Debug Info";
+                debugBtn.setAttribute("aria-pressed", (!hidden).toString());
+            };
+            if (!debugBtn._init) {
+                debugBtn._init = true;
+                debugBtn.addEventListener("click", () => {
+                    const hidden = debug.style.display === "none" || !debug.style.display;
+                    debug.style.display = hidden ? "block" : "none";
+                    syncDbg();
+                });
+            }
+            syncDbg();
+
+            // Reset learner
+            const resetBtn = document.getElementById("resetBtn");
+            if (!resetBtn._init) {
+                resetBtn._init = true;
+                resetBtn.addEventListener("click", () => {
+                    if (confirm("This will clear your learner identity and progress. Continue?")) {
+                        localStorage.clear(); sessionStorage.clear(); location.href = "index.html";
+                    }
+                });
+            }
+        }
+
+        // Initialize and periodic refresh
+        refreshAll();
+        setInterval(() => {
+            if (document.visibilityState === "visible") refreshAll();
+        }, REFRESH_MS);
     </script>
-     
 </body>
 </html>
