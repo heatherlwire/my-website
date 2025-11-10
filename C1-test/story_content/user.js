@@ -86,8 +86,8 @@ window.Script2 = function()
 {
   // =======================================
 //  Adaptive Learning: Initialization + Resume + Lambda "initialized" log
-//  Trigger: Execute JavaScript  (runs when slide 1 timeline starts)
-//  Requires Storyline text vars: learnerName, actorName, actorMbox, sessionId, QuizCompleted
+//  Trigger: Execute JavaScript (runs when slide 1 timeline starts)
+//  Requires Storyline text vars: learnerName, actorName, actorMbox, sessionId, QuizCompleted, InitComplete
 // =======================================
 (function () {
   try {
@@ -122,9 +122,11 @@ window.Script2 = function()
       const tmp = prompt("Enter your name to begin:");
       if (tmp) resolvedName = tidy(tmp);
     }
+
+    // ---------- fallback if still missing ----------
     if (!resolvedName) {
-      console.warn("Actor Initialization: No learner name found.");
-      return;
+      console.warn("Actor Initialization: No learner name found. Using fallback.");
+      resolvedName = "there"; // fallback so greeting reads "Hi there"
     }
 
     // ---------- derive mbox + session ----------
@@ -137,18 +139,22 @@ window.Script2 = function()
 
     // ---------- Storyline + localStorage sync ----------
     player.SetVar("learnerName", resolvedName);
-    player.SetVar("actorName",   resolvedName);
-    player.SetVar("actorMbox",   mbox);
-    player.SetVar("sessionId",   sid);
+    player.SetVar("actorName", resolvedName);
+    player.SetVar("actorMbox", mbox);
+    player.SetVar("sessionId", sid);
     localStorage.setItem("learnerName", resolvedName);
-    localStorage.setItem("actorName",   resolvedName);
-    localStorage.setItem("actorMbox",   mbox);
-    localStorage.setItem("currentCompetency", "C1"); // adjust per module if needed
+    localStorage.setItem("actorName", resolvedName);
+    localStorage.setItem("actorMbox", mbox);
+    localStorage.setItem("currentCompetency", "C1");
     window.__ACBL_ACTOR__ = { name: resolvedName, mbox, sessionId: sid };
+
+    // ✅ Pulse InitComplete so variable-change triggers always fire
+    player.SetVar("InitComplete", false);
+    setTimeout(() => player.SetVar("InitComplete", true), 50);
 
     // ---------- Resume logic ----------
     const completed = player.GetVar("QuizCompleted");
-    const suspend   = localStorage.getItem("StorylineResumePrompt");
+    const suspend = localStorage.getItem("StorylineResumePrompt");
     if (completed) {
       player.SetVar("QuizCompleted", false);
       localStorage.removeItem("StorylineResumePrompt");
@@ -186,8 +192,8 @@ window.Script2 = function()
       body: JSON.stringify(initStmt),
       keepalive: true
     })
-    .then(r => console.log(r.ok ? "✅ Initialized logged via Lambda" : "⚠️ Init log failed:", r.status))
-    .catch(e => console.warn("Init xAPI send failed:", e));
+      .then(r => console.log(r.ok ? "✅ Initialized logged via Lambda" : "⚠️ Init log failed:", r.status))
+      .catch(e => console.warn("Init xAPI send failed:", e));
 
     console.log("Actor Initialization complete:", { name: resolvedName, mbox, sessionId: sid });
   } catch (e) {
