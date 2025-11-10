@@ -87,7 +87,7 @@ window.Script2 = function()
   // =======================================
 //  Adaptive Learning: Initialization + Resume + Lambda "initialized" log
 //  Trigger: Execute JavaScript (runs when slide 1 timeline starts)
-//  Requires Storyline text vars: learnerName, actorName, actorMbox, sessionId, QuizCompleted, InitComplete
+//  Requires Storyline text vars: learnerName, actorName, actorMbox, sessionId, QuizCompleted
 // =======================================
 (function () {
   try {
@@ -103,7 +103,7 @@ window.Script2 = function()
     const tidy = s => (s || "").toString().trim();
 
     // ---------- candidate sources ----------
-    const qsName  = getQS("learnerName") || getQS("name");
+    const qsName = getQS("learnerName") || getQS("name");
     const actorParam = getQS("actor");
     let actor = null;
     if (actorParam) {
@@ -126,7 +126,7 @@ window.Script2 = function()
     // ---------- fallback if still missing ----------
     if (!resolvedName) {
       console.warn("Actor Initialization: No learner name found. Using fallback.");
-      resolvedName = "there"; // fallback so greeting reads "Hi there"
+      resolvedName = "there"; // friendly fallback for "Hi there"
     }
 
     // ---------- derive mbox + session ----------
@@ -147,10 +147,6 @@ window.Script2 = function()
     localStorage.setItem("actorMbox", mbox);
     localStorage.setItem("currentCompetency", "C1");
     window.__ACBL_ACTOR__ = { name: resolvedName, mbox, sessionId: sid };
-
-    // ✅ Pulse InitComplete so variable-change triggers always fire
-    player.SetVar("InitComplete", false);
-    setTimeout(() => player.SetVar("InitComplete", true), 50);
 
     // ---------- Resume logic ----------
     const completed = player.GetVar("QuizCompleted");
@@ -701,7 +697,7 @@ window.Script11 = function()
 {
   (function () {
   try {
-    console.log("🚀 Running adaptive continue script (full + experienced)...");
+    console.log("🚀 Running adaptive continue script (clean version)...");
 
     var p = GetPlayer();
     if (!p) return;
@@ -738,87 +734,20 @@ window.Script11 = function()
     localStorage.setItem("sessionId", sessionId);
     var mbox = "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com";
 
-    // ✅ New: send via Lambda proxy instead
-var endpoint = "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
-
-// --- Helper: retryable LRS send ---
-async function sendToLRS(statement, label) {
-  const send = async (attempt = 1) => {
-    try {
-      const res = await fetch(endpoint + "?mode=write", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(statement),
-        keepalive: true
-      });
-
-      if (!res.ok) {
-        const text = await res.text();
-        console.warn(`⚠️ ${label} attempt ${attempt} failed:`, res.status, text);
-        if (attempt < 2) {
-          console.log("🔁 Retrying in 2 s...");
-          await new Promise(r => setTimeout(r, 2000));
-          return await send(attempt + 1);
-        }
-      } else {
-        console.log(`✅ ${label} success (${res.status})`);
-      }
-    } catch (e) {
-      console.error(`❌ ${label} network error:`, e);
-      if (attempt < 2) {
-        console.log("🔁 Retrying in 2 s...");
-        await new Promise(r => setTimeout(r, 2000));
-        return await send(attempt + 1);
-      }
-    }
-  };
-  await send();
-}
-
-
-    // --- Build per-question dataset ---
-    var questionData = [];
-    for (var i = 1; i <= 20; i++) {
-      var ans = p.GetVar(compId + "_Q" + i + "_Answer");
-      var cor = p.GetVar(compId + "_Q" + i + "_IsCorrect");
-      var txt = p.GetVar(compId + "_Q" + i + "_Text");
-      var sub = p.GetVar(compId + "_Q" + i + "_Sub");
-      if (
-        typeof ans === "undefined" &&
-        typeof cor === "undefined" &&
-        typeof txt === "undefined"
-      )
-        break;
-      if (ans == null && cor == null && txt == null) continue;
-      questionData.push({
-        id: compId.toLowerCase() + "a" + i,
-        sub: sub || null,
-        text: txt || "Question " + i,
-        response: ans || "",
-        correct: !!cor,
-      });
-    }
-
-    // Save for Storyline + next.html
-    p.SetVar(compId + "_QuestionData", JSON.stringify(questionData));
-    window.__QUESTION_DATA__ = questionData;
+    // --- LRS Lambda endpoint ---
+    var endpoint = "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
 
     // --- Helper: retryable LRS send ---
     async function sendToLRS(statement, label) {
       const send = async (attempt = 1) => {
         try {
-          const res = await fetch(endpoint + "/statements", {
+          const res = await fetch(endpoint + "?mode=write", {
             method: "POST",
-            headers: {
-              Authorization: "Basic " + btoa(key + ":" + secret),
-              "Content-Type": "application/json",
-              "X-Experience-API-Version": "1.0.3",
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify(statement),
             keepalive: true,
           });
+
           if (!res.ok) {
             const text = await res.text();
             console.warn(`⚠️ ${label} attempt ${attempt} failed:`, res.status, text);
@@ -842,6 +771,27 @@ async function sendToLRS(statement, label) {
       await send();
     }
 
+    // --- Build per-question dataset ---
+    var questionData = [];
+    for (var i = 1; i <= 20; i++) {
+      var ans = p.GetVar(compId + "_Q" + i + "_Answer");
+      var cor = p.GetVar(compId + "_Q" + i + "_IsCorrect");
+      var txt = p.GetVar(compId + "_Q" + i + "_Text");
+      var sub = p.GetVar(compId + "_Q" + i + "_Sub");
+      if (typeof ans === "undefined" && typeof cor === "undefined" && typeof txt === "undefined") break;
+      if (ans == null && cor == null && txt == null) continue;
+      questionData.push({
+        id: compId.toLowerCase() + "a" + i,
+        sub: sub || null,
+        text: txt || "Question " + i,
+        response: ans || "",
+        correct: !!cor,
+      });
+    }
+
+    p.SetVar(compId + "_QuestionData", JSON.stringify(questionData));
+    window.__QUESTION_DATA__ = questionData;
+
     // --- Build & send main "passed"/"failed" statement ---
     var verbId =
       correct >= 2
@@ -850,7 +800,7 @@ async function sendToLRS(statement, label) {
     var verbDisplay = correct >= 2 ? "passed" : "failed";
 
     var stmt = {
-      actor: { name: learnerName, mbox: mbox },
+      actor: { name: learnerName, mbox },
       verb: { id: verbId, display: { "en-US": verbDisplay } },
       object: {
         id: "https://acbl.wirelxdfirm.com/activities/" + compId + "/quiz",
@@ -869,24 +819,16 @@ async function sendToLRS(statement, label) {
           "https://acbl.wirelxdfirm.com/extensions/testedOut": testedOut,
           "https://acbl.wirelxdfirm.com/extensions/finalized": finalized,
           "https://acbl.wirelxdfirm.com/extensions/questionData": JSON.stringify(questionData),
-          "https://acbl.wirelxdfirm.com/extensions/scorePercent": window.__SL_RESULTS__?.scorePercent || 0,
-          "https://acbl.wirelxdfirm.com/extensions/scorePoints": window.__SL_RESULTS__?.scorePoints || 0,
-          "https://acbl.wirelxdfirm.com/extensions/maxPoints": window.__SL_RESULTS__?.maxPoints || 0,
-          "https://acbl.wirelxdfirm.com/extensions/passFail": window.__SL_RESULTS__?.passFail || false,
         },
       },
       timestamp: new Date().toISOString(),
     };
-
     sendToLRS(stmt, `Progress (${mastery}) for ${compId}`);
 
-    // --- Send "experienced" statement before redirect ---
+    // --- Experienced statement ---
     var experiencedStmt = {
-      actor: { name: learnerName, mbox: mbox },
-      verb: {
-        id: "http://adlnet.gov/expapi/verbs/experienced",
-        display: { "en-US": "experienced" },
-      },
+      actor: { name: learnerName, mbox },
+      verb: { id: "http://adlnet.gov/expapi/verbs/experienced", display: { "en-US": "experienced" } },
       object: {
         id: "https://acbl.wirelxdfirm.com/activities/" + compId + "/summary",
         objectType: "Activity",
@@ -898,23 +840,17 @@ async function sendToLRS(statement, label) {
       context: {
         registration: sessionId,
         contextActivities: {
-          parent: [
-            { id: "https://acbl.wirelxdfirm.com/activities/" + compId + "/quiz" },
-          ],
+          parent: [{ id: "https://acbl.wirelxdfirm.com/activities/" + compId + "/quiz" }],
         },
       },
       timestamp: new Date().toISOString(),
     };
-
     sendToLRS(experiencedStmt, `Experienced progress analysis (${compId})`);
 
-    // --- Send terminated statement ---
+    // --- Terminated statement ---
     var terminatedStmt = {
-      actor: { name: learnerName, mbox: mbox },
-      verb: {
-        id: "http://adlnet.gov/expapi/verbs/terminated",
-        display: { "en-US": "terminated" },
-      },
+      actor: { name: learnerName, mbox },
+      verb: { id: "http://adlnet.gov/expapi/verbs/terminated", display: { "en-US": "terminated" } },
       object: {
         id: "https://acbl.wirelxdfirm.com/activities/" + compId + "/quiz",
         objectType: "Activity",
@@ -922,7 +858,6 @@ async function sendToLRS(statement, label) {
       context: { registration: sessionId },
       timestamp: new Date().toISOString(),
     };
-
     sendToLRS(terminatedStmt, `Terminated ${compId}`);
 
     // --- Save local adaptive data ---
@@ -961,7 +896,7 @@ window.Script12 = function()
 {
   (function () {
   try {
-    console.log("🚀 Running adaptive continue script (full + experienced)...");
+    console.log("🚀 Running adaptive continue script (clean version)...");
 
     var p = GetPlayer();
     if (!p) return;
@@ -998,87 +933,20 @@ window.Script12 = function()
     localStorage.setItem("sessionId", sessionId);
     var mbox = "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com";
 
-    // ✅ New: send via Lambda proxy instead
-var endpoint = "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
-
-// --- Helper: retryable LRS send ---
-async function sendToLRS(statement, label) {
-  const send = async (attempt = 1) => {
-    try {
-      const res = await fetch(endpoint + "?mode=write", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(statement),
-        keepalive: true
-      });
-
-      if (!res.ok) {
-        const text = await res.text();
-        console.warn(`⚠️ ${label} attempt ${attempt} failed:`, res.status, text);
-        if (attempt < 2) {
-          console.log("🔁 Retrying in 2 s...");
-          await new Promise(r => setTimeout(r, 2000));
-          return await send(attempt + 1);
-        }
-      } else {
-        console.log(`✅ ${label} success (${res.status})`);
-      }
-    } catch (e) {
-      console.error(`❌ ${label} network error:`, e);
-      if (attempt < 2) {
-        console.log("🔁 Retrying in 2 s...");
-        await new Promise(r => setTimeout(r, 2000));
-        return await send(attempt + 1);
-      }
-    }
-  };
-  await send();
-}
-
-
-    // --- Build per-question dataset ---
-    var questionData = [];
-    for (var i = 1; i <= 20; i++) {
-      var ans = p.GetVar(compId + "_Q" + i + "_Answer");
-      var cor = p.GetVar(compId + "_Q" + i + "_IsCorrect");
-      var txt = p.GetVar(compId + "_Q" + i + "_Text");
-      var sub = p.GetVar(compId + "_Q" + i + "_Sub");
-      if (
-        typeof ans === "undefined" &&
-        typeof cor === "undefined" &&
-        typeof txt === "undefined"
-      )
-        break;
-      if (ans == null && cor == null && txt == null) continue;
-      questionData.push({
-        id: compId.toLowerCase() + "a" + i,
-        sub: sub || null,
-        text: txt || "Question " + i,
-        response: ans || "",
-        correct: !!cor,
-      });
-    }
-
-    // Save for Storyline + next.html
-    p.SetVar(compId + "_QuestionData", JSON.stringify(questionData));
-    window.__QUESTION_DATA__ = questionData;
+    // --- LRS Lambda endpoint ---
+    var endpoint = "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
 
     // --- Helper: retryable LRS send ---
     async function sendToLRS(statement, label) {
       const send = async (attempt = 1) => {
         try {
-          const res = await fetch(endpoint + "/statements", {
+          const res = await fetch(endpoint + "?mode=write", {
             method: "POST",
-            headers: {
-              Authorization: "Basic " + btoa(key + ":" + secret),
-              "Content-Type": "application/json",
-              "X-Experience-API-Version": "1.0.3",
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify(statement),
             keepalive: true,
           });
+
           if (!res.ok) {
             const text = await res.text();
             console.warn(`⚠️ ${label} attempt ${attempt} failed:`, res.status, text);
@@ -1102,6 +970,27 @@ async function sendToLRS(statement, label) {
       await send();
     }
 
+    // --- Build per-question dataset ---
+    var questionData = [];
+    for (var i = 1; i <= 20; i++) {
+      var ans = p.GetVar(compId + "_Q" + i + "_Answer");
+      var cor = p.GetVar(compId + "_Q" + i + "_IsCorrect");
+      var txt = p.GetVar(compId + "_Q" + i + "_Text");
+      var sub = p.GetVar(compId + "_Q" + i + "_Sub");
+      if (typeof ans === "undefined" && typeof cor === "undefined" && typeof txt === "undefined") break;
+      if (ans == null && cor == null && txt == null) continue;
+      questionData.push({
+        id: compId.toLowerCase() + "a" + i,
+        sub: sub || null,
+        text: txt || "Question " + i,
+        response: ans || "",
+        correct: !!cor,
+      });
+    }
+
+    p.SetVar(compId + "_QuestionData", JSON.stringify(questionData));
+    window.__QUESTION_DATA__ = questionData;
+
     // --- Build & send main "passed"/"failed" statement ---
     var verbId =
       correct >= 2
@@ -1110,7 +999,7 @@ async function sendToLRS(statement, label) {
     var verbDisplay = correct >= 2 ? "passed" : "failed";
 
     var stmt = {
-      actor: { name: learnerName, mbox: mbox },
+      actor: { name: learnerName, mbox },
       verb: { id: verbId, display: { "en-US": verbDisplay } },
       object: {
         id: "https://acbl.wirelxdfirm.com/activities/" + compId + "/quiz",
@@ -1129,24 +1018,16 @@ async function sendToLRS(statement, label) {
           "https://acbl.wirelxdfirm.com/extensions/testedOut": testedOut,
           "https://acbl.wirelxdfirm.com/extensions/finalized": finalized,
           "https://acbl.wirelxdfirm.com/extensions/questionData": JSON.stringify(questionData),
-          "https://acbl.wirelxdfirm.com/extensions/scorePercent": window.__SL_RESULTS__?.scorePercent || 0,
-          "https://acbl.wirelxdfirm.com/extensions/scorePoints": window.__SL_RESULTS__?.scorePoints || 0,
-          "https://acbl.wirelxdfirm.com/extensions/maxPoints": window.__SL_RESULTS__?.maxPoints || 0,
-          "https://acbl.wirelxdfirm.com/extensions/passFail": window.__SL_RESULTS__?.passFail || false,
         },
       },
       timestamp: new Date().toISOString(),
     };
-
     sendToLRS(stmt, `Progress (${mastery}) for ${compId}`);
 
-    // --- Send "experienced" statement before redirect ---
+    // --- Experienced statement ---
     var experiencedStmt = {
-      actor: { name: learnerName, mbox: mbox },
-      verb: {
-        id: "http://adlnet.gov/expapi/verbs/experienced",
-        display: { "en-US": "experienced" },
-      },
+      actor: { name: learnerName, mbox },
+      verb: { id: "http://adlnet.gov/expapi/verbs/experienced", display: { "en-US": "experienced" } },
       object: {
         id: "https://acbl.wirelxdfirm.com/activities/" + compId + "/summary",
         objectType: "Activity",
@@ -1158,23 +1039,17 @@ async function sendToLRS(statement, label) {
       context: {
         registration: sessionId,
         contextActivities: {
-          parent: [
-            { id: "https://acbl.wirelxdfirm.com/activities/" + compId + "/quiz" },
-          ],
+          parent: [{ id: "https://acbl.wirelxdfirm.com/activities/" + compId + "/quiz" }],
         },
       },
       timestamp: new Date().toISOString(),
     };
-
     sendToLRS(experiencedStmt, `Experienced progress analysis (${compId})`);
 
-    // --- Send terminated statement ---
+    // --- Terminated statement ---
     var terminatedStmt = {
-      actor: { name: learnerName, mbox: mbox },
-      verb: {
-        id: "http://adlnet.gov/expapi/verbs/terminated",
-        display: { "en-US": "terminated" },
-      },
+      actor: { name: learnerName, mbox },
+      verb: { id: "http://adlnet.gov/expapi/verbs/terminated", display: { "en-US": "terminated" } },
       object: {
         id: "https://acbl.wirelxdfirm.com/activities/" + compId + "/quiz",
         objectType: "Activity",
@@ -1182,7 +1057,6 @@ async function sendToLRS(statement, label) {
       context: { registration: sessionId },
       timestamp: new Date().toISOString(),
     };
-
     sendToLRS(terminatedStmt, `Terminated ${compId}`);
 
     // --- Save local adaptive data ---
