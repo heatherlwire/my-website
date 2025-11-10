@@ -19,6 +19,29 @@ window.Script1 = function()
 if (!window.__XAPI_HELPER_LOADED__) {
   window.__XAPI_HELPER_LOADED__ = true;
 
+  // --- Rehydrate Storyline variables from localStorage if missing ---
+  setTimeout(() => {
+    try {
+      const p = GetPlayer && GetPlayer();
+      if (!p) return;
+      const storedName = localStorage.getItem("learnerName");
+      const storedSid  = localStorage.getItem("sessionId");
+
+      if (storedName && !p.GetVar("learnerName")) {
+        p.SetVar("learnerName", storedName);
+        p.SetVar("actorName", storedName);
+        p.SetVar("actorMbox", "mailto:" + encodeURIComponent(storedName) + "@wirelxdfirm.com");
+      }
+      if (storedSid && !p.GetVar("sessionId")) {
+        p.SetVar("sessionId", storedSid);
+      }
+      console.log("✅ Storyline variables synced from localStorage");
+    } catch (e) {
+      console.warn("Sync from localStorage failed:", e);
+    }
+  }, 300);
+
+  // --- xAPI helper function ---
   window.sendXAPI = async function (verbId, verbDisplay, objectId, objectName, resultData = {}) {
     try {
       const p = GetPlayer();
@@ -29,7 +52,7 @@ if (!window.__XAPI_HELPER_LOADED__) {
       const mbox        = "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com";
 
       const statement = {
-        actor: { name: learnerName, mbox: mbox },
+        actor: { name: learnerName, mbox },
         verb: { id: verbId, display: { "en-US": verbDisplay } },
         object: {
           id: objectId,
@@ -43,12 +66,9 @@ if (!window.__XAPI_HELPER_LOADED__) {
 
       // ✅ Send through Lambda proxy (which writes to SCORM Cloud)
       const endpoint = "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
-
       const r = await fetch(endpoint + "?mode=write", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(statement),
         keepalive: true
       });
@@ -183,6 +203,29 @@ window.Script3 = function()
 if (!window.__XAPI_HELPER_LOADED__) {
   window.__XAPI_HELPER_LOADED__ = true;
 
+  // --- Rehydrate Storyline variables from localStorage if missing ---
+  setTimeout(() => {
+    try {
+      const p = GetPlayer && GetPlayer();
+      if (!p) return;
+      const storedName = localStorage.getItem("learnerName");
+      const storedSid  = localStorage.getItem("sessionId");
+
+      if (storedName && !p.GetVar("learnerName")) {
+        p.SetVar("learnerName", storedName);
+        p.SetVar("actorName", storedName);
+        p.SetVar("actorMbox", "mailto:" + encodeURIComponent(storedName) + "@wirelxdfirm.com");
+      }
+      if (storedSid && !p.GetVar("sessionId")) {
+        p.SetVar("sessionId", storedSid);
+      }
+      console.log("✅ Storyline variables synced from localStorage");
+    } catch (e) {
+      console.warn("Sync from localStorage failed:", e);
+    }
+  }, 300);
+
+  // --- xAPI helper function ---
   window.sendXAPI = async function (verbId, verbDisplay, objectId, objectName, resultData = {}) {
     try {
       const p = GetPlayer();
@@ -193,7 +236,7 @@ if (!window.__XAPI_HELPER_LOADED__) {
       const mbox        = "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com";
 
       const statement = {
-        actor: { name: learnerName, mbox: mbox },
+        actor: { name: learnerName, mbox },
         verb: { id: verbId, display: { "en-US": verbDisplay } },
         object: {
           id: objectId,
@@ -207,12 +250,9 @@ if (!window.__XAPI_HELPER_LOADED__) {
 
       // ✅ Send through Lambda proxy (which writes to SCORM Cloud)
       const endpoint = "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
-
       const r = await fetch(endpoint + "?mode=write", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(statement),
         keepalive: true
       });
@@ -257,6 +297,29 @@ window.Script5 = function()
 if (!window.__XAPI_HELPER_LOADED__) {
   window.__XAPI_HELPER_LOADED__ = true;
 
+  // --- Rehydrate Storyline variables from localStorage if missing ---
+  setTimeout(() => {
+    try {
+      const p = GetPlayer && GetPlayer();
+      if (!p) return;
+      const storedName = localStorage.getItem("learnerName");
+      const storedSid  = localStorage.getItem("sessionId");
+
+      if (storedName && !p.GetVar("learnerName")) {
+        p.SetVar("learnerName", storedName);
+        p.SetVar("actorName", storedName);
+        p.SetVar("actorMbox", "mailto:" + encodeURIComponent(storedName) + "@wirelxdfirm.com");
+      }
+      if (storedSid && !p.GetVar("sessionId")) {
+        p.SetVar("sessionId", storedSid);
+      }
+      console.log("✅ Storyline variables synced from localStorage");
+    } catch (e) {
+      console.warn("Sync from localStorage failed:", e);
+    }
+  }, 300);
+
+  // --- xAPI helper function ---
   window.sendXAPI = async function (verbId, verbDisplay, objectId, objectName, resultData = {}) {
     try {
       const p = GetPlayer();
@@ -267,7 +330,7 @@ if (!window.__XAPI_HELPER_LOADED__) {
       const mbox        = "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com";
 
       const statement = {
-        actor: { name: learnerName, mbox: mbox },
+        actor: { name: learnerName, mbox },
         verb: { id: verbId, display: { "en-US": verbDisplay } },
         object: {
           id: objectId,
@@ -281,12 +344,9 @@ if (!window.__XAPI_HELPER_LOADED__) {
 
       // ✅ Send through Lambda proxy (which writes to SCORM Cloud)
       const endpoint = "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
-
       const r = await fetch(endpoint + "?mode=write", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(statement),
         keepalive: true
       });
@@ -331,6 +391,29 @@ window.Script7 = function()
 if (!window.__XAPI_HELPER_LOADED__) {
   window.__XAPI_HELPER_LOADED__ = true;
 
+  // --- Rehydrate Storyline variables from localStorage if missing ---
+  setTimeout(() => {
+    try {
+      const p = GetPlayer && GetPlayer();
+      if (!p) return;
+      const storedName = localStorage.getItem("learnerName");
+      const storedSid  = localStorage.getItem("sessionId");
+
+      if (storedName && !p.GetVar("learnerName")) {
+        p.SetVar("learnerName", storedName);
+        p.SetVar("actorName", storedName);
+        p.SetVar("actorMbox", "mailto:" + encodeURIComponent(storedName) + "@wirelxdfirm.com");
+      }
+      if (storedSid && !p.GetVar("sessionId")) {
+        p.SetVar("sessionId", storedSid);
+      }
+      console.log("✅ Storyline variables synced from localStorage");
+    } catch (e) {
+      console.warn("Sync from localStorage failed:", e);
+    }
+  }, 300);
+
+  // --- xAPI helper function ---
   window.sendXAPI = async function (verbId, verbDisplay, objectId, objectName, resultData = {}) {
     try {
       const p = GetPlayer();
@@ -341,7 +424,7 @@ if (!window.__XAPI_HELPER_LOADED__) {
       const mbox        = "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com";
 
       const statement = {
-        actor: { name: learnerName, mbox: mbox },
+        actor: { name: learnerName, mbox },
         verb: { id: verbId, display: { "en-US": verbDisplay } },
         object: {
           id: objectId,
@@ -355,12 +438,9 @@ if (!window.__XAPI_HELPER_LOADED__) {
 
       // ✅ Send through Lambda proxy (which writes to SCORM Cloud)
       const endpoint = "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
-
       const r = await fetch(endpoint + "?mode=write", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(statement),
         keepalive: true
       });
@@ -405,6 +485,29 @@ window.Script9 = function()
 if (!window.__XAPI_HELPER_LOADED__) {
   window.__XAPI_HELPER_LOADED__ = true;
 
+  // --- Rehydrate Storyline variables from localStorage if missing ---
+  setTimeout(() => {
+    try {
+      const p = GetPlayer && GetPlayer();
+      if (!p) return;
+      const storedName = localStorage.getItem("learnerName");
+      const storedSid  = localStorage.getItem("sessionId");
+
+      if (storedName && !p.GetVar("learnerName")) {
+        p.SetVar("learnerName", storedName);
+        p.SetVar("actorName", storedName);
+        p.SetVar("actorMbox", "mailto:" + encodeURIComponent(storedName) + "@wirelxdfirm.com");
+      }
+      if (storedSid && !p.GetVar("sessionId")) {
+        p.SetVar("sessionId", storedSid);
+      }
+      console.log("✅ Storyline variables synced from localStorage");
+    } catch (e) {
+      console.warn("Sync from localStorage failed:", e);
+    }
+  }, 300);
+
+  // --- xAPI helper function ---
   window.sendXAPI = async function (verbId, verbDisplay, objectId, objectName, resultData = {}) {
     try {
       const p = GetPlayer();
@@ -415,7 +518,7 @@ if (!window.__XAPI_HELPER_LOADED__) {
       const mbox        = "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com";
 
       const statement = {
-        actor: { name: learnerName, mbox: mbox },
+        actor: { name: learnerName, mbox },
         verb: { id: verbId, display: { "en-US": verbDisplay } },
         object: {
           id: objectId,
@@ -429,12 +532,9 @@ if (!window.__XAPI_HELPER_LOADED__) {
 
       // ✅ Send through Lambda proxy (which writes to SCORM Cloud)
       const endpoint = "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
-
       const r = await fetch(endpoint + "?mode=write", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(statement),
         keepalive: true
       });
