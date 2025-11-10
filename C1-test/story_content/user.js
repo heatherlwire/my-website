@@ -84,6 +84,77 @@ if (!window.__XAPI_HELPER_LOADED__) {
 
 window.Script2 = function()
 {
+  // --- Global xAPI Helper (runs once across all slides) ---
+if (!window.__XAPI_HELPER_LOADED__) {
+  window.__XAPI_HELPER_LOADED__ = true;
+
+  console.log("✅ xAPI helper initialized on Slide Master");
+
+  // --- Sync Storyline variables from localStorage ---
+  setTimeout(() => {
+    try {
+      const p = GetPlayer && GetPlayer();
+      if (!p) return;
+      const storedName = localStorage.getItem("learnerName");
+      const storedSid  = localStorage.getItem("sessionId");
+
+      if (storedName && !p.GetVar("learnerName")) {
+        p.SetVar("learnerName", storedName);
+        p.SetVar("actorName", storedName);
+        p.SetVar("actorMbox", "mailto:" + encodeURIComponent(storedName) + "@wirelxdfirm.com");
+      }
+      if (storedSid && !p.GetVar("sessionId")) {
+        p.SetVar("sessionId", storedSid);
+      }
+      console.log("🔁 Storyline variables synced from localStorage");
+    } catch (err) {
+      console.warn("⚠️ Variable sync failed:", err);
+    }
+  }, 300);
+
+  // --- Global sendXAPI() helper ---
+  window.sendXAPI = async function (verbId, verbDisplay, objectId, objectName, resultData = {}) {
+    try {
+      const p = GetPlayer();
+      if (!p) throw new Error("GetPlayer() not available");
+
+      const learnerName = p.GetVar("learnerName") || localStorage.getItem("learnerName") || "Anonymous";
+      const sessionId   = p.GetVar("sessionId")   || localStorage.getItem("sessionId") || crypto.randomUUID();
+      const mbox        = "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com";
+
+      const statement = {
+        actor: { name: learnerName, mbox },
+        verb: { id: verbId, display: { "en-US": verbDisplay } },
+        object: {
+          id: objectId,
+          definition: { name: { "en-US": objectName } },
+          objectType: "Activity"
+        },
+        result: resultData,
+        context: { registration: sessionId },
+        timestamp: new Date().toISOString()
+      };
+
+      const endpoint = "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
+      const response = await fetch(endpoint + "?mode=write", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(statement),
+        keepalive: true
+      });
+
+      if (response.ok) console.log(`✅ xAPI sent via Lambda: ${verbDisplay}`);
+      else console.warn(`⚠️ LRS returned status ${response.status}`);
+    } catch (err) {
+      console.error("❌ sendXAPI() failed:", err);
+    }
+  };
+}
+
+}
+
+window.Script3 = function()
+{
   // =======================================
 //  Adaptive Learning: Initialization + Resume + Lambda "initialized" log
 //  Trigger: Execute JavaScript (runs when slide 1 timeline starts)
@@ -199,97 +270,38 @@ window.Script2 = function()
 
 }
 
-window.Script3 = function()
-{
-  // Load once (Master fires on every slide)
-if (!window.__XAPI_HELPER_LOADED__) {
-  window.__XAPI_HELPER_LOADED__ = true;
-
-  // --- Rehydrate Storyline variables from localStorage if missing ---
-  setTimeout(() => {
-    try {
-      const p = GetPlayer && GetPlayer();
-      if (!p) return;
-      const storedName = localStorage.getItem("learnerName");
-      const storedSid  = localStorage.getItem("sessionId");
-
-      if (storedName && !p.GetVar("learnerName")) {
-        p.SetVar("learnerName", storedName);
-        p.SetVar("actorName", storedName);
-        p.SetVar("actorMbox", "mailto:" + encodeURIComponent(storedName) + "@wirelxdfirm.com");
-      }
-      if (storedSid && !p.GetVar("sessionId")) {
-        p.SetVar("sessionId", storedSid);
-      }
-      console.log("✅ Storyline variables synced from localStorage");
-    } catch (e) {
-      console.warn("Sync from localStorage failed:", e);
-    }
-  }, 300);
-
-  // --- xAPI helper function ---
-  window.sendXAPI = async function (verbId, verbDisplay, objectId, objectName, resultData = {}) {
-    try {
-      const p = GetPlayer();
-      if (!p) return;
-
-      const learnerName = p.GetVar("learnerName") || localStorage.getItem("learnerName") || "Anonymous";
-      const sessionId   = p.GetVar("sessionId")   || localStorage.getItem("sessionId") || String(Date.now());
-      const mbox        = "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com";
-
-      const statement = {
-        actor: { name: learnerName, mbox },
-        verb: { id: verbId, display: { "en-US": verbDisplay } },
-        object: {
-          id: objectId,
-          definition: { name: { "en-US": objectName } },
-          objectType: "Activity"
-        },
-        result: resultData,
-        context: { registration: sessionId },
-        timestamp: new Date().toISOString()
-      };
-
-      // ✅ Send through Lambda proxy (which writes to SCORM Cloud)
-      const endpoint = "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
-      const r = await fetch(endpoint + "?mode=write", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(statement),
-        keepalive: true
-      });
-
-      console.log(r.ok ? `✅ xAPI sent via Lambda: ${verbDisplay}` : `⚠️ xAPI failed: ${r.status}`);
-    } catch (e) {
-      console.error("❌ sendXAPI error:", e);
-    }
-  };
-}
-
-}
-
 window.Script4 = function()
 {
-  (function(){
-  var p = GetPlayer();
-  var slide = window.location.href.split("/").pop(); // e.g., "C1_Q1.html"
-  var qid = "C1_Q1"; // optional: rename per slide if you prefer consistent pattern
-
-  // Access Storyline built-in question data
-  var playerVars = p.GetVarNames ? p.GetVarNames() : [];
-  var answer = "";
-  var correct = false;
-
   try {
-    // Storyline stores recent interaction in cmi.interactions array (SCORM/xAPI runtime)
-    if (window.GetPlayer && p) {
-      answer = p.GetVar("TextEntry") || p.GetVar("SelectedAnswer") || ""; // fallback
-    }
-  } catch(e) { console.warn("No interaction vars found:", e); }
+  console.log("🚀 Testing sendXAPI helper...");
 
-  // Save dynamic values to Storyline variables
-  p.SetVar(qid + "_Answer", answer);
-})();
+  if (typeof sendXAPI !== "function") {
+    alert("⚠️ sendXAPI not loaded. Ensure the master script ran.");
+  } else {
+    const p = GetPlayer();
+    const learnerName = p.GetVar("learnerName") || localStorage.getItem("learnerName") || "Anonymous";
+    const sessionId   = p.GetVar("sessionId")   || localStorage.getItem("sessionId") || crypto.randomUUID();
+
+    sendXAPI(
+      "http://adlnet.gov/expapi/verbs/experienced",
+      "experienced",
+      "https://wirelearningsolutions.com/test-lrs-check",
+      "LRS Connectivity Test",
+      {
+        extensions: {
+          "https://acbl.wirelxdfirm.com/extensions/learnerName": learnerName,
+          "https://acbl.wirelxdfirm.com/extensions/sessionId": sessionId,
+          "https://acbl.wirelxdfirm.com/extensions/test": true
+        }
+      }
+    );
+
+    alert("✅ Statement sent to Lambda. Check SCORM Cloud LRS for the test event.");
+  }
+} catch (err) {
+  console.error("❌ Test trigger failed:", err);
+  alert("❌ Error during test. Check browser console.");
+}
 
 }
 
@@ -364,36 +376,13 @@ if (!window.__XAPI_HELPER_LOADED__) {
 
 window.Script6 = function()
 {
-  (function(){
-  var p = GetPlayer();
-  var slide = window.location.href.split("/").pop(); // e.g., "C1_Q1.html"
-  var qid = "C1_Q2"; // optional: rename per slide if you prefer consistent pattern
-
-  // Access Storyline built-in question data
-  var playerVars = p.GetVarNames ? p.GetVarNames() : [];
-  var answer = "";
-  var correct = false;
-
-  try {
-    // Storyline stores recent interaction in cmi.interactions array (SCORM/xAPI runtime)
-    if (window.GetPlayer && p) {
-      answer = p.GetVar("TextEntry") || p.GetVar("SelectedAnswer") || ""; // fallback
-    }
-  } catch(e) { console.warn("No interaction vars found:", e); }
-
-  // Save dynamic values to Storyline variables
-  p.SetVar(qid + "_Answer", answer);
-})();
-
-}
-
-window.Script7 = function()
-{
-  // Load once (Master fires on every slide)
+  // --- Global xAPI Helper (runs once across all slides) ---
 if (!window.__XAPI_HELPER_LOADED__) {
   window.__XAPI_HELPER_LOADED__ = true;
 
-  // --- Rehydrate Storyline variables from localStorage if missing ---
+  console.log("✅ xAPI helper initialized on Slide Master");
+
+  // --- Sync Storyline variables from localStorage ---
   setTimeout(() => {
     try {
       const p = GetPlayer && GetPlayer();
@@ -409,20 +398,20 @@ if (!window.__XAPI_HELPER_LOADED__) {
       if (storedSid && !p.GetVar("sessionId")) {
         p.SetVar("sessionId", storedSid);
       }
-      console.log("✅ Storyline variables synced from localStorage");
-    } catch (e) {
-      console.warn("Sync from localStorage failed:", e);
+      console.log("🔁 Storyline variables synced from localStorage");
+    } catch (err) {
+      console.warn("⚠️ Variable sync failed:", err);
     }
   }, 300);
 
-  // --- xAPI helper function ---
+  // --- Global sendXAPI() helper ---
   window.sendXAPI = async function (verbId, verbDisplay, objectId, objectName, resultData = {}) {
     try {
       const p = GetPlayer();
-      if (!p) return;
+      if (!p) throw new Error("GetPlayer() not available");
 
       const learnerName = p.GetVar("learnerName") || localStorage.getItem("learnerName") || "Anonymous";
-      const sessionId   = p.GetVar("sessionId")   || localStorage.getItem("sessionId") || String(Date.now());
+      const sessionId   = p.GetVar("sessionId")   || localStorage.getItem("sessionId") || crypto.randomUUID();
       const mbox        = "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com";
 
       const statement = {
@@ -438,25 +427,25 @@ if (!window.__XAPI_HELPER_LOADED__) {
         timestamp: new Date().toISOString()
       };
 
-      // ✅ Send through Lambda proxy (which writes to SCORM Cloud)
       const endpoint = "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
-      const r = await fetch(endpoint + "?mode=write", {
+      const response = await fetch(endpoint + "?mode=write", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(statement),
         keepalive: true
       });
 
-      console.log(r.ok ? `✅ xAPI sent via Lambda: ${verbDisplay}` : `⚠️ xAPI failed: ${r.status}`);
-    } catch (e) {
-      console.error("❌ sendXAPI error:", e);
+      if (response.ok) console.log(`✅ xAPI sent via Lambda: ${verbDisplay}`);
+      else console.warn(`⚠️ LRS returned status ${response.status}`);
+    } catch (err) {
+      console.error("❌ sendXAPI() failed:", err);
     }
   };
 }
 
 }
 
-window.Script8 = function()
+window.Script7 = function()
 {
   (function(){
   var p = GetPlayer();
@@ -481,7 +470,7 @@ window.Script8 = function()
 
 }
 
-window.Script9 = function()
+window.Script8 = function()
 {
   // Load once (Master fires on every slide)
 if (!window.__XAPI_HELPER_LOADED__) {
@@ -550,7 +539,408 @@ if (!window.__XAPI_HELPER_LOADED__) {
 
 }
 
+window.Script9 = function()
+{
+  // --- Global xAPI Helper (runs once across all slides) ---
+if (!window.__XAPI_HELPER_LOADED__) {
+  window.__XAPI_HELPER_LOADED__ = true;
+
+  console.log("✅ xAPI helper initialized on Slide Master");
+
+  // --- Sync Storyline variables from localStorage ---
+  setTimeout(() => {
+    try {
+      const p = GetPlayer && GetPlayer();
+      if (!p) return;
+      const storedName = localStorage.getItem("learnerName");
+      const storedSid  = localStorage.getItem("sessionId");
+
+      if (storedName && !p.GetVar("learnerName")) {
+        p.SetVar("learnerName", storedName);
+        p.SetVar("actorName", storedName);
+        p.SetVar("actorMbox", "mailto:" + encodeURIComponent(storedName) + "@wirelxdfirm.com");
+      }
+      if (storedSid && !p.GetVar("sessionId")) {
+        p.SetVar("sessionId", storedSid);
+      }
+      console.log("🔁 Storyline variables synced from localStorage");
+    } catch (err) {
+      console.warn("⚠️ Variable sync failed:", err);
+    }
+  }, 300);
+
+  // --- Global sendXAPI() helper ---
+  window.sendXAPI = async function (verbId, verbDisplay, objectId, objectName, resultData = {}) {
+    try {
+      const p = GetPlayer();
+      if (!p) throw new Error("GetPlayer() not available");
+
+      const learnerName = p.GetVar("learnerName") || localStorage.getItem("learnerName") || "Anonymous";
+      const sessionId   = p.GetVar("sessionId")   || localStorage.getItem("sessionId") || crypto.randomUUID();
+      const mbox        = "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com";
+
+      const statement = {
+        actor: { name: learnerName, mbox },
+        verb: { id: verbId, display: { "en-US": verbDisplay } },
+        object: {
+          id: objectId,
+          definition: { name: { "en-US": objectName } },
+          objectType: "Activity"
+        },
+        result: resultData,
+        context: { registration: sessionId },
+        timestamp: new Date().toISOString()
+      };
+
+      const endpoint = "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
+      const response = await fetch(endpoint + "?mode=write", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(statement),
+        keepalive: true
+      });
+
+      if (response.ok) console.log(`✅ xAPI sent via Lambda: ${verbDisplay}`);
+      else console.warn(`⚠️ LRS returned status ${response.status}`);
+    } catch (err) {
+      console.error("❌ sendXAPI() failed:", err);
+    }
+  };
+}
+
+}
+
 window.Script10 = function()
+{
+  (function(){
+  var p = GetPlayer();
+  var slide = window.location.href.split("/").pop(); // e.g., "C1_Q1.html"
+  var qid = "C1_Q2"; // optional: rename per slide if you prefer consistent pattern
+
+  // Access Storyline built-in question data
+  var playerVars = p.GetVarNames ? p.GetVarNames() : [];
+  var answer = "";
+  var correct = false;
+
+  try {
+    // Storyline stores recent interaction in cmi.interactions array (SCORM/xAPI runtime)
+    if (window.GetPlayer && p) {
+      answer = p.GetVar("TextEntry") || p.GetVar("SelectedAnswer") || ""; // fallback
+    }
+  } catch(e) { console.warn("No interaction vars found:", e); }
+
+  // Save dynamic values to Storyline variables
+  p.SetVar(qid + "_Answer", answer);
+})();
+
+}
+
+window.Script11 = function()
+{
+  // Load once (Master fires on every slide)
+if (!window.__XAPI_HELPER_LOADED__) {
+  window.__XAPI_HELPER_LOADED__ = true;
+
+  // --- Rehydrate Storyline variables from localStorage if missing ---
+  setTimeout(() => {
+    try {
+      const p = GetPlayer && GetPlayer();
+      if (!p) return;
+      const storedName = localStorage.getItem("learnerName");
+      const storedSid  = localStorage.getItem("sessionId");
+
+      if (storedName && !p.GetVar("learnerName")) {
+        p.SetVar("learnerName", storedName);
+        p.SetVar("actorName", storedName);
+        p.SetVar("actorMbox", "mailto:" + encodeURIComponent(storedName) + "@wirelxdfirm.com");
+      }
+      if (storedSid && !p.GetVar("sessionId")) {
+        p.SetVar("sessionId", storedSid);
+      }
+      console.log("✅ Storyline variables synced from localStorage");
+    } catch (e) {
+      console.warn("Sync from localStorage failed:", e);
+    }
+  }, 300);
+
+  // --- xAPI helper function ---
+  window.sendXAPI = async function (verbId, verbDisplay, objectId, objectName, resultData = {}) {
+    try {
+      const p = GetPlayer();
+      if (!p) return;
+
+      const learnerName = p.GetVar("learnerName") || localStorage.getItem("learnerName") || "Anonymous";
+      const sessionId   = p.GetVar("sessionId")   || localStorage.getItem("sessionId") || String(Date.now());
+      const mbox        = "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com";
+
+      const statement = {
+        actor: { name: learnerName, mbox },
+        verb: { id: verbId, display: { "en-US": verbDisplay } },
+        object: {
+          id: objectId,
+          definition: { name: { "en-US": objectName } },
+          objectType: "Activity"
+        },
+        result: resultData,
+        context: { registration: sessionId },
+        timestamp: new Date().toISOString()
+      };
+
+      // ✅ Send through Lambda proxy (which writes to SCORM Cloud)
+      const endpoint = "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
+      const r = await fetch(endpoint + "?mode=write", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(statement),
+        keepalive: true
+      });
+
+      console.log(r.ok ? `✅ xAPI sent via Lambda: ${verbDisplay}` : `⚠️ xAPI failed: ${r.status}`);
+    } catch (e) {
+      console.error("❌ sendXAPI error:", e);
+    }
+  };
+}
+
+}
+
+window.Script12 = function()
+{
+  // --- Global xAPI Helper (runs once across all slides) ---
+if (!window.__XAPI_HELPER_LOADED__) {
+  window.__XAPI_HELPER_LOADED__ = true;
+
+  console.log("✅ xAPI helper initialized on Slide Master");
+
+  // --- Sync Storyline variables from localStorage ---
+  setTimeout(() => {
+    try {
+      const p = GetPlayer && GetPlayer();
+      if (!p) return;
+      const storedName = localStorage.getItem("learnerName");
+      const storedSid  = localStorage.getItem("sessionId");
+
+      if (storedName && !p.GetVar("learnerName")) {
+        p.SetVar("learnerName", storedName);
+        p.SetVar("actorName", storedName);
+        p.SetVar("actorMbox", "mailto:" + encodeURIComponent(storedName) + "@wirelxdfirm.com");
+      }
+      if (storedSid && !p.GetVar("sessionId")) {
+        p.SetVar("sessionId", storedSid);
+      }
+      console.log("🔁 Storyline variables synced from localStorage");
+    } catch (err) {
+      console.warn("⚠️ Variable sync failed:", err);
+    }
+  }, 300);
+
+  // --- Global sendXAPI() helper ---
+  window.sendXAPI = async function (verbId, verbDisplay, objectId, objectName, resultData = {}) {
+    try {
+      const p = GetPlayer();
+      if (!p) throw new Error("GetPlayer() not available");
+
+      const learnerName = p.GetVar("learnerName") || localStorage.getItem("learnerName") || "Anonymous";
+      const sessionId   = p.GetVar("sessionId")   || localStorage.getItem("sessionId") || crypto.randomUUID();
+      const mbox        = "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com";
+
+      const statement = {
+        actor: { name: learnerName, mbox },
+        verb: { id: verbId, display: { "en-US": verbDisplay } },
+        object: {
+          id: objectId,
+          definition: { name: { "en-US": objectName } },
+          objectType: "Activity"
+        },
+        result: resultData,
+        context: { registration: sessionId },
+        timestamp: new Date().toISOString()
+      };
+
+      const endpoint = "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
+      const response = await fetch(endpoint + "?mode=write", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(statement),
+        keepalive: true
+      });
+
+      if (response.ok) console.log(`✅ xAPI sent via Lambda: ${verbDisplay}`);
+      else console.warn(`⚠️ LRS returned status ${response.status}`);
+    } catch (err) {
+      console.error("❌ sendXAPI() failed:", err);
+    }
+  };
+}
+
+}
+
+window.Script13 = function()
+{
+  (function(){
+  var p = GetPlayer();
+  var slide = window.location.href.split("/").pop(); // e.g., "C1_Q1.html"
+  var qid = "C1_Q1"; // optional: rename per slide if you prefer consistent pattern
+
+  // Access Storyline built-in question data
+  var playerVars = p.GetVarNames ? p.GetVarNames() : [];
+  var answer = "";
+  var correct = false;
+
+  try {
+    // Storyline stores recent interaction in cmi.interactions array (SCORM/xAPI runtime)
+    if (window.GetPlayer && p) {
+      answer = p.GetVar("TextEntry") || p.GetVar("SelectedAnswer") || ""; // fallback
+    }
+  } catch(e) { console.warn("No interaction vars found:", e); }
+
+  // Save dynamic values to Storyline variables
+  p.SetVar(qid + "_Answer", answer);
+})();
+
+}
+
+window.Script14 = function()
+{
+  // Load once (Master fires on every slide)
+if (!window.__XAPI_HELPER_LOADED__) {
+  window.__XAPI_HELPER_LOADED__ = true;
+
+  // --- Rehydrate Storyline variables from localStorage if missing ---
+  setTimeout(() => {
+    try {
+      const p = GetPlayer && GetPlayer();
+      if (!p) return;
+      const storedName = localStorage.getItem("learnerName");
+      const storedSid  = localStorage.getItem("sessionId");
+
+      if (storedName && !p.GetVar("learnerName")) {
+        p.SetVar("learnerName", storedName);
+        p.SetVar("actorName", storedName);
+        p.SetVar("actorMbox", "mailto:" + encodeURIComponent(storedName) + "@wirelxdfirm.com");
+      }
+      if (storedSid && !p.GetVar("sessionId")) {
+        p.SetVar("sessionId", storedSid);
+      }
+      console.log("✅ Storyline variables synced from localStorage");
+    } catch (e) {
+      console.warn("Sync from localStorage failed:", e);
+    }
+  }, 300);
+
+  // --- xAPI helper function ---
+  window.sendXAPI = async function (verbId, verbDisplay, objectId, objectName, resultData = {}) {
+    try {
+      const p = GetPlayer();
+      if (!p) return;
+
+      const learnerName = p.GetVar("learnerName") || localStorage.getItem("learnerName") || "Anonymous";
+      const sessionId   = p.GetVar("sessionId")   || localStorage.getItem("sessionId") || String(Date.now());
+      const mbox        = "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com";
+
+      const statement = {
+        actor: { name: learnerName, mbox },
+        verb: { id: verbId, display: { "en-US": verbDisplay } },
+        object: {
+          id: objectId,
+          definition: { name: { "en-US": objectName } },
+          objectType: "Activity"
+        },
+        result: resultData,
+        context: { registration: sessionId },
+        timestamp: new Date().toISOString()
+      };
+
+      // ✅ Send through Lambda proxy (which writes to SCORM Cloud)
+      const endpoint = "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
+      const r = await fetch(endpoint + "?mode=write", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(statement),
+        keepalive: true
+      });
+
+      console.log(r.ok ? `✅ xAPI sent via Lambda: ${verbDisplay}` : `⚠️ xAPI failed: ${r.status}`);
+    } catch (e) {
+      console.error("❌ sendXAPI error:", e);
+    }
+  };
+}
+
+}
+
+window.Script15 = function()
+{
+  // --- Global xAPI Helper (runs once across all slides) ---
+if (!window.__XAPI_HELPER_LOADED__) {
+  window.__XAPI_HELPER_LOADED__ = true;
+
+  console.log("✅ xAPI helper initialized on Slide Master");
+
+  // --- Sync Storyline variables from localStorage ---
+  setTimeout(() => {
+    try {
+      const p = GetPlayer && GetPlayer();
+      if (!p) return;
+      const storedName = localStorage.getItem("learnerName");
+      const storedSid  = localStorage.getItem("sessionId");
+
+      if (storedName && !p.GetVar("learnerName")) {
+        p.SetVar("learnerName", storedName);
+        p.SetVar("actorName", storedName);
+        p.SetVar("actorMbox", "mailto:" + encodeURIComponent(storedName) + "@wirelxdfirm.com");
+      }
+      if (storedSid && !p.GetVar("sessionId")) {
+        p.SetVar("sessionId", storedSid);
+      }
+      console.log("🔁 Storyline variables synced from localStorage");
+    } catch (err) {
+      console.warn("⚠️ Variable sync failed:", err);
+    }
+  }, 300);
+
+  // --- Global sendXAPI() helper ---
+  window.sendXAPI = async function (verbId, verbDisplay, objectId, objectName, resultData = {}) {
+    try {
+      const p = GetPlayer();
+      if (!p) throw new Error("GetPlayer() not available");
+
+      const learnerName = p.GetVar("learnerName") || localStorage.getItem("learnerName") || "Anonymous";
+      const sessionId   = p.GetVar("sessionId")   || localStorage.getItem("sessionId") || crypto.randomUUID();
+      const mbox        = "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com";
+
+      const statement = {
+        actor: { name: learnerName, mbox },
+        verb: { id: verbId, display: { "en-US": verbDisplay } },
+        object: {
+          id: objectId,
+          definition: { name: { "en-US": objectName } },
+          objectType: "Activity"
+        },
+        result: resultData,
+        context: { registration: sessionId },
+        timestamp: new Date().toISOString()
+      };
+
+      const endpoint = "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
+      const response = await fetch(endpoint + "?mode=write", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(statement),
+        keepalive: true
+      });
+
+      if (response.ok) console.log(`✅ xAPI sent via Lambda: ${verbDisplay}`);
+      else console.warn(`⚠️ LRS returned status ${response.status}`);
+    } catch (err) {
+      console.error("❌ sendXAPI() failed:", err);
+    }
+  };
+}
+
+}
+
+window.Script16 = function()
 {
   (function () {
   try {
@@ -693,7 +1083,7 @@ window.Script10 = function()
 
 }
 
-window.Script11 = function()
+window.Script17 = function()
 {
   (function () {
   try {
@@ -829,7 +1219,7 @@ window.Script11 = function()
 
 }
 
-window.Script12 = function()
+window.Script18 = function()
 {
   (function () {
   try {
