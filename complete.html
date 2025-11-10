@@ -2,17 +2,15 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8" />
-    <title>Application Lesson Complete</title>
+    <title>Lesson Complete</title>
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <style>
         :root {
             --bg-0: #0a0f1a;
             --bg-1: #0e1526;
-            --bg-2: #0f1b33;
             --ink-0: #e8f1ff;
             --ink-1: #b9c8e8;
             --sky-1: #0ea5e9;
-            --sky-2: #22d3ee;
             --ok: #22c55e;
             --warn: #f59e0b;
             --shadow: 0 10px 24px rgba(0,0,0,.35);
@@ -22,7 +20,7 @@
             margin: 0;
             color: var(--ink-0);
             font-family: ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;
-            background: radial-gradient(1200px 800px at 70% -10%, rgba(34,211,238,.10), transparent 60%), radial-gradient(1000px 600px at -10% 20%, rgba(14,165,233,.15), transparent 55%), linear-gradient(180deg, #07101e 0%, #0a1322 50%, #0b1628 100%);
+            background: radial-gradient(1000px 600px at 70% -10%,rgba(34,211,238,.10),transparent 60%),linear-gradient(180deg,#07101e 0%,#0a1322 50%,#0b1628 100%);
             min-height: 100dvh;
             display: flex;
             align-items: center;
@@ -129,7 +127,7 @@
 <body>
     <section class="card">
         <div class="badge"><span class="dot"></span><span id="statusText">Recording completion…</span></div>
-        <h1>Application Lesson Complete</h1>
+        <h1>Lesson Complete</h1>
         <p class="muted">You just finished <span class="module" id="moduleName">—</span></p>
         <p class="muted small">Redirecting to your next step in <span id="count">3</span> seconds…</p>
 
@@ -144,29 +142,40 @@
     </section>
 
     <script>
-        const endpoint = "https://cloud.scorm.com/lrs/TENBKY6BZ6/sandbox/";
-        const key = "d_cPqAqYNvM3sMTyJ2M";
-        const secret = "rh70yfaxONPyu11z_vk";
-        const auth = "Basic " + btoa(`${key}:${secret}`);
+        (function () {
+            try {
+                // --- record current page path (e.g., "apply/complete.html") ---
+                var path = (location && location.pathname ? location.pathname : "").replace(/^\/+/, "");
+                if (path) localStorage.setItem("lastPath", path);
+
+                // --- infer current competency (C1/C2/C3) from URL or referrer ---
+                var m = path.match(/C([123])/i) || (document.referrer && document.referrer.match(/C([123])/i));
+                if (m && m[1]) {
+                    localStorage.setItem("currentCompetency", "C" + String(m[1]).toUpperCase());
+                }
+            } catch (e) {
+                try { console.warn("Progress save failed:", e); } catch (_) { }
+            }
+        })();
+
+        const PROXY_URL = "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
         const NS = "https://acbl.wirelxdfirm.com/extensions/";
         const EX = k => NS + k;
 
         const qs = new URLSearchParams(location.search);
         let targetKey = qs.get("target");
-        function inferFromReferrer() {
-            const r = document.referrer || "";
-            const m = r.match(/(C[123][abc])/i);
-            return m ? (m[1] + "-apply") : null;
+        if (!targetKey) {
+            const ref = document.referrer || "";
+            const m = ref.match(/(C[123][abc])\-(content|apply)/i);
+            targetKey = m ? `${m[1]}-${m[2]}` : "C1a-content";
         }
-        if (!targetKey) targetKey = inferFromReferrer() || localStorage.getItem("lastApplyLaunched") ||
-            ((localStorage.getItem("currentCompetency") || "C1") + "-apply");
 
-        const comp = (targetKey.match(/(C\d[a-c])/i)?.[1] || "C1").toUpperCase();
-        const prettyModule = `${targetKey.toUpperCase()} Application Lesson`;
+        const comp = (targetKey.match(/(C\d)/i)?.[1] || "C1").toUpperCase();
+        const prettyModule = `${targetKey.toUpperCase()} Lesson`;
         document.getElementById("moduleName").textContent = prettyModule;
 
         const learnerName = localStorage.getItem("learnerName") || "Anonymous";
-        const sid = localStorage.getItem("sessionId") || (self.crypto?.randomUUID?.() || String(Date.now()));
+        const sid = localStorage.getItem("sessionId") || crypto.randomUUID();
 
         const debugBtn = document.getElementById("viewDebug");
         const debugPanel = document.getElementById("debugPanel");
@@ -178,42 +187,58 @@
             debugBtn.textContent = open ? "Hide debug" : "Show debug";
         };
 
-        // ===== 4) Countdown + manual continue =====
-        const countEl = document.getElementById("count");
+        function startCountdown() {
+            let t = 3;
+            const id = setInterval(() => {
+                t -= 1;
+                document.getElementById("count").textContent = String(Math.max(t, 0));
+                if (t <= 0) { clearInterval(id); goNow(); }
+            }, 1000);
+        }
+
+        function findNextStep() {
+            const missed = JSON.parse(localStorage.getItem(`${comp}.missed`) || "[]");
+            const isContent = targetKey.includes("-content");
+            const isApply = targetKey.includes("-apply");
+            localStorage.setItem(`${targetKey}.completed`, "true");
+
+            if (isContent) {
+                return `apply/${targetKey.replace("-content", "-apply")}.html`;
+            }
+            if (isApply) {
+                const remaining = missed.filter(s => !localStorage.getItem(`${s}-apply.completed`));
+                if (remaining.length > 0) return `content/${remaining[0]}-content.html`;
+                return `${comp}-test/story.html`;
+            }
+            return "next.html";
+        }
 
         function goNow() {
-            const url = new URL(`${location.origin}/next.html`);
-            url.searchParams.set("current", comp);                // e.g., C2
-            url.searchParams.set("target", targetKey);            // e.g., C2a-apply
-            url.searchParams.set("learnerName", learnerName);     // identity
-            url.searchParams.set("sid", sid);                     // session continuity
-            url.searchParams.set("source", "apply-complete");     // breadcrumb
-            url.searchParams.set("completedAt", new Date().toISOString());
-
-            // breadcrumb for extra reliability on next.html
-            localStorage.setItem("lastApplyLaunched", targetKey);
-
+            const nextStep = findNextStep();
+            const url = new URL(`${location.origin}/${nextStep}`);
+            url.searchParams.set("learnerName", learnerName);
+            url.searchParams.set("sid", sid);
+            url.searchParams.set("current", comp);
+            localStorage.setItem("lastPath", nextStep);
             location.href = url.toString();
         }
 
         document.getElementById("continueBtn").onclick = goNow;
 
-        function startCountdown() {
-            let t = 3;
-            const id = setInterval(() => {
-                t -= 1; countEl.textContent = String(Math.max(t, 0));
-                if (t <= 0) { clearInterval(id); goNow(); }
-            }, 1000);
-        }
-
-
         async function sendCompleted() {
+            const subType = targetKey.includes("-content") ? "content" : (targetKey.includes("-apply") ? "apply" : "other");
+
+            // Determine status: if there are still missed subs, it's "in progress"; otherwise "completed"
+            const missed = JSON.parse(localStorage.getItem(`${comp}.missed`) || "[]");
+            const remaining = missed.filter(s => !localStorage.getItem(`${s}-apply.completed`));
+            const status = remaining.length > 0 ? "in progress" : "completed";
+
             const stmt = {
                 actor: { name: learnerName, mbox: `mailto:${encodeURIComponent(learnerName)}@wirelxdfirm.com` },
                 verb: { id: "http://adlnet.gov/expapi/verbs/completed", display: { "en-US": "completed" } },
                 object: {
                     id: `${location.origin}/activities/${targetKey}`,
-                    definition: { name: { "en-US": prettyModule }, description: { "en-US": "Application Lesson completed (Rise web export)" } }
+                    definition: { name: { "en-US": prettyModule }, description: { "en-US": "Lesson completed" } }
                 },
                 result: {
                     completion: true,
@@ -221,36 +246,26 @@
                         [EX("learnerName")]: learnerName,
                         [EX("sessionId")]: sid,
                         [EX("targetKey")]: targetKey,
-                        [EX("competencyId")]: comp
+                        [EX("competencyId")]: comp,
+                        [EX("subType")]: subType,
+                        [EX("status")]: status // ← NEW: tracks learner’s progress state
                     }
                 },
                 timestamp: new Date().toISOString()
             };
 
-            localStorage.setItem(`${targetKey}.completed`, "true");
+            debugOut.textContent = JSON.stringify({ targetKey, comp, learnerName, sid, subType, status, next: findNextStep() }, null, 2);
 
-            debugOut.textContent = JSON.stringify({ targetKey, comp, learnerName, sid, referrer: document.referrer, online: navigator.onLine }, null, 2);
-
-            const status = document.getElementById("statusText");
-            if (!navigator.onLine) {
-                status.textContent = "Saved locally (offline)";
-                startCountdown();
-                return;
-            }
-
+            const statusEl = document.getElementById("statusText");
             try {
-                const r = await fetch(endpoint + "statements", {
+                const r = await fetch(PROXY_URL + "?mode=write", {
                     method: "POST",
-                    headers: {
-                        "Authorization": auth,
-                        "Content-Type": "application/json",
-                        "X-Experience-API-Version": "1.0.3"
-                    },
+                    headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(stmt)
                 });
-                status.textContent = r.ok ? "Progress recorded" : `⚠️ Saved locally (LRS ${r.status})`;
+                statusEl.textContent = r.ok ? "Progress recorded via Lambda" : `⚠️ Saved locally (LRS ${r.status})`;
             } catch {
-                status.textContent = "⚠️ Saved locally (network error)";
+                statusEl.textContent = "⚠️ Saved locally (network error)";
             }
             startCountdown();
         }

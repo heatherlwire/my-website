@@ -186,6 +186,22 @@
     </section>
 
     <script>
+        (function () {
+            try {
+                // --- Record current path (e.g., "content/C1a-content.html") ---
+                var path = (location && location.pathname ? location.pathname : "").replace(/^\/+/, "");
+                if (path) localStorage.setItem("lastPath", path);
+
+                // --- Infer current competency (C1/C2/C3) from URL ---
+                var m = path.match(/C([123])/i) || (document.referrer && document.referrer.match(/C([123])/i));
+                if (m && m[1]) {
+                    localStorage.setItem("currentCompetency", "C" + String(m[1]).toUpperCase());
+                }
+            } catch (e) {
+                try { console.warn("Progress save failed:", e); } catch (_) { }
+            }
+        })();
+
     // ===== LRS config =====
     const endpoint = "https://cloud.scorm.com/lrs/TENBKY6BZ6/sandbox/";
     const key = "d_cPqAqYNvM3sMTyJ2M";
@@ -283,15 +299,44 @@
     }
     if (unlockDbg) enableNext();
 
-    nextBtn.addEventListener("click", () => {
-      if (!cfg?.apply) return alert("Apply URL missing for this key.");
-      const url = new URL(cfg.apply, location.href);
-      url.searchParams.set("learnerName", learnerName);
-      url.searchParams.set("sid", sid);
-      url.searchParams.set("source", keyRaw || "");
-      localStorage.setItem("lastApplyLaunched", (keyRaw || "").replace("-content","-apply"));
-      location.href = url.toString();
-    });
+        // ===== Replace your existing nextBtn click section with this =====
+        nextBtn.addEventListener("click", () => {
+            try {
+                const route = JSON.parse(localStorage.getItem("adaptivePath") || "[]");
+                const current = location.pathname.split("/").pop();
+                const idx = route.findIndex(x => x.endsWith(current));
+                const next = idx >= 0 && idx < route.length - 1 ? route[idx + 1] : null;
+
+                const base = "https://wirelearningsolutions.com/";
+                const name = localStorage.getItem("learnerName") || learnerName || "";
+                const sid = localStorage.getItem("sessionId") || sid || "";
+
+                if (next) {
+                    const url = new URL(base + next);
+                    url.searchParams.set("learnerName", name);
+                    url.searchParams.set("sid", sid);
+                    url.searchParams.set("source", keyRaw || "");
+                    location.href = url.toString();
+                    return;
+                }
+
+                // --- fallback to per-page apply mapping ---
+                if (!cfg?.apply) {
+                    alert("Apply URL missing for this key.");
+                    return;
+                }
+
+                const url = new URL(cfg.apply, location.href);
+                url.searchParams.set("learnerName", name);
+                url.searchParams.set("sid", sid);
+                url.searchParams.set("source", keyRaw || "");
+                localStorage.setItem("lastApplyLaunched", (keyRaw || "").replace("-content", "-apply"));
+                location.href = url.toString();
+            } catch (e) {
+                console.error("Continue navigation failed:", e);
+                location.href = "https://wirelearningsolutions.com/next.html";
+            }
+        });
 
     // ===== Captions loader (toggleable) =====
     async function loadCaptions(videoId) {
