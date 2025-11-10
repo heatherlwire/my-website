@@ -697,46 +697,30 @@ window.Script11 = function()
 {
   (function () {
   try {
-    // --- double-click guard (4s) ---
-    if (localStorage.getItem("continue.locked")) return;
-    localStorage.setItem("continue.locked", "1");
-    setTimeout(function(){ localStorage.removeItem("continue.locked"); }, 4000);
+    console.log("🚀 Adaptive Continue (final stable build)");
 
-    // --- record path (e.g., "apply/C1a-apply.html") ---
-    var path = (location && location.pathname ? location.pathname : "").replace(/^\/+/, "");
-    if (path) localStorage.setItem("lastPath", path);
+    // --- Guard: prevent double trigger ---
+    if (localStorage.getItem("continue.lock")) return;
+    localStorage.setItem("continue.lock", "1");
+    setTimeout(() => localStorage.removeItem("continue.lock"), 3000);
 
-    // --- infer current competency from URL/path (C1/C2/C3) ---
-    var m = path.match(/C([123])/i) || (location.href && location.href.match(/C([123])/i));
-    if (m && m[1]) {
-      localStorage.setItem("currentCompetency", "C" + String(m[1]).toUpperCase());
-    }
-  } catch (e) {
-    try { console.warn("Progress save failed:", e); } catch(_) {}
-  }
-})();
-
-// --- your main adaptive continue script below ---
-(function () {
-  try {
-    console.log("🚀 Running adaptive continue script (final clean version)...");
-
-    const p = GetPlayer();
+    // --- Storyline Player ---
+    const p = GetPlayer && GetPlayer();
     if (!p) return;
 
-    // --- Detect which competency this file represents ---
+    // --- Detect competency (C1/C2/C3) ---
     const url = window.location.href.toUpperCase();
-    const compId = (url.match(/C[1-9]/) || ["C1"])[0];
-    console.log("📘 Competency detected:", compId);
+    const compId = (url.match(/C[123]/) || ["C1"])[0];
+    console.log("📘 Competency:", compId);
 
-    // --- Gather Storyline variables ---
+    // --- Quiz data ---
     const correct = Number(p.GetVar(compId + "_Correct") || 0);
     const missedSubs = (p.GetVar(compId + "_missedSubs") || "")
       .split(",")
       .map(s => s.trim())
       .filter(Boolean);
 
-    // --- Determine mastery level ---
+    // --- Determine mastery ---
     let mastery = "Failing";
     if (correct === 3) mastery = "Mastery";
     else if (correct === 2) mastery = "Proficient";
@@ -746,91 +730,38 @@ window.Script11 = function()
     const finalized = false;
 
     // --- Identity & session ---
-    const learnerName =
-      p.GetVar("learnerName") ||
-      localStorage.getItem("learnerName") ||
-      "Anonymous";
+    const learnerName = p.GetVar("learnerName") || localStorage.getItem("learnerName") || "Anonymous";
+    const sid = localStorage.getItem("sessionId") || crypto.randomUUID();
+    localStorage.setItem("sessionId", sid);
 
-    let sessionId =
-      p.GetVar("sessionId") ||
-      localStorage.getItem("sessionId") ||
-      crypto.randomUUID();
-
-    localStorage.setItem("sessionId", sessionId);
-    const mbox = "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com";
-
-    // --- LRS Lambda endpoint ---
-    const endpoint = "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
     const NS = "https://acbl.wirelearningsolutions.com/extensions/";
+    const endpoint = "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
 
-    // --- Helper: retryable LRS send ---
+    // --- Function to send statements ---
     async function sendToLRS(statement, label) {
-      const send = async (attempt = 1) => {
-        try {
-          const res = await fetch(endpoint + "?mode=write", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(statement),
-            keepalive: true,
-          });
-
-          if (!res.ok) {
-            const text = await res.text();
-            console.warn(`⚠️ ${label} attempt ${attempt} failed:`, res.status, text);
-            if (attempt < 2) {
-              console.log("🔁 Retrying in 2s...");
-              await new Promise(r => setTimeout(r, 2000));
-              return await send(attempt + 1);
-            }
-          } else {
-            console.log(`✅ ${label} success (${res.status})`);
-          }
-        } catch (e) {
-          console.error(`❌ ${label} network error:`, e);
-          if (attempt < 2) {
-            console.log("🔁 Retrying in 2s...");
-            await new Promise(r => setTimeout(r, 2000));
-            return await send(attempt + 1);
-          }
-        }
-      };
-      await send();
+      try {
+        const res = await fetch(endpoint + "?mode=write", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ statements: [statement] }),
+          keepalive: true
+        });
+        console.log(`📡 Sent ${label}:`, res.status);
+      } catch (e) {
+        console.warn(`⚠️ LRS send failed for ${label}:`, e);
+      }
     }
 
-    // --- Build per-question dataset ---
-    const questionData = [];
-    for (let i = 1; i <= 20; i++) {
-      const ans = p.GetVar(compId + "_Q" + i + "_Answer");
-      const cor = p.GetVar(compId + "_Q" + i + "_IsCorrect");
-      const txt = p.GetVar(compId + "_Q" + i + "_Text");
-      const sub = p.GetVar(compId + "_Q" + i + "_Sub");
-      if (typeof ans === "undefined" && typeof cor === "undefined" && typeof txt === "undefined") break;
-      if (ans == null && cor == null && txt == null) continue;
-      questionData.push({
-        id: compId.toLowerCase() + "a" + i,
-        sub: sub || null,
-        text: txt || "Question " + i,
-        response: ans || "",
-        correct: !!cor,
-      });
-    }
-
-    p.SetVar(compId + "_QuestionData", JSON.stringify(questionData));
-    window.__QUESTION_DATA__ = questionData;
-
-    // --- Build & send main "passed"/"failed" statement ---
-    const verbId =
-      correct >= 2
-        ? "http://adlnet.gov/expapi/verbs/passed"
-        : "http://adlnet.gov/expapi/verbs/failed";
-    const verbDisplay = correct >= 2 ? "passed" : "failed";
-
+    // --- Build xAPI statement ---
     const stmt = {
-      actor: { name: learnerName, mbox },
-      verb: { id: verbId, display: { "en-US": verbDisplay } },
+      actor: { name: learnerName, mbox: `mailto:${encodeURIComponent(learnerName)}@wirelxdfirm.com` },
+      verb: {
+        id: correct >= 2 ? "http://adlnet.gov/expapi/verbs/passed" : "http://adlnet.gov/expapi/verbs/failed",
+        display: { "en-US": correct >= 2 ? "passed" : "failed" }
+      },
       object: {
         id: `https://acbl.wirelearningsolutions.com/activities/${compId}/quiz`,
-        objectType: "Activity",
+        objectType: "Activity"
       },
       result: {
         score: { raw: correct, min: 0, max: 3 },
@@ -838,130 +769,61 @@ window.Script11 = function()
         completion: true,
         extensions: {
           [NS + "learnerName"]: learnerName,
-          [NS + "sessionId"]: sessionId,
+          [NS + "sessionId"]: sid,
           [NS + "competencyId"]: compId,
           [NS + "masteryLevel"]: mastery,
           [NS + "missed"]: missedSubs,
           [NS + "testedOut"]: testedOut,
-          [NS + "finalized"]: finalized,
-          [NS + "questionData"]: JSON.stringify(questionData),
-        },
-      },
-      context: { registration: sessionId },
-      timestamp: new Date().toISOString(),
-    };
-
-    await sendToLRS(stmt, `Progress (${mastery}) for ${compId}`);
-
-    // --- Experienced statement ---
-    const experiencedStmt = {
-      actor: { name: learnerName, mbox },
-      verb: {
-        id: "http://adlnet.gov/expapi/verbs/experienced",
-        display: { "en-US": "experienced" },
-      },
-      object: {
-        id: `https://acbl.wirelearningsolutions.com/activities/${compId}/summary`,
-        objectType: "Activity",
-        definition: {
-          name: { "en-US": "Analyzing Progress" },
-          description: { "en-US": "Learner moved to Next Page (progress analysis)" },
-        },
-      },
-      context: { registration: sessionId },
-      timestamp: new Date().toISOString(),
-    };
-
-    await sendToLRS(experiencedStmt, `Experienced progress analysis (${compId})`);
-
-    // --- Terminated statement ---
-    const terminatedStmt = {
-      actor: { name: learnerName, mbox },
-      verb: {
-        id: "http://adlnet.gov/expapi/verbs/terminated",
-        display: { "en-US": "terminated" },
-      },
-      object: {
-        id: `https://acbl.wirelearningsolutions.com/activities/${compId}/quiz`,
-        objectType: "Activity",
-      },
-      context: { registration: sessionId },
-      timestamp: new Date().toISOString(),
-    };
-
-    await sendToLRS(terminatedStmt, `Terminated ${compId}`);
-
-    // --- Save local adaptive data ---
-    const keyBase = compId + ".";
-    localStorage.setItem(keyBase + "mastery", mastery);
-    localStorage.setItem(keyBase + "testedOut", testedOut);
-    localStorage.setItem(keyBase + "finalized", finalized);
-    localStorage.setItem(keyBase + "score", correct.toString());
-    localStorage.setItem(keyBase + "missed", JSON.stringify(missedSubs));
-    localStorage.setItem(keyBase + "questionData", JSON.stringify(questionData));
-
-    // --- Adaptive routing builder ---
-    (function () {
-      try {
-        const comp = "C1";
-        const mastery = p.GetVar("C1_masteryLevel") || "";
-        const missedSubs = JSON.parse(p.GetVar("C1_missedSubs") || "[]");
-        const learnerName = localStorage.getItem("learnerName");
-        const sid = localStorage.getItem("sessionId");
-
-        let nextUrls = [];
-        let status = "in progress";
-
-        if (mastery === "Mastery") {
-          nextUrls = ["C2-test/story.html"];
-          status = "completed";
-        } else if (mastery === "Proficient") {
-          nextUrls = missedSubs.flatMap(sub => [
-            `content/${sub}-content.html`,
-            `apply/${sub}-apply.html`
-          ]);
-          nextUrls.push(`${comp}-test/story.html`);
-        } else {
-          const subs = ["a", "b", "c"].map(x => `${comp}${x}`);
-          nextUrls = subs.flatMap(sub => [
-            `content/${sub}-content.html`,
-            `apply/${sub}-apply.html`
-          ]);
-          nextUrls.push(`${comp}-test/story.html`);
+          [NS + "finalized"]: finalized
         }
+      },
+      context: { registration: sid },
+      timestamp: new Date().toISOString()
+    };
 
-        localStorage.setItem("adaptivePath", JSON.stringify(nextUrls));
-        localStorage.setItem("currentCompetency", comp);
-        localStorage.setItem(`${comp}_status`, status);
-        localStorage.setItem(`${comp}_mastery`, mastery);
+    // --- Save locally ---
+    localStorage.setItem(compId + ".mastery", mastery);
+    localStorage.setItem(compId + ".missed", JSON.stringify(missedSubs));
+    localStorage.setItem(compId + ".status", correct === 3 ? "Completed" : "InProgress");
 
-        const base = "https://wirelearningsolutions.com/";
-        const target = nextUrls[0];
-        window.location.href = `${base}${target}?learnerName=${encodeURIComponent(learnerName)}&sid=${encodeURIComponent(sid)}&current=${comp}`;
-      } catch (e) {
-        console.error("Adaptive routing error:", e);
-      }
-    })();
+    // --- Send to Lambda/LRS ---
+    sendToLRS(stmt, `Quiz result (${compId})`);
 
-    // --- Redirect to next.html (safety fallback) ---
-    const base = "https://www.wirelearningsolutions.com/next.html";
-    const qs = new URLSearchParams({
-      learnerName,
-      sid: sessionId,
-      current: compId,
-      mastery,
-      missed: JSON.stringify(missedSubs),
-      testedOut,
-      finalized,
-      score: correct,
-    });
+    // --- Adaptive Routing ---
+    let nextUrls = [];
+    let status = correct === 3 ? "Completed" : "InProgress";
 
-    const targetUrl = base + "?" + qs.toString();
-    console.log("➡️ Redirecting to:", targetUrl);
-    window.location.href = targetUrl;
+    if (mastery === "Mastery") {
+      nextUrls = [`C${Number(compId.replace("C", "")) + 1}-test/story.html`];
+    } else if (mastery === "Proficient") {
+      nextUrls = missedSubs.flatMap(sub => [
+        `content/${sub}-content.html`,
+        `apply/${sub}-apply.html`
+      ]);
+      nextUrls.push(`${compId}-test/story.html`);
+    } else {
+      const subs = ["a", "b", "c"].map(x => `${compId}${x}`);
+      nextUrls = subs.flatMap(sub => [
+        `content/${sub}-content.html`,
+        `apply/${sub}-apply.html`
+      ]);
+      nextUrls.push(`${compId}-test/story.html`);
+    }
+
+    localStorage.setItem("adaptivePath", JSON.stringify(nextUrls));
+    localStorage.setItem("currentCompetency", compId);
+    localStorage.setItem(`${compId}_status`, status);
+
+    // --- Redirect ---
+    const nextPage = nextUrls[0] || "next.html";
+    const base = "https://www.wirelearningsolutions.com/";
+    const redirectUrl = `${base}${nextPage}?learnerName=${encodeURIComponent(learnerName)}&sid=${encodeURIComponent(sid)}&current=${compId}`;
+
+    console.log("➡️ Redirecting to:", redirectUrl);
+    window.location.href = redirectUrl;
 
   } catch (e) {
-    console.warn("❌ Continue button error:", e);
+    console.error("❌ Continue button error:", e);
   }
 })();
 
@@ -971,46 +833,30 @@ window.Script12 = function()
 {
   (function () {
   try {
-    // --- double-click guard (4s) ---
-    if (localStorage.getItem("continue.locked")) return;
-    localStorage.setItem("continue.locked", "1");
-    setTimeout(function(){ localStorage.removeItem("continue.locked"); }, 4000);
+    console.log("🚀 Adaptive Continue (final stable build)");
 
-    // --- record path (e.g., "apply/C1a-apply.html") ---
-    var path = (location && location.pathname ? location.pathname : "").replace(/^\/+/, "");
-    if (path) localStorage.setItem("lastPath", path);
+    // --- Guard: prevent double trigger ---
+    if (localStorage.getItem("continue.lock")) return;
+    localStorage.setItem("continue.lock", "1");
+    setTimeout(() => localStorage.removeItem("continue.lock"), 3000);
 
-    // --- infer current competency from URL/path (C1/C2/C3) ---
-    var m = path.match(/C([123])/i) || (location.href && location.href.match(/C([123])/i));
-    if (m && m[1]) {
-      localStorage.setItem("currentCompetency", "C" + String(m[1]).toUpperCase());
-    }
-  } catch (e) {
-    try { console.warn("Progress save failed:", e); } catch(_) {}
-  }
-})();
-
-// --- your main adaptive continue script below ---
-(function () {
-  try {
-    console.log("🚀 Running adaptive continue script (final clean version)...");
-
-    const p = GetPlayer();
+    // --- Storyline Player ---
+    const p = GetPlayer && GetPlayer();
     if (!p) return;
 
-    // --- Detect which competency this file represents ---
+    // --- Detect competency (C1/C2/C3) ---
     const url = window.location.href.toUpperCase();
-    const compId = (url.match(/C[1-9]/) || ["C1"])[0];
-    console.log("📘 Competency detected:", compId);
+    const compId = (url.match(/C[123]/) || ["C1"])[0];
+    console.log("📘 Competency:", compId);
 
-    // --- Gather Storyline variables ---
+    // --- Quiz data ---
     const correct = Number(p.GetVar(compId + "_Correct") || 0);
     const missedSubs = (p.GetVar(compId + "_missedSubs") || "")
       .split(",")
       .map(s => s.trim())
       .filter(Boolean);
 
-    // --- Determine mastery level ---
+    // --- Determine mastery ---
     let mastery = "Failing";
     if (correct === 3) mastery = "Mastery";
     else if (correct === 2) mastery = "Proficient";
@@ -1020,91 +866,38 @@ window.Script12 = function()
     const finalized = false;
 
     // --- Identity & session ---
-    const learnerName =
-      p.GetVar("learnerName") ||
-      localStorage.getItem("learnerName") ||
-      "Anonymous";
+    const learnerName = p.GetVar("learnerName") || localStorage.getItem("learnerName") || "Anonymous";
+    const sid = localStorage.getItem("sessionId") || crypto.randomUUID();
+    localStorage.setItem("sessionId", sid);
 
-    let sessionId =
-      p.GetVar("sessionId") ||
-      localStorage.getItem("sessionId") ||
-      crypto.randomUUID();
-
-    localStorage.setItem("sessionId", sessionId);
-    const mbox = "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com";
-
-    // --- LRS Lambda endpoint ---
-    const endpoint = "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
     const NS = "https://acbl.wirelearningsolutions.com/extensions/";
+    const endpoint = "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
 
-    // --- Helper: retryable LRS send ---
+    // --- Function to send statements ---
     async function sendToLRS(statement, label) {
-      const send = async (attempt = 1) => {
-        try {
-          const res = await fetch(endpoint + "?mode=write", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(statement),
-            keepalive: true,
-          });
-
-          if (!res.ok) {
-            const text = await res.text();
-            console.warn(`⚠️ ${label} attempt ${attempt} failed:`, res.status, text);
-            if (attempt < 2) {
-              console.log("🔁 Retrying in 2s...");
-              await new Promise(r => setTimeout(r, 2000));
-              return await send(attempt + 1);
-            }
-          } else {
-            console.log(`✅ ${label} success (${res.status})`);
-          }
-        } catch (e) {
-          console.error(`❌ ${label} network error:`, e);
-          if (attempt < 2) {
-            console.log("🔁 Retrying in 2s...");
-            await new Promise(r => setTimeout(r, 2000));
-            return await send(attempt + 1);
-          }
-        }
-      };
-      await send();
+      try {
+        const res = await fetch(endpoint + "?mode=write", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ statements: [statement] }),
+          keepalive: true
+        });
+        console.log(`📡 Sent ${label}:`, res.status);
+      } catch (e) {
+        console.warn(`⚠️ LRS send failed for ${label}:`, e);
+      }
     }
 
-    // --- Build per-question dataset ---
-    const questionData = [];
-    for (let i = 1; i <= 20; i++) {
-      const ans = p.GetVar(compId + "_Q" + i + "_Answer");
-      const cor = p.GetVar(compId + "_Q" + i + "_IsCorrect");
-      const txt = p.GetVar(compId + "_Q" + i + "_Text");
-      const sub = p.GetVar(compId + "_Q" + i + "_Sub");
-      if (typeof ans === "undefined" && typeof cor === "undefined" && typeof txt === "undefined") break;
-      if (ans == null && cor == null && txt == null) continue;
-      questionData.push({
-        id: compId.toLowerCase() + "a" + i,
-        sub: sub || null,
-        text: txt || "Question " + i,
-        response: ans || "",
-        correct: !!cor,
-      });
-    }
-
-    p.SetVar(compId + "_QuestionData", JSON.stringify(questionData));
-    window.__QUESTION_DATA__ = questionData;
-
-    // --- Build & send main "passed"/"failed" statement ---
-    const verbId =
-      correct >= 2
-        ? "http://adlnet.gov/expapi/verbs/passed"
-        : "http://adlnet.gov/expapi/verbs/failed";
-    const verbDisplay = correct >= 2 ? "passed" : "failed";
-
+    // --- Build xAPI statement ---
     const stmt = {
-      actor: { name: learnerName, mbox },
-      verb: { id: verbId, display: { "en-US": verbDisplay } },
+      actor: { name: learnerName, mbox: `mailto:${encodeURIComponent(learnerName)}@wirelxdfirm.com` },
+      verb: {
+        id: correct >= 2 ? "http://adlnet.gov/expapi/verbs/passed" : "http://adlnet.gov/expapi/verbs/failed",
+        display: { "en-US": correct >= 2 ? "passed" : "failed" }
+      },
       object: {
         id: `https://acbl.wirelearningsolutions.com/activities/${compId}/quiz`,
-        objectType: "Activity",
+        objectType: "Activity"
       },
       result: {
         score: { raw: correct, min: 0, max: 3 },
@@ -1112,130 +905,61 @@ window.Script12 = function()
         completion: true,
         extensions: {
           [NS + "learnerName"]: learnerName,
-          [NS + "sessionId"]: sessionId,
+          [NS + "sessionId"]: sid,
           [NS + "competencyId"]: compId,
           [NS + "masteryLevel"]: mastery,
           [NS + "missed"]: missedSubs,
           [NS + "testedOut"]: testedOut,
-          [NS + "finalized"]: finalized,
-          [NS + "questionData"]: JSON.stringify(questionData),
-        },
-      },
-      context: { registration: sessionId },
-      timestamp: new Date().toISOString(),
-    };
-
-    await sendToLRS(stmt, `Progress (${mastery}) for ${compId}`);
-
-    // --- Experienced statement ---
-    const experiencedStmt = {
-      actor: { name: learnerName, mbox },
-      verb: {
-        id: "http://adlnet.gov/expapi/verbs/experienced",
-        display: { "en-US": "experienced" },
-      },
-      object: {
-        id: `https://acbl.wirelearningsolutions.com/activities/${compId}/summary`,
-        objectType: "Activity",
-        definition: {
-          name: { "en-US": "Analyzing Progress" },
-          description: { "en-US": "Learner moved to Next Page (progress analysis)" },
-        },
-      },
-      context: { registration: sessionId },
-      timestamp: new Date().toISOString(),
-    };
-
-    await sendToLRS(experiencedStmt, `Experienced progress analysis (${compId})`);
-
-    // --- Terminated statement ---
-    const terminatedStmt = {
-      actor: { name: learnerName, mbox },
-      verb: {
-        id: "http://adlnet.gov/expapi/verbs/terminated",
-        display: { "en-US": "terminated" },
-      },
-      object: {
-        id: `https://acbl.wirelearningsolutions.com/activities/${compId}/quiz`,
-        objectType: "Activity",
-      },
-      context: { registration: sessionId },
-      timestamp: new Date().toISOString(),
-    };
-
-    await sendToLRS(terminatedStmt, `Terminated ${compId}`);
-
-    // --- Save local adaptive data ---
-    const keyBase = compId + ".";
-    localStorage.setItem(keyBase + "mastery", mastery);
-    localStorage.setItem(keyBase + "testedOut", testedOut);
-    localStorage.setItem(keyBase + "finalized", finalized);
-    localStorage.setItem(keyBase + "score", correct.toString());
-    localStorage.setItem(keyBase + "missed", JSON.stringify(missedSubs));
-    localStorage.setItem(keyBase + "questionData", JSON.stringify(questionData));
-
-    // --- Adaptive routing builder ---
-    (function () {
-      try {
-        const comp = "C1";
-        const mastery = p.GetVar("C1_masteryLevel") || "";
-        const missedSubs = JSON.parse(p.GetVar("C1_missedSubs") || "[]");
-        const learnerName = localStorage.getItem("learnerName");
-        const sid = localStorage.getItem("sessionId");
-
-        let nextUrls = [];
-        let status = "in progress";
-
-        if (mastery === "Mastery") {
-          nextUrls = ["C2-test/story.html"];
-          status = "completed";
-        } else if (mastery === "Proficient") {
-          nextUrls = missedSubs.flatMap(sub => [
-            `content/${sub}-content.html`,
-            `apply/${sub}-apply.html`
-          ]);
-          nextUrls.push(`${comp}-test/story.html`);
-        } else {
-          const subs = ["a", "b", "c"].map(x => `${comp}${x}`);
-          nextUrls = subs.flatMap(sub => [
-            `content/${sub}-content.html`,
-            `apply/${sub}-apply.html`
-          ]);
-          nextUrls.push(`${comp}-test/story.html`);
+          [NS + "finalized"]: finalized
         }
+      },
+      context: { registration: sid },
+      timestamp: new Date().toISOString()
+    };
 
-        localStorage.setItem("adaptivePath", JSON.stringify(nextUrls));
-        localStorage.setItem("currentCompetency", comp);
-        localStorage.setItem(`${comp}_status`, status);
-        localStorage.setItem(`${comp}_mastery`, mastery);
+    // --- Save locally ---
+    localStorage.setItem(compId + ".mastery", mastery);
+    localStorage.setItem(compId + ".missed", JSON.stringify(missedSubs));
+    localStorage.setItem(compId + ".status", correct === 3 ? "Completed" : "InProgress");
 
-        const base = "https://wirelearningsolutions.com/";
-        const target = nextUrls[0];
-        window.location.href = `${base}${target}?learnerName=${encodeURIComponent(learnerName)}&sid=${encodeURIComponent(sid)}&current=${comp}`;
-      } catch (e) {
-        console.error("Adaptive routing error:", e);
-      }
-    })();
+    // --- Send to Lambda/LRS ---
+    sendToLRS(stmt, `Quiz result (${compId})`);
 
-    // --- Redirect to next.html (safety fallback) ---
-    const base = "https://www.wirelearningsolutions.com/next.html";
-    const qs = new URLSearchParams({
-      learnerName,
-      sid: sessionId,
-      current: compId,
-      mastery,
-      missed: JSON.stringify(missedSubs),
-      testedOut,
-      finalized,
-      score: correct,
-    });
+    // --- Adaptive Routing ---
+    let nextUrls = [];
+    let status = correct === 3 ? "Completed" : "InProgress";
 
-    const targetUrl = base + "?" + qs.toString();
-    console.log("➡️ Redirecting to:", targetUrl);
-    window.location.href = targetUrl;
+    if (mastery === "Mastery") {
+      nextUrls = [`C${Number(compId.replace("C", "")) + 1}-test/story.html`];
+    } else if (mastery === "Proficient") {
+      nextUrls = missedSubs.flatMap(sub => [
+        `content/${sub}-content.html`,
+        `apply/${sub}-apply.html`
+      ]);
+      nextUrls.push(`${compId}-test/story.html`);
+    } else {
+      const subs = ["a", "b", "c"].map(x => `${compId}${x}`);
+      nextUrls = subs.flatMap(sub => [
+        `content/${sub}-content.html`,
+        `apply/${sub}-apply.html`
+      ]);
+      nextUrls.push(`${compId}-test/story.html`);
+    }
+
+    localStorage.setItem("adaptivePath", JSON.stringify(nextUrls));
+    localStorage.setItem("currentCompetency", compId);
+    localStorage.setItem(`${compId}_status`, status);
+
+    // --- Redirect ---
+    const nextPage = nextUrls[0] || "next.html";
+    const base = "https://www.wirelearningsolutions.com/";
+    const redirectUrl = `${base}${nextPage}?learnerName=${encodeURIComponent(learnerName)}&sid=${encodeURIComponent(sid)}&current=${compId}`;
+
+    console.log("➡️ Redirecting to:", redirectUrl);
+    window.location.href = redirectUrl;
 
   } catch (e) {
-    console.warn("❌ Continue button error:", e);
+    console.error("❌ Continue button error:", e);
   }
 })();
 
