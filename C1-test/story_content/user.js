@@ -155,157 +155,111 @@ if (!window.__XAPI_HELPER_LOADED__) {
 
 window.Script3 = function()
 {
-  // =======================================
-//  Adaptive Learning: Initialization + Resume + Lambda "initialized" log
-//  Trigger: Execute JavaScript (runs when slide 1 timeline starts)
-//  Requires Storyline text vars: learnerName, actorName, actorMbox, sessionId, QuizCompleted
-// =======================================
+  /* ============================================================
+   Adaptive Learning – Clean Page-1 Initialization + Resume Gate
+   Runs ONLY on slide 1 (not slide master)
+   ============================================================ */
 (function () {
   try {
-    const player = GetPlayer();
-    if (!player) return;
+    const p = GetPlayer();
+    if (!p) return;
 
-    // ---------- helpers ----------
-    const getQS = n => {
-      const m = new RegExp("[?&]" + n + "=([^&#]*)").exec(window.location.search);
+    /* ---------------------------------------
+       1. Resolve learner identity (QS > storage)
+       --------------------------------------- */
+    const getQS = name => {
+      const m = new RegExp("[?&]" + name + "=([^&#]*)").exec(location.search);
       return m ? decodeURIComponent(m[1].replace(/\+/g, " ")) : null;
     };
-    const b64JsonTry = s => { try { return JSON.parse(atob(s)); } catch { return null; } };
-    const tidy = s => (s || "").toString().trim();
 
-    // ---------- candidate sources ----------
-    const qsName = getQS("learnerName") || getQS("name");
-    const actorParam = getQS("actor");
-    let actor = null;
-    if (actorParam) {
-      try { actor = JSON.parse(actorParam); } catch { actor = b64JsonTry(actorParam); }
-    }
-    const storedName = localStorage.getItem("learnerName");
+    const qsName   = getQS("learnerName") || getQS("name");
+    const stored   = localStorage.getItem("learnerName");
+    let learner    = (qsName || stored || "").trim();
 
-    // ---------- resolve final name ----------
-    let resolvedName =
-      tidy(qsName) ||
-      tidy(actor && (actor.name || (actor.account && actor.account.name))) ||
-      tidy(storedName);
+    if (!learner) learner = "Anonymous";
 
-    const ENABLE_PROMPT_IF_MISSING = false;
-    if (!resolvedName && ENABLE_PROMPT_IF_MISSING) {
-      const tmp = prompt("Enter your name to begin:");
-      if (tmp) resolvedName = tidy(tmp);
-    }
+    const mbox = "mailto:" + encodeURIComponent(learner) + "@wirelxdfirm.com";
 
-    // ---------- fallback if still missing ----------
-    if (!resolvedName) {
-      console.warn("Actor Initialization: No learner name found. Using fallback.");
-      resolvedName = "there"; // friendly fallback for "Hi there"
-    }
-
-    // ---------- derive mbox + session ----------
-    const mbox = (actor && actor.mbox) || ("mailto:" + encodeURIComponent(resolvedName) + "@wirelxdfirm.com");
+    /* ---------------------------------------
+       2. Create or restore session ID
+       --------------------------------------- */
     let sid = localStorage.getItem("sessionId");
     if (!sid) {
-      sid = (crypto && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now());
+      sid = crypto.randomUUID();
       localStorage.setItem("sessionId", sid);
     }
 
-    // ---------- Storyline + localStorage sync ----------
-    player.SetVar("learnerName", resolvedName);
-    player.SetVar("actorName", resolvedName);
-    player.SetVar("actorMbox", mbox);
-    player.SetVar("sessionId", sid);
-    localStorage.setItem("learnerName", resolvedName);
-    localStorage.setItem("actorName", resolvedName);
-    localStorage.setItem("actorMbox", mbox);
-    localStorage.setItem("currentCompetency", "C1");
-    window.__ACBL_ACTOR__ = { name: resolvedName, mbox, sessionId: sid };
+    /* ---------------------------------------
+       3. Push identity into Storyline variables
+       --------------------------------------- */
+    p.SetVar("learnerName", learner);
+    p.SetVar("actorName", learner);
+    p.SetVar("actorMbox", mbox);
+    p.SetVar("sessionId", sid);
 
-    // ---------- Resume logic ----------
-    const completed = player.GetVar("QuizCompleted");
-    const suspend = localStorage.getItem("StorylineResumePrompt");
-    if (completed) {
-      player.SetVar("QuizCompleted", false);
-      localStorage.removeItem("StorylineResumePrompt");
-      location.reload();
-    } else if (!suspend) {
-      const resume = confirm("Do you want to resume your previous attempt?");
-      if (!resume) {
-        localStorage.removeItem("StorylineResumePrompt");
-        location.reload();
-      } else {
-        localStorage.setItem("StorylineResumePrompt", "yes");
-      }
+    localStorage.setItem("learnerName", learner);
+    localStorage.setItem("actorName", learner);
+    localStorage.setItem("actorMbox", mbox);
+
+    /* ---------------------------------------
+       4. Determine competency for this module
+       --------------------------------------- */
+    const url = location.href.toUpperCase();
+    const comp = (url.match(/C[123]/) || ["C1"])[0];
+    localStorage.setItem("currentCompetency", comp);
+
+    const scoreKey     = `${comp}.score`;
+    const completeKey  = `${comp}.completed`;
+
+    const storedScore     = localStorage.getItem(scoreKey);
+    const storedCompleted = localStorage.getItem(completeKey) === "true";
+
+    console.log("🔎 Resume Check:", {
+      comp,
+      storedScore,
+      storedCompleted,
+      learner,
+      sid
+    });
+
+    /* -------------------------------------------------------------
+       5. RESUME RULES
+          ✔ Brand-new → no resume popup
+          ✔ Completed test → always start clean
+          ✔ In-progress → offer resume
+       ------------------------------------------------------------- */
+
+    // CASE A: brand-new — no score exists
+    if (!storedScore) {
+      console.log("✨ No previous attempt. Starting fresh.");
+      return; // start new
     }
 
-    // ---------- Optional: send "initialized" xAPI via Lambda ----------
-    const initStmt = {
-      actor: { name: resolvedName, mbox },
-      verb: {
-        id: "http://adlnet.gov/expapi/verbs/initialized",
-        display: { "en-US": "initialized" }
-      },
-      object: {
-        id: "https://acbl.wirelxdfirm.com/activities/" +
-             (window.location.pathname.split("/").pop() || "course"),
-        definition: { name: { "en-US": "Course Launched" } },
-        objectType: "Activity"
-      },
-      context: { registration: sid },
-      timestamp: new Date().toISOString()
-    };
+    // CASE B: completed attempt
+    if (storedCompleted) {
+      console.log("✨ Previous attempt completed. Starting fresh.");
+      return;
+    }
 
-    fetch("https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws?mode=write", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(initStmt),
-      keepalive: true
-    })
-      .then(r => console.log(r.ok ? "✅ Initialized logged via Lambda" : "⚠️ Init log failed:", r.status))
-      .catch(e => console.warn("Init xAPI send failed:", e));
+    // CASE C: in-progress attempt → offer resume
+    const resume = confirm("Do you want to resume your previous test attempt?");
+    if (!resume) {
+      console.log("🔄 Learner chose to restart fresh.");
+      return;
+    }
 
-    console.log("Actor Initialization complete:", { name: resolvedName, mbox, sessionId: sid });
-  } catch (e) {
-    console.warn("Actor Initialization failed:", e);
+    console.log("▶ Resuming previous attempt.");
+    // Storyline will take over because your SCORM-resume is off,
+    // and your variables are rehydrated by the master slide.
+
+  } catch (err) {
+    console.warn("❌ Page-1 Init Error:", err);
   }
 })();
 
 }
 
 window.Script4 = function()
-{
-  try {
-  console.log("🚀 Testing sendXAPI helper...");
-
-  if (typeof sendXAPI !== "function") {
-    alert("⚠️ sendXAPI not loaded. Ensure the master script ran.");
-  } else {
-    const p = GetPlayer();
-    const learnerName = p.GetVar("learnerName") || localStorage.getItem("learnerName") || "Anonymous";
-    const sessionId   = p.GetVar("sessionId")   || localStorage.getItem("sessionId") || crypto.randomUUID();
-
-    sendXAPI(
-      "http://adlnet.gov/expapi/verbs/experienced",
-      "experienced",
-      "https://wirelearningsolutions.com/test-lrs-check",
-      "LRS Connectivity Test",
-      {
-        extensions: {
-          "https://acbl.wirelxdfirm.com/extensions/learnerName": learnerName,
-          "https://acbl.wirelxdfirm.com/extensions/sessionId": sessionId,
-          "https://acbl.wirelxdfirm.com/extensions/test": true
-        }
-      }
-    );
-
-    alert("✅ Statement sent to Lambda. Check SCORM Cloud LRS for the test event.");
-  }
-} catch (err) {
-  console.error("❌ Test trigger failed:", err);
-  alert("❌ Error during test. Check browser console.");
-}
-
-}
-
-window.Script5 = function()
 {
   // Load once (Master fires on every slide)
 if (!window.__XAPI_HELPER_LOADED__) {
@@ -374,7 +328,7 @@ if (!window.__XAPI_HELPER_LOADED__) {
 
 }
 
-window.Script6 = function()
+window.Script5 = function()
 {
   // --- Global xAPI Helper (runs once across all slides) ---
 if (!window.__XAPI_HELPER_LOADED__) {
@@ -445,7 +399,7 @@ if (!window.__XAPI_HELPER_LOADED__) {
 
 }
 
-window.Script7 = function()
+window.Script6 = function()
 {
   (function(){
   var p = GetPlayer();
@@ -470,7 +424,7 @@ window.Script7 = function()
 
 }
 
-window.Script8 = function()
+window.Script7 = function()
 {
   // Load once (Master fires on every slide)
 if (!window.__XAPI_HELPER_LOADED__) {
@@ -539,7 +493,7 @@ if (!window.__XAPI_HELPER_LOADED__) {
 
 }
 
-window.Script9 = function()
+window.Script8 = function()
 {
   // --- Global xAPI Helper (runs once across all slides) ---
 if (!window.__XAPI_HELPER_LOADED__) {
@@ -610,7 +564,7 @@ if (!window.__XAPI_HELPER_LOADED__) {
 
 }
 
-window.Script10 = function()
+window.Script9 = function()
 {
   (function(){
   var p = GetPlayer();
@@ -635,7 +589,7 @@ window.Script10 = function()
 
 }
 
-window.Script11 = function()
+window.Script10 = function()
 {
   // Load once (Master fires on every slide)
 if (!window.__XAPI_HELPER_LOADED__) {
@@ -704,7 +658,7 @@ if (!window.__XAPI_HELPER_LOADED__) {
 
 }
 
-window.Script12 = function()
+window.Script11 = function()
 {
   // --- Global xAPI Helper (runs once across all slides) ---
 if (!window.__XAPI_HELPER_LOADED__) {
@@ -775,7 +729,7 @@ if (!window.__XAPI_HELPER_LOADED__) {
 
 }
 
-window.Script13 = function()
+window.Script12 = function()
 {
   (function(){
   var p = GetPlayer();
@@ -800,7 +754,7 @@ window.Script13 = function()
 
 }
 
-window.Script14 = function()
+window.Script13 = function()
 {
   // Load once (Master fires on every slide)
 if (!window.__XAPI_HELPER_LOADED__) {
@@ -869,7 +823,7 @@ if (!window.__XAPI_HELPER_LOADED__) {
 
 }
 
-window.Script15 = function()
+window.Script14 = function()
 {
   // --- Global xAPI Helper (runs once across all slides) ---
 if (!window.__XAPI_HELPER_LOADED__) {
@@ -940,7 +894,7 @@ if (!window.__XAPI_HELPER_LOADED__) {
 
 }
 
-window.Script16 = function()
+window.Script15 = function()
 {
   (function () {
   try {
@@ -1083,6 +1037,59 @@ window.Script16 = function()
 
 }
 
+window.Script16 = function()
+{
+  /* ============================================================
+   Mark test attempt complete + clear Storyline resume state
+   ============================================================ */
+
+(function () {
+  try {
+    /* ---------------------------------------
+       1. Mark attempt as completed in localStorage
+       --------------------------------------- */
+    const url = window.location.href.toUpperCase();
+    const compMatch = url.match(/C[123]/);
+    const compId = compMatch ? compMatch[0] : "C1";
+
+    localStorage.setItem(`${compId}.completed`, "true");
+    console.log(`✔ Marked ${compId} as completed`);
+
+    /* ---------------------------------------
+       2. SCORM "completed" flag (ignored in HTML export)
+       --------------------------------------- */
+    try {
+      var lms = window.lmsAPI || null;
+      if (lms && lms.SetStatus) {
+        lms.SetStatus("completed");
+        lms.CommitData();
+        console.log("✔ SCORM completion sent");
+      }
+    } catch (e) {
+      console.log("ℹ SCORM API not present (HTML export)");
+    }
+
+    /* ---------------------------------------
+       3. Remove internal Storyline resume data
+       --------------------------------------- */
+    try {
+      const slKeys = Object.keys(localStorage).filter(k =>
+        k.toLowerCase().includes("story")
+      );
+      slKeys.forEach(k => localStorage.removeItem(k));
+
+      console.log("✔ Cleared Storyline internal resume data");
+    } catch (e) {
+      console.warn("⚠ Resume purge failed:", e);
+    }
+
+  } catch (err) {
+    console.error("❌ Completion block failed:", err);
+  }
+})();
+
+}
+
 window.Script17 = function()
 {
   (function () {
@@ -1220,6 +1227,59 @@ window.Script17 = function()
 }
 
 window.Script18 = function()
+{
+  /* ============================================================
+   Mark test attempt complete + clear Storyline resume state
+   ============================================================ */
+
+(function () {
+  try {
+    /* ---------------------------------------
+       1. Mark attempt as completed in localStorage
+       --------------------------------------- */
+    const url = window.location.href.toUpperCase();
+    const compMatch = url.match(/C[123]/);
+    const compId = compMatch ? compMatch[0] : "C1";
+
+    localStorage.setItem(`${compId}.completed`, "true");
+    console.log(`✔ Marked ${compId} as completed`);
+
+    /* ---------------------------------------
+       2. SCORM "completed" flag (ignored in HTML export)
+       --------------------------------------- */
+    try {
+      var lms = window.lmsAPI || null;
+      if (lms && lms.SetStatus) {
+        lms.SetStatus("completed");
+        lms.CommitData();
+        console.log("✔ SCORM completion sent");
+      }
+    } catch (e) {
+      console.log("ℹ SCORM API not present (HTML export)");
+    }
+
+    /* ---------------------------------------
+       3. Remove internal Storyline resume data
+       --------------------------------------- */
+    try {
+      const slKeys = Object.keys(localStorage).filter(k =>
+        k.toLowerCase().includes("story")
+      );
+      slKeys.forEach(k => localStorage.removeItem(k));
+
+      console.log("✔ Cleared Storyline internal resume data");
+    } catch (e) {
+      console.warn("⚠ Resume purge failed:", e);
+    }
+
+  } catch (err) {
+    console.error("❌ Completion block failed:", err);
+  }
+})();
+
+}
+
+window.Script19 = function()
 {
   (function () {
   try {
