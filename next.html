@@ -437,14 +437,28 @@
 
             let next = evaluateAdaptiveRouting(currentComp, compState, rules) || `${currentComp}-test`;
 
+            // 1) Preserve array-based routing FIRST
             if (Array.isArray(next)) {
                 const [first, ...rest] = next;
-                if (rest.length > 0) localStorage.setItem("pendingRoutes", JSON.stringify(rest));
-                else localStorage.removeItem("pendingRoutes");
-                next = first;
+
+                if (rest.length > 0) {
+                    localStorage.setItem("pendingRoutes", JSON.stringify(rest));
+                } else {
+                    localStorage.removeItem("pendingRoutes");
+                }
+
+                next = first;   // launch the first route of the chain
+
             } else {
+
+                // 2) Normalize ANY single bare competency like "C1"
+                if (/^C[1-3]$/i.test(next)) {
+                    next = `${next}-test`;   // transform to launchable page
+                }
+
                 localStorage.removeItem("pendingRoutes");
             }
+
 
             writeSummary(currentComp, compState, next);
 
