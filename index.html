@@ -245,39 +245,45 @@
 
             try {
                 const r = await fetch(`${PROXY_URL}?learner=__ping__&limit=1`);
-                const text = await r.text();
-                console.log("Ping:", r.status, text);
+                const raw = await r.text();
+                console.log("Ping:", r.status, raw);
 
-                // CASE 1: Lambda or LRS responded with valid JSON array like []
-                if (r.ok && text.trim().startsWith("[")) {
-                    dot.classList.add("ok");
-                    txt.textContent = "Connected to the LRS";
+                if (!r.ok) {
+                    txt.textContent = "Offline";
+                    dot.style.background = "var(--err)";
                     return;
                 }
 
-                // CASE 2: Friendly Lambda test responses
-                if (r.ok && (text.includes("Lambda") || text.includes("OK"))) {
-                    dot.classList.add("ok");
-                    txt.textContent = "Connected to the LRS";
-                    return;
-                }
-
-                // CASE 3: LRS reachable but unexpected payload
-                if (r.ok) {
+                // Try to parse the response as JSON
+                let parsed = null;
+                try {
+                    parsed = JSON.parse(raw);
+                } catch {
+                    // Valid connection but invalid JSON payload
                     txt.textContent = `Unstable (${r.status})`;
                     dot.style.background = "var(--warn)";
                     return;
                 }
 
-                // CASE 4: Not ok
-                txt.textContent = "Offline";
-                dot.style.background = "var(--err)";
+                // --- If we reach here, the Lambda + LRS are both reachable ---
+                // Accept JSON arrays OR objects as connected
+                if (Array.isArray(parsed) || typeof parsed === "object") {
+                    dot.classList.add("ok");
+                    txt.textContent = "Connected to the LRS";
+                    return;
+                }
+
+                // Anything else is unstable
+                txt.textContent = `Unstable (${r.status})`;
+                dot.style.background = "var(--warn)";
+
             } catch (err) {
                 console.error("Ping error:", err);
                 txt.textContent = "Offline";
                 dot.style.background = "var(--err)";
             }
         }
+
 
         checkConnection();
 
