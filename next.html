@@ -241,7 +241,10 @@
     <header>
         <div class="title-row">
             <h1>Analyzing your progress</h1>
-            <span class="badge"><span class="dot" id="connDot"></span><span id="connText">Checking connection…</span></span>
+            <span class="badge">
+                <span class="dot" id="connDot"></span>
+                <span id="connText">Checking connection…</span>
+            </span>
         </div>
     </header>
 
@@ -249,7 +252,9 @@
         <section class="card" id="info">
             <div><b>Learner:</b> <span id="learnerNameLabel">—</span></div>
             <div class="muted">Session: <span id="sessionLabel">—</span></div>
-            <div id="anonWarn" class="muted" style="color:var(--err);display:none;">Actions are disabled until a learner name is provided.</div>
+            <div id="anonWarn" class="muted" style="color:var(--err);display:none;">
+                Actions are disabled until a learner name is provided.
+            </div>
         </section>
 
         <section class="card" id="summaryCard">
@@ -261,7 +266,8 @@
                 <span id="upNextType" class="chip"><strong>—</strong></span>
             </div>
             <div id="launchInfo">
-                Use the <b>Continue</b> button when you're ready. Or use the <b>Accept Mastery Level and Move On</b> button to proceed to the next competency.
+                Use the <b>Continue</b> button when you're ready.
+                Or use the <b>Accept Mastery Level and Move On</b> button to proceed to the next competency.
             </div>
         </section>
 
@@ -270,7 +276,10 @@
                 <button id="continueBtn" class="primary" disabled>Continue</button>
                 <button id="acceptBtn" disabled>Accept Mastery Level and Move On</button>
                 <button id="toggleDebug" aria-pressed="false">Show Debug Info</button>
-                <button id="resetBtn" style="background:linear-gradient(180deg,#5b6470,#3e4650);border-color:rgba(148,163,184,.55);">Reset Learner</button>
+                <button id="resetBtn"
+                        style="background:linear-gradient(180deg,#5b6470,#3e4650);border-color:rgba(148,163,184,.55);">
+                    Reset Learner
+                </button>
             </div>
         </section>
 
@@ -278,8 +287,12 @@
             <h3>Your Progress</h3>
             <p class="muted">Real-time data from your learning record.</p>
             <table>
-                <thead><tr><th>Competency</th><th>Mastery Level</th><th>Status</th></tr></thead>
-                <tbody id="progressTable"><tr><td colspan="3" class="muted">Loading…</td></tr></tbody>
+                <thead>
+                    <tr><th>Competency</th><th>Mastery Level</th><th>Status</th></tr>
+                </thead>
+                <tbody id="progressTable">
+                    <tr><td colspan="3" class="muted">Loading…</td></tr>
+                </tbody>
             </table>
         </section>
 
@@ -287,9 +300,12 @@
     </main>
 
     <script>
+        // --------- CONFIG ----------
         const BASE = "https://www.wirelearningsolutions.com/";
         const PROXY_URL = "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
-        const NS = "https://acbl.wirelearningsolutions.com/extensions/";
+
+        // match your new JSON namespace:
+        const NS = "https://acbl.wirelxdfirm.com/extensions/";
         const EX = k => NS + k;
         const REFRESH_MS = 15000;
 
@@ -309,17 +325,30 @@
             try {
                 const r = await fetch(`${PROXY_URL}?learner=__ping__`);
                 const j = await r.json().catch(() => ({}));
-                if (r.ok && j.message?.includes("Lambda OK")) { dot.classList.add("ok"); txt.textContent = "Connected"; }
-                else { txt.textContent = "Unstable"; dot.style.background = "var(--warn)"; }
-            } catch { txt.textContent = "Offline"; dot.style.background = "var(--err)"; }
+                if (r.ok && j.message?.includes("Lambda OK")) {
+                    dot.classList.add("ok");
+                    txt.textContent = "Connected";
+                } else {
+                    txt.textContent = "Unstable";
+                    dot.style.background = "var(--warn)";
+                }
+            } catch {
+                txt.textContent = "Offline";
+                dot.style.background = "var(--err)";
+            }
         }
 
         // ---------- Summary ----------
         async function fetchSummary() {
             try {
-                const res = await fetch(`${PROXY_URL}?learner=${encodeURIComponent(learnerName)}&mode=summary`);
+                const res = await fetch(
+                    `${PROXY_URL}?learner=${encodeURIComponent(learnerName)}&mode=summary`
+                );
                 return await res.json();
-            } catch (e) { console.error(e); return {}; }
+            } catch (e) {
+                console.error(e);
+                return {};
+            }
         }
 
         // ---------- Adaptive rules ----------
@@ -338,22 +367,39 @@
             if (!rules) return null;
 
             const routes = [];
+
             for (const rule of rules) {
                 const cond = rule.if || {};
                 let match = true;
+
                 for (const k in cond) {
                     if (k === "masteryIn") {
-                        if (!Array.isArray(cond[k]) || !cond[k].includes(compState.mastery)) match = false;
-                    } else if (compState[k] !== cond[k]) match = false;
+                        if (!Array.isArray(cond[k]) || !cond[k].includes(compState.mastery)) {
+                            match = false;
+                            break;
+                        }
+                    } else {
+                        if (compState[k] !== cond[k]) {
+                            match = false;
+                            break;
+                        }
+                    }
                 }
+
                 if (!match) continue;
 
                 for (const action of rule.then || []) {
+                    // direct route
                     if (action.route) {
                         const key = Object.keys(action.route)[0];
-                        const routeStr = action.route[key].replace("{item}", compState.missed?.[0] || "");
+                        const routeStr = action.route[key].replace(
+                            "{item}",
+                            compState.missed?.[0] || ""
+                        );
                         routes.push(routeStr);
                     }
+
+                    // forEach route (e.g., missed sub-competencies)
                     if (action.forEach && Array.isArray(compState[action.forEach]) && action.do) {
                         for (const item of compState[action.forEach]) {
                             for (const a of action.do) {
@@ -366,6 +412,7 @@
                         }
                     }
                 }
+
                 if (routes.length > 0) break;
             }
 
@@ -374,20 +421,126 @@
             return routes;
         }
 
-        // ---------- Render -----------
-        function displayMastery(m) { return m === "Mastery" ? "Mastered" : (m || "—"); }
-        function labelStatus(k) { if (k === "NotStarted") return "Not Started"; if (k === "InProgress") return "In Progress"; if (k === "Completed") return "Completed"; return k || "—"; }
-        function renderProgress(map) { const tbody = document.getElementById("progressTable"); tbody.innerHTML = ""; for (const comp of ["C1", "C2", "C3"]) { const s = map[comp] || {}; const mastery = displayMastery(s.mastery); let status = "NotStarted"; if (s.finalized || s.mastery === "Mastery" || s.testedOut || s.completed) status = "Completed"; else if (s.mastery) status = "InProgress"; const tr = document.createElement("tr"); tr.innerHTML = `<td>${comp}</td><td>${mastery}</td><td><span class="status ${status}"><span class="s-dot"></span>${labelStatus(status)}</span></td>`; tbody.appendChild(tr); } }
-        function writeSummary(current, compState, next) { const line = document.getElementById("summaryLine"); const curLabel = current === "C1" ? "Competency 1" : current === "C2" ? "Competency 2" : "Competency 3"; const masteryTxt = displayMastery(compState.mastery); const statusTxt = compState.finalized ? "Completed" : (compState.mastery ? "In Progress" : "Not Started"); line.innerHTML = `Current: <b>${curLabel}</b> — <b>${masteryTxt}</b> (${statusTxt})`; const comp = (next?.match(/(C\d)/i)?.[1] || current).toUpperCase(); const sub = next?.match(/C\d([a-c])/i) ? `C${comp[1]}${next.match(/C\d([a-c])/i)[1]}` : "—"; let type = "—"; if (/-content$/i.test(next)) type = "Content"; else if (/-apply$/i.test(next)) type = "Application"; else if (/-test$/i.test(next)) type = "Test"; else if (/program-complete/i.test(next)) type = "Finish"; document.getElementById("upNextComp").innerHTML = `<strong>${comp}</strong>`; document.getElementById("upNextSub").innerHTML = `<strong>${sub}</strong>`; document.getElementById("upNextType").innerHTML = `<strong>${type}</strong>`; }
+        // ---------- URL resolver ----------
+        // Adjust paths here to match your folder structure
+        function resolveTargetUrl(target) {
+            if (!target) return null;
 
-        // ---------- Finalize ----------
+            // Program complete page
+            if (/program-complete/i.test(target)) {
+                return BASE + "program-complete.html";
+            }
+
+            // Tests: C1-test, C2-test, C3-test
+            if (/^C[1-3]-test$/i.test(target)) {
+                return BASE + "tests/" + target + ".html";
+            }
+
+            // Content lessons: C1a-content, etc.
+            if (/^C[1-3][a-c]-content$/i.test(target)) {
+                return BASE + "content/" + target + ".html";
+            }
+
+            // Apply lessons (Rise exports): C1a-apply, etc.
+            if (/^C[1-3][a-c]-apply$/i.test(target)) {
+                return BASE + "apply/" + target + ".html";
+            }
+
+            // Fallback: try at root (e.g., custom pages)
+            return BASE + target + ".html";
+        }
+
+        // ---------- Render ----------
+        function displayMastery(m) {
+            return m === "Mastery" ? "Mastered" : (m || "—");
+        }
+
+        function labelStatus(k) {
+            if (k === "NotStarted") return "Not Started";
+            if (k === "InProgress") return "In Progress";
+            if (k === "Completed") return "Completed";
+            return k || "—";
+        }
+
+        function renderProgress(map) {
+            const tbody = document.getElementById("progressTable");
+            tbody.innerHTML = "";
+
+            for (const comp of ["C1", "C2", "C3"]) {
+                const s = map[comp] || {};
+                const mastery = displayMastery(s.mastery);
+
+                let status = "NotStarted";
+                if (s.finalized || s.mastery === "Mastery" || s.testedOut || s.completed) {
+                    status = "Completed";
+                } else if (s.mastery) {
+                    status = "InProgress";
+                }
+
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                        <td>${comp}</td>
+                        <td>${mastery}</td>
+                        <td>
+                            <span class="status ${status}">
+                                <span class="s-dot"></span>${labelStatus(status)}
+                            </span>
+                        </td>`;
+                tbody.appendChild(tr);
+            }
+        }
+
+        function writeSummary(current, compState, next) {
+            const line = document.getElementById("summaryLine");
+
+            const curLabel =
+                current === "C1" ? "Competency 1"
+                    : current === "C2" ? "Competency 2"
+                        : "Competency 3";
+
+            const masteryTxt = displayMastery(compState.mastery);
+            const statusTxt = compState.finalized
+                ? "Completed"
+                : (compState.mastery ? "In Progress" : "Not Started");
+
+            line.innerHTML =
+                `Current: <b>${curLabel}</b> — <b>${masteryTxt}</b> (${statusTxt})`;
+
+            const compMatch = next?.match(/(C[1-3])/i);
+            const comp = (compMatch ? compMatch[1] : current).toUpperCase();
+
+            const subMatch = next?.match(/C\d([a-c])/i);
+            const sub = subMatch ? `C${comp[1]}${subMatch[1]}` : "—";
+
+            let type = "—";
+            if (/-content$/i.test(next)) type = "Content";
+            else if (/-apply$/i.test(next)) type = "Application";
+            else if (/-test$/i.test(next)) type = "Test";
+            else if (/program-complete/i.test(next)) type = "Finish";
+
+            document.getElementById("upNextComp").innerHTML = `<strong>${comp}</strong>`;
+            document.getElementById("upNextSub").innerHTML = `<strong>${sub}</strong>`;
+            document.getElementById("upNextType").innerHTML = `<strong>${type}</strong>`;
+        }
+
+        // ---------- Finalize (off-ramp) ----------
         async function sendFinalizeStatement(current, mastery) {
             const stmt = {
-                actor: { name: learnerName, mbox: `mailto:${encodeURIComponent(learnerName)}@wirelxdfirm.com` },
-                verb: { id: "http://id.tincanapi.com/verb/completed", display: { "en-US": "completed" } },
-                object: { id: `https://acbl.wirelearningsolutions.com/activities/${current}/offramp` },
+                actor: {
+                    name: learnerName,
+                    mbox: `mailto:${encodeURIComponent(learnerName)}@wirelxdfirm.com`
+                },
+                verb: {
+                    id: "http://id.tincanapi.com/verb/completed",
+                    display: { "en-US": "completed" }
+                },
+                object: {
+                    // align activities namespace with your new firm domain
+                    id: `https://acbl.wirelxdfirm.com/activities/${current}/offramp`
+                },
                 result: {
-                    completion: true, extensions: {
+                    completion: true,
+                    extensions: {
                         [EX("learnerName")]: learnerName,
                         [EX("finalized")]: true,
                         [EX("competencyId")]: current,
@@ -396,20 +549,24 @@
                 },
                 timestamp: new Date().toISOString()
             };
+
             await fetch(`${PROXY_URL}?mode=write`, {
-                method: "POST", headers: { "Content-Type": "application/json" },
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(stmt)
             });
+
             localStorage.setItem(`${current}.finalized`, "true");
         }
 
         // ---------- Launch ----------
-        // ---------- Launch ----------
-
-
         function launchTarget(k) {
             const href = resolveTargetUrl(k);
-            if (!href) { alert(`No route found for ${k}`); return; }
+            if (!href) {
+                alert(`No route found for ${k}`);
+                return;
+            }
+
             const u = new URL(href);
             u.searchParams.set("learnerName", learnerName);
             u.searchParams.set("sid", sid);
@@ -423,17 +580,28 @@
             document.getElementById("learnerNameLabel").textContent = learnerName;
             document.getElementById("sessionLabel").textContent = sid;
 
-            if (learnerName === "Anonymous") { document.getElementById("anonWarn").style.display = "block"; return; }
+            if (learnerName === "Anonymous") {
+                document.getElementById("anonWarn").style.display = "block";
+                return;
+            }
 
             const rules = await loadAdaptiveRules();
             const summary = await fetchSummary();
+
             renderProgress(summary);
 
-            const compState = summary[currentComp] || { mastery: null, finalized: false, testedOut: false, missed: [], completed: false };
+            const compState = summary[currentComp] || {
+                mastery: null,
+                finalized: false,
+                testedOut: false,
+                missed: [],
+                completed: false
+            };
 
-            let next = evaluateAdaptiveRouting(currentComp, compState, rules) || `${currentComp}-test`;
+            let next = evaluateAdaptiveRouting(currentComp, compState, rules)
+                || `${currentComp}-test`;
 
-            // 1) Preserve array-based routing FIRST
+            // handle multi-step chains and pending routes
             if (Array.isArray(next)) {
                 const [first, ...rest] = next;
 
@@ -443,18 +611,14 @@
                     localStorage.removeItem("pendingRoutes");
                 }
 
-                next = first;   // launch the first route of the chain
-
+                next = first;
             } else {
-
-                // 2) Normalize ANY single bare competency like "C1"
+                // normalize bare "C1", "C2", "C3" to tests
                 if (/^C[1-3]$/i.test(next)) {
-                    next = `${next}-test`;   // transform to launchable page
+                    next = `${next}-test`;
                 }
-
                 localStorage.removeItem("pendingRoutes");
             }
-
 
             writeSummary(currentComp, compState, next);
 
@@ -463,31 +627,46 @@
             const debug = document.getElementById("debug");
             const debugBtn = document.getElementById("toggleDebug");
 
-            debug.innerHTML = `<pre>${JSON.stringify({ learnerName, sid, currentComp, compState, next }, null, 2)}</pre>`;
+            debug.innerHTML =
+                `<pre>${JSON.stringify({ learnerName, sid, currentComp, compState, next }, null, 2)}</pre>`;
 
             continueBtn.disabled = false;
             acceptBtn.disabled = false;
 
+            // Continue button (walk through pendingRoutes queue if present)
             continueBtn.onclick = () => {
                 const pending = JSON.parse(localStorage.getItem("pendingRoutes") || "[]");
                 if (pending.length > 0) {
                     const nextRoute = pending.shift();
                     localStorage.setItem("pendingRoutes", JSON.stringify(pending));
                     launchTarget(nextRoute);
-                } else { launchTarget(next); }
+                } else {
+                    launchTarget(next);
+                }
             };
 
+            // Accept & move on (off-ramp)
             acceptBtn.onclick = async () => {
                 const m = compState.mastery || "No recorded mastery";
-                if (!confirm(`You are accepting a "${displayMastery(m)}" level for ${currentComp}. Continue?`)) return;
+                if (!confirm(
+                    `You are accepting a "${displayMastery(m)}" level for ${currentComp}. Continue?`
+                )) return;
 
                 await sendFinalizeStatement(currentComp, m);
-                const routed = evaluateAdaptiveRouting(currentComp, { ...compState, finalized: true }, rules) || "program-complete";
+
+                const routed = evaluateAdaptiveRouting(
+                    currentComp,
+                    { ...compState, finalized: true },
+                    rules
+                ) || "program-complete";
 
                 if (Array.isArray(routed)) {
                     const [first, ...rest] = routed;
-                    if (rest.length > 0) localStorage.setItem("pendingRoutes", JSON.stringify(rest));
-                    else localStorage.removeItem("pendingRoutes");
+                    if (rest.length > 0) {
+                        localStorage.setItem("pendingRoutes", JSON.stringify(rest));
+                    } else {
+                        localStorage.removeItem("pendingRoutes");
+                    }
                     launchTarget(first);
                 } else {
                     localStorage.removeItem("pendingRoutes");
@@ -501,6 +680,7 @@
                 debugBtn.textContent = hidden ? "Show Debug Info" : "Hide Debug Info";
                 debugBtn.setAttribute("aria-pressed", (!hidden).toString());
             };
+
             if (!debugBtn._init) {
                 debugBtn._init = true;
                 debugBtn.addEventListener("click", () => {
@@ -517,7 +697,9 @@
                 resetBtn._init = true;
                 resetBtn.addEventListener("click", () => {
                     if (confirm("This will clear your learner identity and progress. Continue?")) {
-                        localStorage.clear(); sessionStorage.clear(); location.href = "index.html";
+                        localStorage.clear();
+                        sessionStorage.clear();
+                        location.href = "index.html";
                     }
                 });
             }
@@ -526,7 +708,9 @@
         // Initialize and periodic refresh
         refreshAll();
         setInterval(() => {
-            if (document.visibilityState === "visible") refreshAll();
+            if (document.visibilityState === "visible") {
+                refreshAll();
+            }
         }, REFRESH_MS);
     </script>
 </body>
