@@ -15,14 +15,12 @@
     <title>Lesson Complete</title>
     <meta name="viewport" content="width=device-width,initial-scale=1" />
 
-    <!-- Your same styling preserved -->
     <style>
         :root {
             --bg-0: #0a0f1a;
             --bg-1: #0e1526;
             --ink-0: #e8f1ff;
             --ink-1: #b9c8e8;
-            --sky-1: #0ea5e9;
             --ok: #22c55e;
             --warn: #f59e0b;
             --shadow: 0 10px 24px rgba(0,0,0,.35);
@@ -32,7 +30,7 @@
             margin: 0;
             color: var(--ink-0);
             font-family: ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;
-            background: radial-gradient(1000px 600px at 70% -10%,rgba(34,211,238,.10),transparent 60%),linear-gradient(180deg,#07101e 0%,#0a1322 50%,#0b1628 100%);
+            background: radial-gradient(1000px 600px at 70% -10%,rgba(34,211,238,.10),transparent 60%), linear-gradient(180deg,#07101e 0%,#0a1322 50%,#0b1628 100%);
             min-height: 100dvh;
             display: flex;
             align-items: center;
@@ -145,10 +143,8 @@
         </div>
 
         <h1>Lesson Complete</h1>
-
         <p class="muted">
-            You just finished
-            <span class="module" id="moduleName">—</span>
+            You just finished <span class="module" id="moduleName">—</span>
         </p>
 
         <p class="muted small">
@@ -181,7 +177,11 @@
             document.getElementById("moduleName").textContent =
                 `${targetKey.toUpperCase()} Lesson`;
 
-            /* Stamp completion locally (cosmetic only) */
+            /* Save exact path (universal) */
+            const realPath = location.pathname.replace(/^\//, "");
+            localStorage.setItem("lastPath", realPath);
+
+            /* Completed flag (optional cosmetic) */
             localStorage.setItem(targetKey + ".completed", "true");
 
 
@@ -223,7 +223,7 @@
 
 
             /* -----------------------------
-               Send to Lambda (LRS Proxy)
+               Send to LRS via Lambda
             ----------------------------- */
             try {
                 await fetch(
@@ -241,7 +241,7 @@
 
 
             /* -----------------------------
-               Countdown → auto redirect
+               Auto redirect countdown
             ----------------------------- */
             let t = 3;
             const timer = setInterval(() => {
@@ -254,22 +254,18 @@
             }, 1000);
 
 
-            /* -----------------------------
-               Manual "Go Now"
-            ----------------------------- */
-            document.getElementById("continueBtn").onclick = () =>
-                location.href = nextUrl.toString();
+            /* Manual button */
+            document.getElementById("continueBtn").onclick =
+                () => location.href = nextUrl.toString();
 
 
-            /* -----------------------------
-               Debug Panel
-            ----------------------------- */
+            /* Debug panel */
             const debugPanel = document.getElementById("debugPanel");
             const debugBtn = document.getElementById("viewDebug");
             const debugOut = document.getElementById("debugOut");
 
             debugOut.textContent = JSON.stringify(
-                { targetKey, learnerName, sid, comp, nextUrl: nextUrl.toString() },
+                { targetKey, learnerName, sid, comp, realPath, nextUrl: nextUrl.toString() },
                 null, 2
             );
 
@@ -281,5 +277,6 @@
 
         });
     </script>
+
 </body>
 </html>
