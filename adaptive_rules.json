@@ -1,3 +1,4 @@
+
 {
   "meta": {
     "version": "1.0.1",
@@ -59,7 +60,8 @@
             { "route": { "apply": "{item}-apply" } }
           ]
         },
-        { "note": "C1 proficient. Targeted remediation for missed sub-competencies." }
+        { "route": { "assessment": "C1-test" } },
+        { "note": "C1 proficient. Remediate missed items, then retake C1 test." }
       ]
     },
     {
@@ -74,21 +76,22 @@
         { "route": { "apply": "C1b-apply" } },
         { "route": { "content": "C1c-content" } },
         { "route": { "apply": "C1c-apply" } },
-        { "note": "C1 emerging or failing. Full remediation." }
+        { "route": { "assessment": "C1-test" } },
+        { "note": "C1 emerging/failing. Full remediation, then retake C1 test." }
       ]
     },
     {
       "if": { "mastery": null },
       "then": [
         { "route": { "assessment": "C1-test" } },
-        { "note": "No C1 data. Start with C1 test." }
+        { "note": "No C1 data. Begin with C1 test." }
       ]
     },
     {
       "if": {},
       "then": [
         { "route": { "assessment": "C1-test" } },
-        { "note": "Fallback: no valid route found, starting from C1 test." }
+        { "note": "Fallback: start with C1 test." }
       ]
     }
   ],
@@ -138,7 +141,8 @@
             { "route": { "apply": "{item}-apply" } }
           ]
         },
-        { "note": "C2 proficient. Targeted remediation for missed sub-competencies." }
+        { "route": { "assessment": "C2-test" } },
+        { "note": "C2 proficient. Remediate missed items, then retake C2 test." }
       ]
     },
     {
@@ -153,21 +157,22 @@
         { "route": { "apply": "C2b-apply" } },
         { "route": { "content": "C2c-content" } },
         { "route": { "apply": "C2c-apply" } },
-        { "note": "C2 emerging or failing. Full remediation." }
+        { "route": { "assessment": "C2-test" } },
+        { "note": "C2 emerging/failing. Full remediation, then retake C2 test." }
       ]
     },
     {
       "if": { "mastery": null },
       "then": [
         { "route": { "assessment": "C2-test" } },
-        { "note": "No C2 data. Start with C2 test." }
+        { "note": "No C2 data. Begin with C2 test." }
       ]
     },
     {
       "if": {},
       "then": [
         { "route": { "assessment": "C2-test" } },
-        { "note": "Fallback: no valid route found, starting from C2 test." }
+        { "note": "Fallback: start with C2 test." }
       ]
     }
   ],
@@ -217,7 +222,8 @@
             { "route": { "apply": "{item}-apply" } }
           ]
         },
-        { "note": "C3 proficient. Targeted remediation for missed sub-competencies." }
+        { "route": { "assessment": "C3-test" } },
+        { "note": "C3 proficient. Remediate missed items, then retake C3 test." }
       ]
     },
     {
@@ -232,21 +238,22 @@
         { "route": { "apply": "C3b-apply" } },
         { "route": { "content": "C3c-content" } },
         { "route": { "apply": "C3c-apply" } },
-        { "note": "C3 emerging or failing. Full remediation." }
+        { "route": { "assessment": "C3-test" } },
+        { "note": "C3 emerging/failing. Full remediation, then retake C3 test." }
       ]
     },
     {
       "if": { "mastery": null },
       "then": [
         { "route": { "assessment": "C3-test" } },
-        { "note": "No C3 data. Start with C3 test." }
+        { "note": "No C3 data. Begin with C3 test." }
       ]
     },
     {
       "if": {},
       "then": [
         { "route": { "assessment": "C3-test" } },
-        { "note": "Fallback: no valid route found, starting from C3 test." }
+        { "note": "Fallback: start with C3 test." }
       ]
     }
   ],
@@ -259,7 +266,4 @@
       ]
     }
   ]
-}
-{
-
 }
