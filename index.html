@@ -242,20 +242,43 @@
         async function checkConnection() {
             const dot = document.getElementById("connDot");
             const txt = document.getElementById("connText");
+
             try {
                 const r = await fetch(`${PROXY_URL}?learner=__ping__&limit=1`);
                 const text = await r.text();
                 console.log("Ping:", r.status, text);
-                if (r.ok && (text.includes("Lambda") || text.includes("OK"))) {
-                    dot.classList.add("ok"); txt.textContent = "Connected to the LRS";
-                } else {
-                    txt.textContent = `Unstable (${r.status})`; dot.style.background = "var(--warn)";
+
+                // CASE 1: Lambda or LRS responded with valid JSON array like []
+                if (r.ok && text.trim().startsWith("[")) {
+                    dot.classList.add("ok");
+                    txt.textContent = "Connected to the LRS";
+                    return;
                 }
+
+                // CASE 2: Friendly Lambda test responses
+                if (r.ok && (text.includes("Lambda") || text.includes("OK"))) {
+                    dot.classList.add("ok");
+                    txt.textContent = "Connected to the LRS";
+                    return;
+                }
+
+                // CASE 3: LRS reachable but unexpected payload
+                if (r.ok) {
+                    txt.textContent = `Unstable (${r.status})`;
+                    dot.style.background = "var(--warn)";
+                    return;
+                }
+
+                // CASE 4: Not ok
+                txt.textContent = "Offline";
+                dot.style.background = "var(--err)";
             } catch (err) {
                 console.error("Ping error:", err);
-                txt.textContent = "Offline"; dot.style.background = "var(--err)";
+                txt.textContent = "Offline";
+                dot.style.background = "var(--err)";
             }
         }
+
         checkConnection();
 
         // ===== Session Handling =====
