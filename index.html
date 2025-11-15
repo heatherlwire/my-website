@@ -372,30 +372,29 @@
             comp = comp.toUpperCase();
             const list = [];
 
-            // 1) Start with the test for that competency (C1-test/story.html, etc.)
+            // Tests
             list.push(`${comp}-test/story.html`);
 
-            // 2) Then all content/apply pages using nested folders:
-            //    content/C1a/C1a-content.html
-            //    apply/C1a/C1a-apply.html
+            // Nested folders: content/C1a/C1a-content.html
             for (const s of subs) {
-                const subId = `${comp}${s}`; // C1a, C1b, etc.
-                list.push(`content/${subId}/${subId}-content.html`);
-                list.push(`apply/${subId}/${subId}-apply.html`);
+                const sub = `${comp}${s}`; // C1a, C1b, etc.
+                list.push(`content/${sub}/${sub}-content.html`);
+                list.push(`apply/${sub}/${sub}-apply.html`);
             }
 
-            // 3) Finally, send them to next.html (brain page)
-            list.push("next.html");
+            // Brain page
+            list.push(`next.html`);
 
             return list;
         }
 
-
+        // THIS WAS BROKEN BEFORE – now correct:
         const COMP_PATHS = {
-            C1: buildPathsForComp("C1", ["a", "b", "c"]),
-            C2: buildPathsForComp("C2", ["a", "b", "c"]),
-            C3: buildPathsForComp("C3", ["a", "b", "c"])
+            C1: buildPathsForComp("C1"),
+            C2: buildPathsForComp("C2"),
+            C3: buildPathsForComp("C3")
         };
+
 
         async function findReachablePath(list) {
             for (const path of list) { if (await preflightReachable(path)) return path; }

@@ -1,69 +1,177 @@
 ﻿<!DOCTYPE html>
 <html lang="en">
 <head>
+    <!-- Canonical redirect -->
+    <script>
+        if (location.hostname === "wirelearningsolutions.com") {
+            location.href =
+                "https://www.wirelearningsolutions.com"
+                + location.pathname
+                + location.search;
+        }
+    </script>
+
     <meta charset="UTF-8" />
     <title>Lesson Complete</title>
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
 
     <style>
-        body {
-            margin: 0;
-            padding: 40px;
-            font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
-            background: #0a0f1a;
-            color: #e8f1ff;
-            text-align: center;
+        :root {
+            --bg-0: #0a0f1a;
+            --bg-1: #0e1526;
+            --ink-0: #e8f1ff;
+            --ink-1: #b9c8e8;
+            --ok: #22c55e;
+            --shadow: 0 10px 24px rgba(0,0,0,.35);
         }
 
-        .msg {
-            font-size: 1.2rem;
-            opacity: .9;
+        body {
+            margin: 0;
+            min-height: 100dvh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(1000px 600px at 70% -10%,rgba(34,211,238,.10),transparent 60%), linear-gradient(180deg,#07101e 0%,#0a1322 50%,#0b1628 100%);
+            color: var(--ink-0);
+            font-family: ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;
+            padding: 24px;
+        }
+
+        .card {
+            background: linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.015)),var(--bg-1);
+            border: 1px solid rgba(148,163,184,.15);
+            border-radius: 16px;
+            padding: 28px 24px;
+            text-align: center;
+            box-shadow: var(--shadow);
+            max-width: 600px;
+            width: 100%;
+        }
+
+        h1 {
+            margin-bottom: 10px;
+            font-size: 26px;
+            background: linear-gradient(90deg,var(--ink-0),#cfe8ff);
+            -webkit-background-clip: text;
+            color: transparent;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            border-radius: 999px;
+            border: 1px solid rgba(34,211,238,.45);
+            background: rgba(14,165,233,.10);
+            margin-bottom: 14px;
+        }
+
+        .dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: var(--ok);
+            animation: pulse 1.8s ease-out infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(34,197,94,.5)
+            }
+
+            70% {
+                box-shadow: 0 0 0 10px rgba(34,197,94,0)
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(34,197,94,0)
+            }
+        }
+
+        .row {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin-top: 16px;
+        }
+
+        .btn {
+            padding: 10px 16px;
+            border-radius: 10px;
+            border: 1px solid rgba(148,163,184,.35);
+            background: #0f1a2e;
+            color: var(--ink-0);
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        #debugPanel {
+            display: none;
+            margin-top: 12px;
+        }
+
+        pre {
+            background: #0b1222;
+            color: #dbeafe;
+            padding: 12px;
+            border-radius: 12px;
+            border: 1px solid rgba(148,163,184,.2);
+            white-space: pre-wrap;
+            max-height: 260px;
+            overflow: auto;
+            text-align: left;
         }
     </style>
 </head>
 
 <body>
-    <h2>Finishing up…</h2>
-    <p class="msg">Preparing your next step.</p>
+    <section class="card">
+        <div class="badge"><span class="dot"></span><span id="statusText">Recording completion…</span></div>
+        <h1>Lesson Complete</h1>
+        <p class="muted">You finished <b id="modName">—</b></p>
+        <p>Redirecting in <span id="count">3</span> seconds…</p>
+
+        <div class="row">
+            <button class="btn" id="nowBtn">Go now</button>
+            <button class="btn" id="debugBtn">Show debug</button>
+        </div>
+
+        <div id="debugPanel"><pre id="dbg">Loading…</pre></div>
+    </section>
 
     <script>
         document.addEventListener("DOMContentLoaded", async () => {
 
-            /* ----------------------------------------------
-                1. Extract context from URL
-            ------------------------------------------------*/
+            /* ============================================================
+               1) Extract targetKey (e.g., C1a-apply)
+            ============================================================ */
             const qs = new URLSearchParams(location.search);
             const targetKey = qs.get("target") || "unknown-apply";
+            document.getElementById("modName").textContent = targetKey.toUpperCase();
 
-            /* ----------------------------------------------
-                2. Get learner identity + competency
-            ------------------------------------------------*/
-            const learnerName = (localStorage.getItem("learnerName") || "Anonymous").trim();
-            const sid = localStorage.getItem("sessionId") || crypto.randomUUID();
-            const comp = (localStorage.getItem("currentCompetency") || "C1").toUpperCase();
+            /* ============================================================
+               2) Extract competency (C1, C2, C3)
+            ============================================================ */
+            const comp = (targetKey.match(/(C\d)/i)?.[1] || "C1").toUpperCase();
+            localStorage.setItem("currentCompetency", comp);
 
-            /* Cosmetic-only flag so next.html can show "completed" */
-            localStorage.setItem(targetKey + ".completed", "true");
+            /* ============================================================
+               3) Learner identity + session
+            ============================================================ */
+            const learnerName = (localStorage.getItem("learnerName") || qs.get("learnerName") || "Anonymous").trim();
+            const sid = localStorage.getItem("sessionId") || qs.get("sid") || crypto.randomUUID();
+            localStorage.setItem("sessionId", sid);
 
-            /* ----------------------------------------------
-                3. Build xAPI completion statement
-            ------------------------------------------------*/
+            /* ============================================================
+               4) Send xAPI statement via Lambda
+            ============================================================ */
             const stmt = {
-                actor: {
-                    name: learnerName,
-                    mbox: `mailto:${encodeURIComponent(learnerName)}@wirelxdfirm.com`
-                },
-                verb: {
-                    id: "http://adlnet.gov/expapi/verbs/completed",
-                    display: { "en-US": "completed" }
-                },
-                object: {
-                    id: `${location.origin}/activities/${targetKey}`,
-                    definition: { name: { "en-US": `${targetKey.toUpperCase()} Lesson` } }
-                },
+                actor: { name: learnerName, mbox: `mailto:${encodeURIComponent(learnerName)}@wirelxdfirm.com` },
+                verb: { id: "http://adlnet.gov/expapi/verbs/completed", display: { "en-US": "completed" } },
+                object: { id: `https://acbl.wirelxdfirm.com/activities/${targetKey}` },
                 result: {
-                    completion: true,
-                    extensions: {
+                    completion: true, extensions: {
                         "https://acbl.wirelearningsolutions.com/extensions/targetKey": targetKey,
                         "https://acbl.wirelearningsolutions.com/extensions/competencyId": comp,
                         "https://acbl.wirelearningsolutions.com/extensions/sessionId": sid
@@ -72,35 +180,50 @@
                 timestamp: new Date().toISOString()
             };
 
-            /* ----------------------------------------------
-                4. Send to your Lambda proxy (safe if offline)
-            ------------------------------------------------*/
             try {
                 await fetch(
                     "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws?mode=write",
-                    {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify(stmt)
-                    }
+                    { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(stmt) }
                 );
-            } catch (e) {
-                console.warn("Offline or LRS error:", e);
+                document.getElementById("statusText").textContent = "Progress recorded";
+            } catch {
+                document.getElementById("statusText").textContent = "Saved locally (offline)";
             }
 
-            /* ----------------------------------------------
-                5. Redirect automatically to next.html
-            ------------------------------------------------*/
+            /* ============================================================
+               5) Redirect → next.html
+            ============================================================ */
             const nextUrl = new URL("https://www.wirelearningsolutions.com/next.html");
             nextUrl.searchParams.set("learnerName", learnerName);
             nextUrl.searchParams.set("sid", sid);
             nextUrl.searchParams.set("current", comp);
 
-            setTimeout(() => {
-                window.location.href = nextUrl.toString();
+            function go() { location.href = nextUrl.toString(); }
+            document.getElementById("nowBtn").onclick = go;
+
+            let t = 3;
+            const timer = setInterval(() => {
+                t--;
+                document.getElementById("count").textContent = t;
+                if (t <= 0) { clearInterval(timer); go(); }
             }, 1000);
+
+            /* ============================================================
+               6) Debug panel
+            ============================================================ */
+            const dbg = document.getElementById("dbg");
+            dbg.textContent = JSON.stringify(
+                { targetKey, comp, learnerName, sid, next: nextUrl.toString() },
+                null, 2
+            );
+
+            document.getElementById("debugBtn").onclick = () => {
+                const panel = document.getElementById("debugPanel");
+                const open = panel.style.display !== "block";
+                panel.style.display = open ? "block" : "none";
+                document.getElementById("debugBtn").textContent = open ? "Hide debug" : "Show debug";
+            };
         });
     </script>
-
 </body>
 </html>
