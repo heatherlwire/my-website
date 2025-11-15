@@ -244,45 +244,45 @@
             const txt = document.getElementById("connText");
 
             try {
-                const r = await fetch(`${PROXY_URL}?learner=__ping__&limit=1`);
+                const r = await fetch(`${PROXY_URL}?learner=__ping__&limit=1`, {
+                    credentials: "include",
+                    cache: "no-store"
+                });
+
                 const raw = await r.text();
                 console.log("Ping:", r.status, raw);
 
-                if (!r.ok) {
-                    txt.textContent = "Offline";
-                    dot.style.background = "var(--err)";
-                    return;
-                }
-
-                // Try to parse the response as JSON
-                let parsed = null;
-                try {
-                    parsed = JSON.parse(raw);
-                } catch {
-                    // Valid connection but invalid JSON payload
-                    txt.textContent = `Unstable (${r.status})`;
-                    dot.style.background = "var(--warn)";
-                    return;
-                }
-
-                // --- If we reach here, the Lambda + LRS are both reachable ---
-                // Accept JSON arrays OR objects as connected
-                if (Array.isArray(parsed) || typeof parsed === "object") {
+                // CASE 1: Lambda reachable AND responds with [] (your new ping)
+                if (r.ok && raw.trim().startsWith("[")) {
                     dot.classList.add("ok");
                     txt.textContent = "Connected to the LRS";
                     return;
                 }
 
-                // Anything else is unstable
+                // CASE 2: Lambda reachable but returns JSON object (shouldn’t happen for ping, but safe)
+                try {
+                    const parsed = JSON.parse(raw);
+                    if (typeof parsed === "object") {
+                        dot.classList.add("ok");
+                        txt.textContent = "Connected to the LRS";
+                        return;
+                    }
+                } catch (_) {
+                    // JSON parse failed — continue to unstable/offline handling
+                }
+
+                // CASE 3: Lambda reachable but payload unexpected
                 txt.textContent = `Unstable (${r.status})`;
                 dot.style.background = "var(--warn)";
 
             } catch (err) {
+                // CASE 4: Network, CORS, or DNS failure
                 console.error("Ping error:", err);
                 txt.textContent = "Offline";
                 dot.style.background = "var(--err)";
             }
         }
+
 
 
         checkConnection();
