@@ -13,7 +13,7 @@
 
     <meta charset="UTF-8" />
     <title>Lesson Complete</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
 
     <style>
         :root {
@@ -22,18 +22,19 @@
             --ink-0: #e8f1ff;
             --ink-1: #b9c8e8;
             --ok: #22c55e;
+            --sky-1: #0ea5e9;
             --shadow: 0 10px 24px rgba(0,0,0,.35);
         }
 
         body {
             margin: 0;
+            color: var(--ink-0);
+            font-family: ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;
+            background: radial-gradient(1000px 600px at 70% -10%,rgba(34,211,238,.10),transparent 60%), linear-gradient(180deg,#07101e 0%,#0a1322 50%,#0b1628 100%);
             min-height: 100dvh;
             display: flex;
             align-items: center;
             justify-content: center;
-            background: radial-gradient(1000px 600px at 70% -10%,rgba(34,211,238,.10),transparent 60%), linear-gradient(180deg,#07101e 0%,#0a1322 50%,#0b1628 100%);
-            color: var(--ink-0);
-            font-family: ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;
             padding: 24px;
         }
 
@@ -41,18 +42,19 @@
             background: linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.015)),var(--bg-1);
             border: 1px solid rgba(148,163,184,.15);
             border-radius: 16px;
-            padding: 28px 24px;
-            text-align: center;
             box-shadow: var(--shadow);
-            max-width: 600px;
-            width: 100%;
+            padding: 28px 24px;
+            backdrop-filter: blur(6px);
+            max-width: 640px;
+            text-align: center;
         }
 
         h1 {
+            font-size: clamp(22px,2.4vw,28px);
             margin-bottom: 10px;
-            font-size: 26px;
             background: linear-gradient(90deg,var(--ink-0),#cfe8ff);
             -webkit-background-clip: text;
+            background-clip: text;
             color: transparent;
         }
 
@@ -72,6 +74,7 @@
             height: 14px;
             border-radius: 50%;
             background: var(--ok);
+            box-shadow: 0 0 0 0 rgba(34,197,94,.55);
             animation: pulse 1.8s ease-out infinite;
         }
 
@@ -89,9 +92,13 @@
             }
         }
 
+        .muted {
+            color: var(--ink-1);
+        }
+
         .row {
             display: flex;
-            gap: 12px;
+            gap: 10px;
             justify-content: center;
             margin-top: 16px;
         }
@@ -106,72 +113,97 @@
             font-size: 14px;
         }
 
-        #debugPanel {
-            display: none;
-            margin-top: 12px;
-        }
-
         pre {
+            white-space: pre-wrap;
+            word-break: break-word;
             background: #0b1222;
             color: #dbeafe;
-            padding: 12px;
-            border-radius: 12px;
             border: 1px solid rgba(148,163,184,.2);
-            white-space: pre-wrap;
+            border-radius: 12px;
+            padding: 12px;
             max-height: 260px;
             overflow: auto;
             text-align: left;
+            margin-top: 12px;
         }
     </style>
 </head>
 
 <body>
     <section class="card">
-        <div class="badge"><span class="dot"></span><span id="statusText">Recording completion…</span></div>
-        <h1>Lesson Complete</h1>
-        <p class="muted">You finished <b id="modName">—</b></p>
-        <p>Redirecting in <span id="count">3</span> seconds…</p>
-
-        <div class="row">
-            <button class="btn" id="nowBtn">Go now</button>
-            <button class="btn" id="debugBtn">Show debug</button>
+        <div class="badge">
+            <span class="dot"></span>
+            <span id="statusText">Recording completion…</span>
         </div>
 
-        <div id="debugPanel"><pre id="dbg">Loading…</pre></div>
+        <h1>Lesson Complete</h1>
+
+        <p class="muted">
+            You just finished <span class="module" id="moduleName">—</span>
+        </p>
+
+        <p class="muted small">
+            Redirecting to your next step in <span id="count">3</span> seconds…
+        </p>
+
+        <div class="row">
+            <button id="viewDebug" class="btn">Show debug</button>
+            <button id="continueBtn" class="btn">Go now</button>
+        </div>
+
+        <div id="debugPanel" style="display:none">
+            <pre id="debugOut">Loading…</pre>
+        </div>
     </section>
 
     <script>
         document.addEventListener("DOMContentLoaded", async () => {
 
-            /* ============================================================
-               1) Extract targetKey (e.g., C1a-apply)
-            ============================================================ */
+            /* -----------------------------
+               1. Read context
+            ----------------------------- */
             const qs = new URLSearchParams(location.search);
-            const targetKey = qs.get("target") || "unknown-apply";
-            document.getElementById("modName").textContent = targetKey.toUpperCase();
+            const targetKey = qs.get("target") || "unknown-module";
 
-            /* ============================================================
-               2) Extract competency (C1, C2, C3)
-            ============================================================ */
-            const comp = (targetKey.match(/(C\d)/i)?.[1] || "C1").toUpperCase();
+            const learnerName = (localStorage.getItem("learnerName") || "Anonymous").trim();
+            const sid = localStorage.getItem("sessionId") || crypto.randomUUID();
+
+            // Infer competency (C1/C2/C3) from target
+            const comp = (targetKey.match(/(C\d)/i)?.[1] || localStorage.getItem("currentCompetency") || "C1").toUpperCase();
             localStorage.setItem("currentCompetency", comp);
 
-            /* ============================================================
-               3) Learner identity + session
-            ============================================================ */
-            const learnerName = (localStorage.getItem("learnerName") || qs.get("learnerName") || "Anonymous").trim();
-            const sid = localStorage.getItem("sessionId") || qs.get("sid") || crypto.randomUUID();
-            localStorage.setItem("sessionId", sid);
+            document.getElementById("moduleName").textContent =
+                `${targetKey.toUpperCase()} Lesson`;
 
-            /* ============================================================
-               4) Send xAPI statement via Lambda
-            ============================================================ */
+
+            /* -----------------------------
+               2. Build next.html URL
+            ----------------------------- */
+            const nextUrl = new URL("https://www.wirelearningsolutions.com/next.html");
+            nextUrl.searchParams.set("learnerName", learnerName);
+            nextUrl.searchParams.set("sid", sid);
+            nextUrl.searchParams.set("current", comp);
+
+
+            /* -----------------------------
+               3. Build xAPI statement
+            ----------------------------- */
             const stmt = {
-                actor: { name: learnerName, mbox: `mailto:${encodeURIComponent(learnerName)}@wirelxdfirm.com` },
-                verb: { id: "http://adlnet.gov/expapi/verbs/completed", display: { "en-US": "completed" } },
-                object: { id: `https://acbl.wirelxdfirm.com/activities/${targetKey}` },
+                actor: {
+                    name: learnerName,
+                    mbox: `mailto:${encodeURIComponent(learnerName)}@wirelxdfirm.com`
+                },
+                verb: {
+                    id: "http://adlnet.gov/expapi/verbs/completed",
+                    display: { "en-US": "completed" }
+                },
+                object: {
+                    id: `${location.origin}/activities/${targetKey}`,
+                    definition: { name: { "en-US": `${targetKey} Lesson` } }
+                },
                 result: {
-                    completion: true, extensions: {
+                    completion: true,
+                    extensions: {
                         "https://acbl.wirelearningsolutions.com/extensions/targetKey": targetKey,
                         "https://acbl.wirelearningsolutions.com/extensions/competencyId": comp,
                         "https://acbl.wirelearningsolutions.com/extensions/sessionId": sid
@@ -180,50 +212,61 @@
                 timestamp: new Date().toISOString()
             };
 
+
+            /* -----------------------------
+               4. Send to Lambda
+            ----------------------------- */
             try {
                 await fetch(
                     "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws?mode=write",
-                    { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(stmt) }
+                    {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(stmt)
+                    }
                 );
                 document.getElementById("statusText").textContent = "Progress recorded";
             } catch {
                 document.getElementById("statusText").textContent = "Saved locally (offline)";
             }
 
-            /* ============================================================
-               5) Redirect → next.html
-            ============================================================ */
-            const nextUrl = new URL("https://www.wirelearningsolutions.com/next.html");
-            nextUrl.searchParams.set("learnerName", learnerName);
-            nextUrl.searchParams.set("sid", sid);
-            nextUrl.searchParams.set("current", comp);
 
-            function go() { location.href = nextUrl.toString(); }
-            document.getElementById("nowBtn").onclick = go;
-
+            /* -----------------------------
+               5. Auto redirect countdown
+            ----------------------------- */
             let t = 3;
             const timer = setInterval(() => {
                 t--;
                 document.getElementById("count").textContent = t;
-                if (t <= 0) { clearInterval(timer); go(); }
+                if (t <= 0) {
+                    clearInterval(timer);
+                    location.href = nextUrl.toString();
+                }
             }, 1000);
 
-            /* ============================================================
-               6) Debug panel
-            ============================================================ */
-            const dbg = document.getElementById("dbg");
-            dbg.textContent = JSON.stringify(
-                { targetKey, comp, learnerName, sid, next: nextUrl.toString() },
+            // Manual
+            document.getElementById("continueBtn").onclick =
+                () => location.href = nextUrl.toString();
+
+
+            /* -----------------------------
+               6. Debug info
+            ----------------------------- */
+            const debugOut = document.getElementById("debugOut");
+            debugOut.textContent = JSON.stringify(
+                { targetKey, learnerName, sid, comp, nextUrl: nextUrl.toString() },
                 null, 2
             );
 
-            document.getElementById("debugBtn").onclick = () => {
-                const panel = document.getElementById("debugPanel");
-                const open = panel.style.display !== "block";
-                panel.style.display = open ? "block" : "none";
-                document.getElementById("debugBtn").textContent = open ? "Hide debug" : "Show debug";
+            document.getElementById("viewDebug").onclick = () => {
+                const p = document.getElementById("debugPanel");
+                const open = p.style.display !== "block";
+                p.style.display = open ? "block" : "none";
+                document.getElementById("viewDebug").textContent =
+                    open ? "Hide debug" : "Show debug";
             };
         });
     </script>
+
 </body>
 </html>

@@ -25,7 +25,7 @@
             --warn: #f59e0b;
             --err: #ef4444;
             --focus: #93c5fd;
-            --shadow: 0 10px 24px rgba(0,0,0,.35)
+            --shadow: 0 10px 24px rgba(0,0,0,.35);
         }
 
         body {
@@ -36,18 +36,18 @@
             min-height: 100dvh;
             display: flex;
             align-items: center;
-            justify-content: center
+            justify-content: center;
         }
 
         .wrap {
-            background: linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.015)),var(--bg-1);
+            background: linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.015)), var(--bg-1);
             border: 1px solid rgba(148,163,184,.15);
             border-radius: 16px;
             box-shadow: var(--shadow);
             padding: 40px 32px;
             max-width: 520px;
             width: 92%;
-            text-align: center
+            text-align: center;
         }
 
         h1 {
@@ -56,7 +56,7 @@
             background: linear-gradient(90deg,var(--ink-0),#cfe8ff);
             -webkit-background-clip: text;
             background-clip: text;
-            color: transparent
+            color: transparent;
         }
 
         .subtitle {
@@ -66,7 +66,7 @@
             font-weight: 600;
             letter-spacing: .5px;
             text-align: center;
-            text-shadow: 0 1px 6px rgba(34,211,238,.35)
+            text-shadow: 0 1px 6px rgba(34,211,238,.35);
         }
 
         input {
@@ -79,19 +79,19 @@
             font-size: 16px;
             margin-top: 16px;
             box-sizing: border-box;
-            outline: none
+            outline: none;
         }
 
             input:focus {
                 border-color: var(--focus);
-                box-shadow: 0 0 0 3px rgba(147,197,253,.25)
+                box-shadow: 0 0 0 3px rgba(147,197,253,.25);
             }
 
         .error {
             margin: 8px 0 0;
             color: var(--err);
             font-size: .9rem;
-            text-align: left
+            text-align: left;
         }
 
         button {
@@ -103,24 +103,24 @@
             font-weight: 600;
             cursor: pointer;
             box-shadow: 0 6px 24px rgba(14,165,233,.35);
-            transition: transform .1s ease,box-shadow .2s ease,opacity .2s ease
+            transition: transform .1s ease,box-shadow .2s ease,opacity .2s ease;
         }
 
             button:hover:not([disabled]) {
                 transform: translateY(-2px);
-                box-shadow: 0 8px 28px rgba(14,165,233,.45)
+                box-shadow: 0 8px 28px rgba(14,165,233,.45);
             }
 
             button[disabled] {
                 opacity: .6;
-                cursor: not-allowed
+                cursor: not-allowed;
             }
 
         .btn-row {
             display: flex;
             justify-content: center;
             gap: 12px;
-            margin-top: 20px
+            margin-top: 20px;
         }
 
         .btn {
@@ -128,24 +128,24 @@
             align-items: center;
             justify-content: center;
             gap: 8px;
-            white-space: nowrap
+            white-space: nowrap;
         }
 
         .btn-primary {
             border: 1px solid rgba(34,211,238,.55);
             background: linear-gradient(180deg,#0e87c7,#0c6aa0);
-            color: #fff
+            color: #fff;
         }
 
         .btn-outline {
             background: transparent;
             color: var(--sky-1);
-            border: 1px solid rgba(34,211,238,.55)
+            border: 1px solid rgba(34,211,238,.55);
         }
 
             .btn-outline:hover {
                 background: rgba(14,165,233,.08);
-                transform: translateY(-2px)
+                transform: translateY(-2px);
             }
 
         .badge {
@@ -157,59 +157,59 @@
             border-radius: 999px;
             background: rgba(14,165,233,.10);
             border: 1px solid rgba(34,211,238,.35);
-            margin-top: 16px
+            margin-top: 16px;
         }
 
         .dot {
             width: 10px;
             height: 10px;
             border-radius: 50%;
-            background: var(--warn)
+            background: var(--warn);
         }
 
             .dot.ok {
                 background: var(--ok);
                 box-shadow: 0 0 0 0 rgba(34,197,94,.6);
-                animation: pulse 1.8s ease-out infinite
+                animation: pulse 1.8s ease-out infinite;
             }
 
         @keyframes pulse {
             0% {
-                box-shadow: 0 0 0 0 rgba(34,197,94,.5)
+                box-shadow: 0 0 0 0 rgba(34,197,94,.5);
             }
 
             70% {
-                box-shadow: 0 0 0 10px rgba(34,197,94,0)
+                box-shadow: 0 0 0 10px rgba(34,197,94,0);
             }
 
             100% {
-                box-shadow: 0 0 0 0 rgba(34,197,94,0)
+                box-shadow: 0 0 0 0 rgba(34,197,94,0);
             }
         }
 
         .fade-in {
             opacity: 0;
-            animation: fadeInUp .45s ease forwards
+            animation: fadeInUp .45s ease forwards;
         }
 
         @keyframes fadeInUp {
             0% {
                 opacity: 0;
-                transform: translateY(8px)
+                transform: translateY(8px);
             }
 
             100% {
                 opacity: 1;
-                transform: translateY(0)
+                transform: translateY(0);
             }
         }
 
         .delay-1 {
-            animation-delay: .06s
+            animation-delay: .06s;
         }
 
         .delay-2 {
-            animation-delay: .12s
+            animation-delay: .12s;
         }
     </style>
 </head>
@@ -260,14 +260,14 @@
                 const raw = await r.text();
                 console.log("Ping:", r.status, raw);
 
-                // CASE 1: Lambda reachable AND responds with [] (your new ping)
+                // CASE 1: Lambda reachable and returns [] (ping ok)
                 if (r.ok && raw.trim().startsWith("[")) {
                     dot.classList.add("ok");
                     txt.textContent = "Connected to the LRS";
                     return;
                 }
 
-                // CASE 2: Lambda reachable but returns JSON object (shouldn’t happen for ping, but safe)
+                // CASE 2: Lambda reachable but returns JSON object (still ok)
                 try {
                     const parsed = JSON.parse(raw);
                     if (typeof parsed === "object") {
@@ -276,29 +276,29 @@
                         return;
                     }
                 } catch (_) {
-                    // JSON parse failed — continue to unstable/offline handling
+                    // Not JSON, fall through to unstable
                 }
 
-                // CASE 3: Lambda reachable but payload unexpected
+                // CASE 3: Lambda reachable but unexpected payload
                 txt.textContent = `Unstable (${r.status})`;
                 dot.style.background = "var(--warn)";
-
             } catch (err) {
-                // CASE 4: Network, CORS, or DNS failure
+                // CASE 4: Network / CORS / DNS failure
                 console.error("Ping error:", err);
                 txt.textContent = "Offline";
                 dot.style.background = "var(--err)";
             }
         }
 
-
-
         checkConnection();
 
         // ===== Session Handling =====
         function ensureSid() {
             let sid = localStorage.getItem("sessionId");
-            if (!sid) { sid = crypto.randomUUID(); localStorage.setItem("sessionId", sid); }
+            if (!sid) {
+                sid = crypto.randomUUID();
+                localStorage.setItem("sessionId", sid);
+            }
             return sid;
         }
 
@@ -307,21 +307,32 @@
         const emailInput = document.getElementById("emailInput");
         const emailError = document.getElementById("emailError");
         const btn = document.getElementById("btnLaunch");
+
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-        function isEmailValid(v) { return emailRegex.test((v || "").trim()); }
+        function isEmailValid(v) {
+            return emailRegex.test((v || "").trim());
+        }
+
         function validate() {
             const nameOk = nameInput.value.trim().length > 0;
             const emailOk = isEmailValid(emailInput.value);
             emailError.hidden = (emailInput.value.trim() === "" || emailOk);
             btn.disabled = !(nameOk && emailOk);
         }
+
         ["input", "change", "blur"].forEach(e => {
             nameInput.addEventListener(e, validate);
             emailInput.addEventListener(e, validate);
         });
+
         document.addEventListener("DOMContentLoaded", validate);
         window.addEventListener("pageshow", validate);
-        document.addEventListener("keydown", e => { if (e.key === "Enter" && !btn.disabled) btn.click(); });
+
+        document.addEventListener("keydown", e => {
+            if (e.key === "Enter" && !btn.disabled) {
+                btn.click();
+            }
+        });
 
         // ===== Returning User UI Setup =====
         const newUserSection = document.getElementById("newUserSection");
@@ -339,26 +350,52 @@
             btnContinue.classList.add("fade-in", "delay-1");
             btnReset.classList.add("fade-in", "delay-2");
         }
+
         function checkReturning() {
             const name = localStorage.getItem("learnerName");
             const email = localStorage.getItem("learnerEmail");
-            if (name && email) { welcomeText.textContent = `Welcome back, ${name}.`; showReturning(); }
-            else { newUserSection.hidden = false; returningSection.hidden = true; }
+            if (name && email) {
+                welcomeText.textContent = `Welcome back, ${name}.`;
+                showReturning();
+            } else {
+                newUserSection.hidden = false;
+                returningSection.hidden = true;
+            }
         }
+
         window.addEventListener("pageshow", checkReturning);
         document.addEventListener("DOMContentLoaded", checkReturning);
 
         // ===== Helpers: routing + errors =====
-        function showLaunchError(msg) { if (launchErrorEl) { launchErrorEl.textContent = msg || "Could not open the next page."; launchErrorEl.hidden = false; } }
-        function hideLaunchError() { if (launchErrorEl) { launchErrorEl.hidden = true; } }
-        function showResumeError(msg) { if (resumeErrorEl) { resumeErrorEl.textContent = msg || "Could not resume."; resumeErrorEl.hidden = false; } }
-        function hideResumeError() { if (resumeErrorEl) { resumeErrorEl.hidden = true; } }
+        function showLaunchError(msg) {
+            if (!launchErrorEl) return;
+            launchErrorEl.textContent = msg || "Could not open the next page.";
+            launchErrorEl.hidden = false;
+        }
+
+        function hideLaunchError() {
+            if (launchErrorEl) launchErrorEl.hidden = true;
+        }
+
+        function showResumeError(msg) {
+            if (!resumeErrorEl) return;
+            resumeErrorEl.textContent = msg || "Could not resume.";
+            resumeErrorEl.hidden = false;
+        }
+
+        function hideResumeError() {
+            if (resumeErrorEl) resumeErrorEl.hidden = true;
+        }
 
         async function preflightReachable(url, { timeoutMs = 5000 } = {}) {
             const ctrl = new AbortController();
             const t = setTimeout(() => ctrl.abort(), timeoutMs);
             try {
-                const head = await fetch(url, { method: "HEAD", cache: "no-store", signal: ctrl.signal });
+                const head = await fetch(url, {
+                    method: "HEAD",
+                    cache: "no-store",
+                    signal: ctrl.signal
+                });
                 clearTimeout(t);
                 return head.ok;
             } catch {
@@ -372,10 +409,10 @@
             comp = comp.toUpperCase();
             const list = [];
 
-            // Tests
+            // Test first: "C1-test/story.html"
             list.push(`${comp}-test/story.html`);
 
-            // Nested folders: content/C1a/C1a-content.html
+            // Nested folders: content/C1a/C1a-content.html and apply/C1a/C1a-apply.html
             for (const s of subs) {
                 const sub = `${comp}${s}`; // C1a, C1b, etc.
                 list.push(`content/${sub}/${sub}-content.html`);
@@ -388,16 +425,17 @@
             return list;
         }
 
-        // THIS WAS BROKEN BEFORE – now correct:
+        // Final competency path map (relative URLs)
         const COMP_PATHS = {
             C1: buildPathsForComp("C1"),
             C2: buildPathsForComp("C2"),
             C3: buildPathsForComp("C3")
         };
 
-
         async function findReachablePath(list) {
-            for (const path of list) { if (await preflightReachable(path)) return path; }
+            for (const path of list) {
+                if (await preflightReachable(path)) return path;
+            }
             return null;
         }
 
@@ -419,23 +457,35 @@
 
             const name = nameInput.value.trim();
             const email = emailInput.value.trim().toLowerCase();
-            if (!name || !isEmailValid(email)) { validate(); if (!isEmailValid(email)) emailInput.focus(); return; }
+
+            if (!name || !isEmailValid(email)) {
+                validate();
+                if (!isEmailValid(email)) emailInput.focus();
+                return;
+            }
 
             localStorage.setItem("learnerName", name);
             localStorage.setItem("learnerEmail", email);
             localStorage.setItem("currentCompetency", "C1");
             const sid = ensureSid();
 
-            btn.disabled = true; btn.textContent = "Launching...";
+            btn.disabled = true;
+            btn.textContent = "Launching...";
 
             const startPath = await findReachablePath(COMP_PATHS.C1);
             if (!startPath) {
-                btn.disabled = false; btn.textContent = "Launch";
-                return showLaunchError("No launchable page found for C1.");
+                btn.disabled = false;
+                btn.textContent = "Launch";
+                showLaunchError("No launchable page found for C1.");
+                return;
             }
 
             saveProgress(startPath, "C1");
-            const url = `${startPath}?learnerName=${encodeURIComponent(name)}&sid=${encodeURIComponent(sid)}&current=C1`;
+            const url =
+                `${startPath}` +
+                `?learnerName=${encodeURIComponent(name)}` +
+                `&sid=${encodeURIComponent(sid)}` +
+                `&current=C1`;
             window.location.href = url;
         });
 
@@ -447,30 +497,42 @@
             const sid = ensureSid();
             const { lastPath, currentComp } = getLastProgress();
 
-            btnContinue.disabled = true; btnContinue.textContent = "Checking...";
+            btnContinue.disabled = true;
+            btnContinue.textContent = "Checking...";
 
             let launchPath = lastPath;
+
             if (launchPath) {
                 const ok = await preflightReachable(launchPath);
-                if (!ok) launchPath = await findReachablePath(COMP_PATHS[currentComp] || []);
+                if (!ok) {
+                    launchPath = await findReachablePath(COMP_PATHS[currentComp] || []);
+                }
             } else {
                 launchPath = await findReachablePath(COMP_PATHS[currentComp] || []);
             }
 
             if (!launchPath) {
-                btnContinue.disabled = false; btnContinue.textContent = "Continue where you left off";
-                return showResumeError(`No launchable page found for ${currentComp}.`);
+                btnContinue.disabled = false;
+                btnContinue.textContent = "Continue where you left off";
+                showResumeError(`No launchable page found for ${currentComp}.`);
+                return;
             }
 
             saveProgress(launchPath, currentComp);
-            const url = `${launchPath}?learnerName=${encodeURIComponent(name)}&sid=${encodeURIComponent(sid)}&current=${currentComp}`;
+            const url =
+                `${launchPath}` +
+                `?learnerName=${encodeURIComponent(name)}` +
+                `&sid=${encodeURIComponent(sid)}` +
+                `&current=${currentComp}`;
             window.location.href = url;
         });
 
         // ===== Reset =====
         btnReset.addEventListener("click", () => {
             if (confirm("Clear learner data and restart?")) {
-                localStorage.clear(); sessionStorage.clear(); location.reload();
+                localStorage.clear();
+                sessionStorage.clear();
+                location.reload();
             }
         });
     </script>
