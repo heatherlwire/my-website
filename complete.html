@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <script>
+        /* Canonical redirect for bare domain */
         if (location.hostname === "wirelearningsolutions.com") {
             location.href =
                 "https://www.wirelearningsolutions.com"
@@ -9,9 +10,12 @@
                 + location.search;
         }
     </script>
+
     <meta charset="UTF-8" />
     <title>Lesson Complete</title>
     <meta name="viewport" content="width=device-width,initial-scale=1" />
+
+    <!-- Your same styling preserved -->
     <style>
         :root {
             --bg-0: #0a0f1a;
@@ -132,15 +136,27 @@
         }
     </style>
 </head>
+
 <body>
     <section class="card">
-        <div class="badge"><span class="dot"></span><span id="statusText">Recording completion…</span></div>
+        <div class="badge">
+            <span class="dot"></span>
+            <span id="statusText">Recording completion…</span>
+        </div>
+
         <h1>Lesson Complete</h1>
-        <p class="muted">You just finished <span class="module" id="moduleName">—</span></p>
-        <p class="muted small">Redirecting to your next step in <span id="count">3</span> seconds…</p>
+
+        <p class="muted">
+            You just finished
+            <span class="module" id="moduleName">—</span>
+        </p>
+
+        <p class="muted small">
+            Redirecting to your next step in <span id="count">3</span> seconds…
+        </p>
 
         <div class="row">
-            <button id="viewDebug" class="btn" aria-pressed="false">Show debug</button>
+            <button id="viewDebug" class="btn">Show debug</button>
             <button id="continueBtn" class="btn">Go now</button>
         </div>
 
@@ -150,135 +166,120 @@
     </section>
 
     <script>
-        (function () {
-            try {
-                // --- record current page path (e.g., "apply/complete.html") ---
-                var path = (location && location.pathname ? location.pathname : "").replace(/^\/+/, "");
-                if (path) localStorage.setItem("lastPath", path);
+        document.addEventListener("DOMContentLoaded", async () => {
 
-                // --- infer current competency (C1/C2/C3) from URL or referrer ---
-                var m = path.match(/C([123])/i) || (document.referrer && document.referrer.match(/C([123])/i));
-                if (m && m[1]) {
-                    localStorage.setItem("currentCompetency", "C" + String(m[1]).toUpperCase());
-                }
-            } catch (e) {
-                try { console.warn("Progress save failed:", e); } catch (_) { }
-            }
-        })();
+            /* -----------------------------
+               Retrieve context
+            ----------------------------- */
+            const qs = new URLSearchParams(location.search);
+            const targetKey = qs.get("target") || "unknown-module";
 
-        const PROXY_URL = "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
-        const NS = "https://acbl.wirelxdfirm.com/extensions/";
-        const EX = k => NS + k;
+            const learnerName = (localStorage.getItem("learnerName") || "Anonymous").trim();
+            const sid = localStorage.getItem("sessionId") || crypto.randomUUID();
+            const comp = (localStorage.getItem("currentCompetency") || "C1").toUpperCase();
 
-        const qs = new URLSearchParams(location.search);
-        let targetKey = qs.get("target");
-        if (!targetKey) {
-            const ref = document.referrer || "";
-            const m = ref.match(/(C[123][abc])\-(content|apply)/i);
-            targetKey = m ? `${m[1]}-${m[2]}` : "C1a-content";
-        }
+            document.getElementById("moduleName").textContent =
+                `${targetKey.toUpperCase()} Lesson`;
 
-        const comp = (targetKey.match(/(C\d)/i)?.[1] || "C1").toUpperCase();
-        const prettyModule = `${targetKey.toUpperCase()} Lesson`;
-        document.getElementById("moduleName").textContent = prettyModule;
+            /* Stamp completion locally (cosmetic only) */
+            localStorage.setItem(targetKey + ".completed", "true");
 
-        const learnerName = localStorage.getItem("learnerName") || "Anonymous";
-        const sid = localStorage.getItem("sessionId") || crypto.randomUUID();
 
-        const debugBtn = document.getElementById("viewDebug");
-        const debugPanel = document.getElementById("debugPanel");
-        const debugOut = document.getElementById("debugOut");
-        debugBtn.onclick = () => {
-            const open = debugPanel.style.display !== "block";
-            debugPanel.style.display = open ? "block" : "none";
-            debugBtn.setAttribute("aria-pressed", open ? "true" : "false");
-            debugBtn.textContent = open ? "Hide debug" : "Show debug";
-        };
+            /* -----------------------------
+               Build return-to-brain URL
+            ----------------------------- */
+            const nextUrl = new URL("https://www.wirelearningsolutions.com/next.html");
+            nextUrl.searchParams.set("learnerName", learnerName);
+            nextUrl.searchParams.set("sid", sid);
+            nextUrl.searchParams.set("current", comp);
 
-        function startCountdown() {
-            let t = 3;
-            const id = setInterval(() => {
-                t -= 1;
-                document.getElementById("count").textContent = String(Math.max(t, 0));
-                if (t <= 0) { clearInterval(id); goNow(); }
-            }, 1000);
-        }
 
-        function findNextStep() {
-            const missed = JSON.parse(localStorage.getItem(`${comp}.missed`) || "[]");
-            const isContent = targetKey.includes("-content");
-            const isApply = targetKey.includes("-apply");
-            localStorage.setItem(`${targetKey}.completed`, "true");
-
-            if (isContent) {
-                return `apply/${targetKey.replace("-content", "-apply")}.html`;
-            }
-            if (isApply) {
-                const remaining = missed.filter(s => !localStorage.getItem(`${s}-apply.completed`));
-                if (remaining.length > 0) return `content/${remaining[0]}-content.html`;
-                return `${comp}-test/story.html`;
-            }
-            return "next.html";
-        }
-
-        function goNow() {
-            const nextStep = findNextStep();
-            const url = new URL(`${location.origin}/${nextStep}`);
-            url.searchParams.set("learnerName", learnerName);
-            url.searchParams.set("sid", sid);
-            url.searchParams.set("current", comp);
-            localStorage.setItem("lastPath", nextStep);
-            location.href = url.toString();
-        }
-
-        document.getElementById("continueBtn").onclick = goNow;
-
-        async function sendCompleted() {
-            const subType = targetKey.includes("-content") ? "content" : (targetKey.includes("-apply") ? "apply" : "other");
-
-            // Determine status: if there are still missed subs, it's "in progress"; otherwise "completed"
-            const missed = JSON.parse(localStorage.getItem(`${comp}.missed`) || "[]");
-            const remaining = missed.filter(s => !localStorage.getItem(`${s}-apply.completed`));
-            const status = remaining.length > 0 ? "in progress" : "completed";
-
+            /* -----------------------------
+               Build LRS statement
+            ----------------------------- */
             const stmt = {
-                actor: { name: learnerName, mbox: `mailto:${encodeURIComponent(learnerName)}@wirelxdfirm.com` },
-                verb: { id: "http://adlnet.gov/expapi/verbs/completed", display: { "en-US": "completed" } },
+                actor: {
+                    name: learnerName,
+                    mbox: `mailto:${encodeURIComponent(learnerName)}@wirelxdfirm.com`
+                },
+                verb: {
+                    id: "http://adlnet.gov/expapi/verbs/completed",
+                    display: { "en-US": "completed" }
+                },
                 object: {
                     id: `${location.origin}/activities/${targetKey}`,
-                    definition: { name: { "en-US": prettyModule }, description: { "en-US": "Lesson completed" } }
+                    definition: { name: { "en-US": `${targetKey.toUpperCase()} Lesson` } }
                 },
                 result: {
                     completion: true,
                     extensions: {
-                        [EX("learnerName")]: learnerName,
-                        [EX("sessionId")]: sid,
-                        [EX("targetKey")]: targetKey,
-                        [EX("competencyId")]: comp,
-                        [EX("subType")]: subType,
-                        [EX("status")]: status // ← NEW: tracks learner’s progress state
+                        "https://acbl.wirelearningsolutions.com/extensions/targetKey": targetKey,
+                        "https://acbl.wirelearningsolutions.com/extensions/competencyId": comp,
+                        "https://acbl.wirelearningsolutions.com/extensions/sessionId": sid
                     }
                 },
                 timestamp: new Date().toISOString()
             };
 
-            debugOut.textContent = JSON.stringify({ targetKey, comp, learnerName, sid, subType, status, next: findNextStep() }, null, 2);
 
-            const statusEl = document.getElementById("statusText");
+            /* -----------------------------
+               Send to Lambda (LRS Proxy)
+            ----------------------------- */
             try {
-                const r = await fetch(PROXY_URL + "?mode=write", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(stmt)
-                });
-                statusEl.textContent = r.ok ? "Progress recorded via Lambda" : `⚠️ Saved locally (LRS ${r.status})`;
+                await fetch(
+                    "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws?mode=write",
+                    {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(stmt)
+                    }
+                );
+                document.getElementById("statusText").textContent = "Progress recorded";
             } catch {
-                statusEl.textContent = "⚠️ Saved locally (network error)";
+                document.getElementById("statusText").textContent = "Saved locally (offline)";
             }
-            startCountdown();
-        }
 
-        document.addEventListener("DOMContentLoaded", sendCompleted);
+
+            /* -----------------------------
+               Countdown → auto redirect
+            ----------------------------- */
+            let t = 3;
+            const timer = setInterval(() => {
+                t--;
+                document.getElementById("count").textContent = t;
+                if (t <= 0) {
+                    clearInterval(timer);
+                    location.href = nextUrl.toString();
+                }
+            }, 1000);
+
+
+            /* -----------------------------
+               Manual "Go Now"
+            ----------------------------- */
+            document.getElementById("continueBtn").onclick = () =>
+                location.href = nextUrl.toString();
+
+
+            /* -----------------------------
+               Debug Panel
+            ----------------------------- */
+            const debugPanel = document.getElementById("debugPanel");
+            const debugBtn = document.getElementById("viewDebug");
+            const debugOut = document.getElementById("debugOut");
+
+            debugOut.textContent = JSON.stringify(
+                { targetKey, learnerName, sid, comp, nextUrl: nextUrl.toString() },
+                null, 2
+            );
+
+            debugBtn.onclick = () => {
+                const open = debugPanel.style.display !== "block";
+                debugPanel.style.display = open ? "block" : "none";
+                debugBtn.textContent = open ? "Hide debug" : "Show debug";
+            };
+
+        });
     </script>
 </body>
 </html>
