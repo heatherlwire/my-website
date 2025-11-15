@@ -405,12 +405,32 @@
 
         // ---------- Launch ----------
         function resolveTargetUrl(k) {
-            if (/program-complete/i.test(k)) return `${BASE}thanks.html`;
-            if (/-test$/i.test(k)) return `${BASE}${k.split("-")[0].toUpperCase()}-test/story.html`;
-            if (/-content$/i.test(k)) return `${BASE}content/${k}.html`;
-            if (/-apply$/i.test(k)) return `${BASE}apply/${k}.html`;
+            // Finish page
+            if (/program-complete/i.test(k)) {
+                return `${BASE}thanks.html`;
+            }
+
+            // Tests: "C1-test", "C2-test", "C3-test"
+            if (/-test$/i.test(k)) {
+                const comp = k.split("-")[0].toUpperCase(); // "C1", "C2", "C3"
+                return `${BASE}${comp}-test/story.html`;
+            }
+
+            // Content: "C1a-content" → content/C1a/C1a-content.html
+            if (/-content$/i.test(k)) {
+                const sub = k.split("-")[0]; // "C1a", "C2b", etc.
+                return `${BASE}content/${sub}/${k}.html`;
+            }
+
+            // Apply: "C1a-apply" → apply/C1a/C1a-apply.html
+            if (/-apply$/i.test(k)) {
+                const sub = k.split("-")[0]; // "C1a", "C3c", etc.
+                return `${BASE}apply/${sub}/${k}.html`;
+            }
+
             return null;
         }
+
         function launchTarget(k) {
             const href = resolveTargetUrl(k);
             if (!href) { alert(`No route found for ${k}`); return; }

@@ -371,14 +371,25 @@
         function buildPathsForComp(comp, subs = ["a", "b", "c"]) {
             comp = comp.toUpperCase();
             const list = [];
-            list.push(`${comp}-test/story.html`); // test first
+
+            // 1) Start with the test for that competency (C1-test/story.html, etc.)
+            list.push(`${comp}-test/story.html`);
+
+            // 2) Then all content/apply pages using nested folders:
+            //    content/C1a/C1a-content.html
+            //    apply/C1a/C1a-apply.html
             for (const s of subs) {
-                list.push(`content/${comp}${s}-content.html`);
-                list.push(`apply/${comp}${s}-apply.html`);
+                const subId = `${comp}${s}`; // C1a, C1b, etc.
+                list.push(`content/${subId}/${subId}-content.html`);
+                list.push(`apply/${subId}/${subId}-apply.html`);
             }
-            list.push("next.html"); // summary next page
+
+            // 3) Finally, send them to next.html (brain page)
+            list.push("next.html");
+
             return list;
         }
+
 
         const COMP_PATHS = {
             C1: buildPathsForComp("C1", ["a", "b", "c"]),
