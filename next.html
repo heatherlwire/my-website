@@ -315,33 +315,51 @@
     </main>
 
     <script>
+        /* ============================================================
+           CONFIG
+        ============================================================ */
         const BASE = "https://www.wirelearningsolutions.com/";
-        const PROXY_URL = "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
-        const NS = "https://acbl.wirelearningsolutions.com/extensions/";
+        const PROXY_URL =
+            "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
+
+        // Match your rules meta.namespace (wirelxdfirm)
+        const NS = "https://acbl.wirelxdfirm.com/extensions/";
         function EX(k) { return NS + k; }
+
         const REFRESH_MS = 15000;
 
-        // ---------- Identity ----------
+        /* ============================================================
+           IDENTITY
+        ============================================================ */
         const qs = new URLSearchParams(location.search);
-        const learnerName = (qs.get("learnerName") ||
+        const learnerName = (
+            qs.get("learnerName") ||
             localStorage.getItem("learnerName") ||
-            "Anonymous").trim();
-        const sid = qs.get("sid") ||
+            "Anonymous"
+        ).trim();
+
+        const sid =
+            qs.get("sid") ||
             localStorage.getItem("sessionId") ||
-            (window.crypto && crypto.randomUUID ? crypto.randomUUID() : String(Date.now()));
+            (window.crypto && crypto.randomUUID
+                ? crypto.randomUUID()
+                : String(Date.now()));
 
         const hintedComp = (qs.get("current") || "").toUpperCase();
         if (hintedComp) {
             localStorage.setItem("currentCompetency", hintedComp);
         }
 
-        // Default competency is C1 (your entry competency)
-        var currentComp = (localStorage.getItem("currentCompetency") || "C1").toUpperCase();
+        // Default entry competency is C1
+        let currentComp =
+            (localStorage.getItem("currentCompetency") || "C1").toUpperCase();
 
         localStorage.setItem("learnerName", learnerName);
         localStorage.setItem("sessionId", sid);
 
-        // ---------- Connection Check ----------
+        /* ============================================================
+           CONNECTION CHECK
+        ============================================================ */
         async function checkConnection() {
             const dot = document.getElementById("connDot");
             const txt = document.getElementById("connText");
@@ -355,7 +373,9 @@
 
                 const bodyText = await r.text();
                 let data = null;
-                try { data = JSON.parse(bodyText); } catch (e) { }
+                try {
+                    data = JSON.parse(bodyText);
+                } catch (e) { }
 
                 const ok = r.ok && (
                     bodyText.indexOf("Lambda OK") !== -1 ||
@@ -375,21 +395,29 @@
             }
         }
 
-        // ---------- Fetch Summary from Lambda ----------
+        /* ============================================================
+           FETCH SUMMARY FROM LRS VIA LAMBDA
+        ============================================================ */
         async function fetchSummary() {
             try {
                 const r = await fetch(
-                    PROXY_URL + "?learner=" + encodeURIComponent(learnerName) + "&mode=summary",
+                    PROXY_URL +
+                    "?learner=" +
+                    encodeURIComponent(learnerName) +
+                    "&mode=summary",
                     { method: "GET", cache: "no-store" }
                 );
                 return await r.json();
             } catch (e) {
+                console.warn("Summary fetch failed:", e);
                 return {};
             }
         }
 
-        // ---------- Load Adaptive Rules ----------
-        var rulesCache = null;
+        /* ============================================================
+           LOAD ADAPTIVE RULES
+        ============================================================ */
+        let rulesCache = null;
         async function loadRules() {
             if (rulesCache) return rulesCache;
             const r = await fetch("adaptive_rules.json", { cache: "no-store" });
@@ -397,18 +425,21 @@
             return rulesCache;
         }
 
-        // ---------- Evaluate Routing using adaptive_rules.json ----------
+        /* ============================================================
+           EVALUATE ROUTING FROM RULES
+           Uses your rules JSON exactly (route.go)
+        ============================================================ */
         function evaluateRouting(compId, compState, rules) {
             const list = rules[compId];
             if (!list) return null;
 
             const routes = [];
 
-            for (var i = 0; i < list.length; i++) {
+            for (let i = 0; i < list.length; i++) {
                 const rule = list[i];
-                var match = true;
-
+                let match = true;
                 const cond = rule.if || {};
+
                 for (const key in cond) {
                     if (!Object.prototype.hasOwnProperty.call(cond, key)) continue;
 
@@ -419,6 +450,7 @@
                             break;
                         }
                     } else {
+                        // direct property compare
                         if (compState[key] !== cond[key]) {
                             match = false;
                             break;
@@ -428,21 +460,21 @@
 
                 if (!match) continue;
 
-                // Matched rule: collect routes
                 const thenArr = rule.then || [];
-                for (var j = 0; j < thenArr.length; j++) {
+                for (let j = 0; j < thenArr.length; j++) {
                     const a = thenArr[j];
 
-                    // direct route
+                    // Direct route: { "route": { "go": "C2-test" } }
                     if (a.route) {
                         const keys = Object.keys(a.route);
                         if (keys.length > 0) {
                             const routeKey = keys[0];
-                            let r = a.route[routeKey];
+                            let r = a.route[routeKey]; // "go"
                             if (typeof r === "string" && r.indexOf("{item}") !== -1) {
-                                const firstMissed = (compState.missed && compState.missed.length > 0)
-                                    ? compState.missed[0]
-                                    : "";
+                                const firstMissed =
+                                    compState.missed && compState.missed.length > 0
+                                        ? compState.missed[0]
+                                        : "";
                                 r = r.replace("{item}", firstMissed);
                             }
                             routes.push(r);
@@ -452,10 +484,10 @@
                     // forEach route, usually for "missed"
                     if (a.forEach && Array.isArray(compState[a.forEach]) && a.do) {
                         const items = compState[a.forEach];
-                        for (var k = 0; k < items.length; k++) {
+                        for (let k = 0; k < items.length; k++) {
                             const item = items[k];
                             const innerArr = a.do;
-                            for (var m = 0; m < innerArr.length; m++) {
+                            for (let m = 0; m < innerArr.length; m++) {
                                 const inner = innerArr[m];
                                 if (inner.route) {
                                     const ikeys = Object.keys(inner.route);
@@ -473,7 +505,7 @@
                     }
                 }
 
-                // stop after first matching rule
+                // Stop after first matching rule
                 break;
             }
 
@@ -482,7 +514,10 @@
             return routes;
         }
 
-        // ---------- Final URL Resolver ----------
+        /* ============================================================
+           FINAL URL RESOLVER
+           Translates targets like "C1a-apply" into full URLs
+        ============================================================ */
         function resolveTargetUrl(target) {
             if (!target) return null;
 
@@ -491,7 +526,7 @@
                 return BASE + "program-complete.html";
             }
 
-            // Tests (Storyline folder)
+            // Tests
             if (/^C[1-3]-test$/i.test(target)) {
                 return BASE + target + "/story.html";
             }
@@ -507,11 +542,13 @@
                 return BASE + "apply/" + sub + "/" + target + ".html";
             }
 
-            // Fallback (for any custom target)
+            // Fallback
             return BASE + target + ".html";
         }
 
-        // ---------- UI Helpers ----------
+        /* ============================================================
+           UI HELPERS
+        ============================================================ */
         function displayMastery(m) {
             if (m === "Mastery") return "Mastered";
             return m || "—";
@@ -529,7 +566,7 @@
 
             ["C1", "C2", "C3"].forEach(function (comp) {
                 const s = summary[comp] || {};
-                var state = "NotStarted";
+                let state = "NotStarted";
 
                 if (s.mastery === "Mastery" || s.finalized || s.testedOut) {
                     state = "Completed";
@@ -555,9 +592,9 @@
             line.innerHTML =
                 "Current: <b>" + current + "</b> — <b>" + displayMastery(state.mastery) + "</b>";
 
-            var comp = current.toUpperCase();
-            var sub = "—";
-            var type = "—";
+            let comp = current.toUpperCase();
+            let sub = "—";
+            let type = "—";
 
             if (typeof next === "string" && next.length > 0) {
                 const compMatch = next.match(/(C[1-3])/i);
@@ -581,7 +618,9 @@
             document.getElementById("upNextType").textContent = type;
         }
 
-        // ---------- Merge with localStorage ----------
+        /* ============================================================
+           MERGE LRS SUMMARY WITH LOCALSTORAGE
+        ============================================================ */
         function mergeWithLocal(current, state) {
             const comp = current.toUpperCase();
             const keyBase = comp + ".";
@@ -591,8 +630,12 @@
                 finalized: false,
                 testedOut: false,
                 missed: [],
-                subCompetencies: state && state.subCompetencies ? state.subCompetencies : [],
-                progressPercent: state && typeof state.progressPercent === "number" ? state.progressPercent : 0
+                subCompetencies:
+                    state && state.subCompetencies ? state.subCompetencies : [],
+                progressPercent:
+                    state && typeof state.progressPercent === "number"
+                        ? state.progressPercent
+                        : 0
             };
 
             if (state && typeof state.mastery !== "undefined") merged.mastery = state.mastery;
@@ -628,7 +671,9 @@
             return merged;
         }
 
-        // ---------- Finalize (off-ramp) ----------
+        /* ============================================================
+           FINALIZE (OFF-RAMP BUTTON)
+        ============================================================ */
         async function finalize(current, mastery) {
             const stmt = {
                 actor: {
@@ -637,7 +682,7 @@
                 },
                 verb: { id: "http://id.tincanapi.com/verb/completed" },
                 object: {
-                    id: "https://acbl.wirelearningsolutions.com/activities/" + current + "/offramp"
+                    id: "https://acbl.wirelxdfirm.com/activities/" + current + "/offramp"
                 },
                 result: {
                     completion: true,
@@ -658,13 +703,15 @@
                     body: JSON.stringify(stmt)
                 });
             } catch (e) {
-                // swallow; localStorage still keeps finalized
+                // ignore; localStorage still keeps finalized
             }
 
             localStorage.setItem(current + ".finalized", "true");
         }
 
-        // ---------- MAIN LOOP ----------
+        /* ============================================================
+           MAIN LOOP
+        ============================================================ */
         async function refreshAll() {
             await checkConnection();
 
@@ -703,14 +750,18 @@
 
             renderProgress(summary);
 
-            // ---------- Routing decision ----------
+            /* --------------------------------------------------------
+               Routing decision
+            -------------------------------------------------------- */
             function normalize(r) {
                 if (!r) return null;
-                if (/^C[1-3]$/i.test(r)) return r + "-test";
+                // If a bare competency appears ("C2"), treat as test
+                if (/^C[1-3]$/i.test(r)) return r.toUpperCase() + "-test";
                 return r;
             }
 
-            var pendingRoutes = [];
+            // Pull any queued routes from localStorage
+            let pendingRoutes = [];
             try {
                 const stored = localStorage.getItem("pendingRoutes") || "[]";
                 const parsed = JSON.parse(stored);
@@ -721,16 +772,15 @@
                 pendingRoutes = [];
             }
 
-            var next = null;
+            let next = null;
 
             if (pendingRoutes.length > 0) {
-                // Already have a queue: peek first route
+                // Already have a queue: use first route
                 next = pendingRoutes[0];
             } else {
                 // No queue: compute from rules or force first test
 
-                // New learner / no competency data → force first test (C1-test on first run)
-                var noState =
+                const noState =
                     !state.mastery &&
                     !state.finalized &&
                     !state.testedOut &&
@@ -745,8 +795,7 @@
                     );
 
                 if (noState) {
-                    // Brand-new learner → ALWAYS start with entry competency test
-                    // Because currentComp defaults to "C1", this becomes "C1-test"
+                    // Brand-new learner → ALWAYS start C1-test
                     currentComp = "C1";
                     next = currentComp + "-test";
                     pendingRoutes = [];
@@ -754,25 +803,35 @@
                     localStorage.setItem("currentCompetency", currentComp);
                 } else {
                     // Not brand-new → use adaptive rules
-                    var route = evaluateRouting(currentComp, state, rules) || (currentComp + "-test");
+                    let route =
+                        evaluateRouting(currentComp, state, rules) ||
+                        (currentComp + "-test");
 
                     if (Array.isArray(route)) {
                         const normalized = route.map(normalize).filter(Boolean);
-                        next = normalized.length > 0 ? normalized[0] : currentComp + "-test";
-                        pendingRoutes = normalized.length > 1 ? normalized.slice(1) : [];
+                        next = normalized.length > 0
+                            ? normalized[0]
+                            : currentComp + "-test";
+                        pendingRoutes = normalized.length > 1
+                            ? normalized.slice(1)
+                            : [];
                     } else {
                         next = normalize(route || (currentComp + "-test"));
                         pendingRoutes = [];
                     }
 
                     if (pendingRoutes.length > 0) {
-                        localStorage.setItem("pendingRoutes", JSON.stringify(pendingRoutes));
+                        localStorage.setItem(
+                            "pendingRoutes",
+                            JSON.stringify(pendingRoutes)
+                        );
                     } else {
                         localStorage.removeItem("pendingRoutes");
                     }
                 }
             }
 
+            // Update summary card
             writeSummary(currentComp, state, next);
 
             const continueBtn = document.getElementById("continueBtn");
@@ -781,21 +840,25 @@
             continueBtn.disabled = false;
             acceptBtn.disabled = false;
 
-            // ---------- CONTINUE ----------
+            /* --------------------------------------------------------
+               CONTINUE BUTTON
+               Uses queue + updates currentCompetency if moving to C2/C3
+            -------------------------------------------------------- */
             continueBtn.onclick = function () {
-                var q = [];
+                let q = [];
                 try {
                     const stored = localStorage.getItem("pendingRoutes") || "[]";
                     const parsed = JSON.parse(stored);
                     if (Array.isArray(parsed)) {
-                        q = parsed.filter(Boolean);
+                        q = parsed.filter(Boolean).map(normalize);
                     }
                 } catch (e) {
                     q = [];
                 }
 
-                var target = next;
+                let target = next;
 
+                // If the queue has the target as first, pop it
                 if (q.length > 0 && q[0] === target) {
                     q.shift();
                     if (q.length > 0) {
@@ -805,16 +868,37 @@
                     }
                 }
 
-                const url = resolveTargetUrl(target) +
-                    "?learnerName=" + encodeURIComponent(learnerName) +
-                    "&sid=" + encodeURIComponent(sid);
+                // If target advances competency (C2, C3), update currentCompetency
+                const compMatch = target.match(/(C[1-3])/i);
+                if (compMatch && compMatch[1]) {
+                    const newComp = compMatch[1].toUpperCase();
+                    localStorage.setItem("currentCompetency", newComp);
+                }
+
+                const url =
+                    resolveTargetUrl(target) +
+                    "?learnerName=" +
+                    encodeURIComponent(learnerName) +
+                    "&sid=" +
+                    encodeURIComponent(sid);
+
                 window.location.href = url;
             };
 
-            // ---------- ACCEPT MASTERY (OFF-RAMP) ----------
+            /* --------------------------------------------------------
+               ACCEPT MASTERY (OFF-RAMP)
+            -------------------------------------------------------- */
             acceptBtn.onclick = async function () {
                 const mastery = state.mastery || "Unknown";
-                if (!window.confirm('Accept mastery level "' + mastery + '" for ' + currentComp + '?')) {
+                if (
+                    !window.confirm(
+                        'Accept mastery level "' +
+                        mastery +
+                        '" for ' +
+                        currentComp +
+                        "?"
+                    )
+                ) {
                     return;
                 }
 
@@ -832,20 +916,28 @@
                     progressPercent: state.progressPercent
                 };
 
-                var routed = evaluateRouting(currentComp, finalizeState, rules) || "program-complete";
+                let routed =
+                    evaluateRouting(currentComp, finalizeState, rules) ||
+                    "program-complete";
 
                 function normalizeFinal(r) {
                     if (!r) return null;
-                    if (/^C[1-3]$/i.test(r)) return r + "-test";
+                    if (/^C[1-3]$/i.test(r)) return r.toUpperCase() + "-test";
                     return r;
                 }
 
                 if (Array.isArray(routed)) {
                     const normalized = routed.map(normalizeFinal).filter(Boolean);
-                    const first = normalized.length > 0 ? normalized[0] : "program-complete";
+                    const first =
+                        normalized.length > 0
+                            ? normalized[0]
+                            : "program-complete";
                     const rest = normalized.slice(1);
                     if (rest.length > 0) {
-                        localStorage.setItem("pendingRoutes", JSON.stringify(rest));
+                        localStorage.setItem(
+                            "pendingRoutes",
+                            JSON.stringify(rest)
+                        );
                     } else {
                         localStorage.removeItem("pendingRoutes");
                     }
@@ -854,36 +946,54 @@
                     routed = normalizeFinal(routed || "program-complete");
                 }
 
-                const url = resolveTargetUrl(routed) +
-                    "?learnerName=" + encodeURIComponent(learnerName) +
-                    "&sid=" + encodeURIComponent(sid);
+                const compMatch2 = routed.match(/(C[1-3])/i);
+                if (compMatch2 && compMatch2[1]) {
+                    const newComp = compMatch2[1].toUpperCase();
+                    localStorage.setItem("currentCompetency", newComp);
+                }
+
+                const url =
+                    resolveTargetUrl(routed) +
+                    "?learnerName=" +
+                    encodeURIComponent(learnerName) +
+                    "&sid=" +
+                    encodeURIComponent(sid);
                 window.location.href = url;
             };
 
-            // ---------- Debug UI ----------
+            /* --------------------------------------------------------
+               DEBUG PANEL
+            -------------------------------------------------------- */
             const debug = document.getElementById("debug");
             const toggleDbg = document.getElementById("toggleDebug");
 
-            debug.innerHTML = "<pre>" + JSON.stringify(
-                {
-                    learnerName: learnerName,
-                    sid: sid,
-                    currentComp: currentComp,
-                    state: state,
-                    next: next,
-                    pendingRoutes: pendingRoutes
-                },
-                null,
-                2
-            ) + "</pre>";
+            debug.innerHTML =
+                "<pre>" +
+                JSON.stringify(
+                    {
+                        learnerName: learnerName,
+                        sid: sid,
+                        currentComp: currentComp,
+                        state: state,
+                        next: next,
+                        pendingRoutes: pendingRoutes
+                    },
+                    null,
+                    2
+                ) +
+                "</pre>";
 
             toggleDbg.onclick = function () {
                 const show = debug.style.display === "none";
                 debug.style.display = show ? "block" : "none";
-                toggleDbg.textContent = show ? "Hide Debug Info" : "Show Debug Info";
+                toggleDbg.textContent = show
+                    ? "Hide Debug Info"
+                    : "Show Debug Info";
             };
 
-            // ---------- Reset learner ----------
+            /* --------------------------------------------------------
+               RESET LEARNER
+            -------------------------------------------------------- */
             document.getElementById("resetBtn").onclick = function () {
                 if (window.confirm("Clear all learner data?")) {
                     localStorage.clear();
@@ -893,6 +1003,7 @@
             };
         }
 
+        // Initial run + periodic refresh
         refreshAll();
         setInterval(function () {
             if (document.visibilityState === "visible") {
@@ -900,6 +1011,5 @@
             }
         }, REFRESH_MS);
     </script>
-
 </body>
 </html>
