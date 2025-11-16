@@ -432,35 +432,34 @@
         function resolveTargetUrl(target) {
             if (!target) return null;
 
-            // 1. Program complete
+            // 1. Program completion
             if (/program-complete/i.test(target)) {
                 return BASE + "program-complete.html";
             }
 
             // 2. TESTS (Storyline)
-            // C1-test -> /C1-test/story.html
-            // C2-test -> /C2-test/story.html
-            // C3-test -> /C3-test/story.html
+            // e.g., C1-test -> /C1-test/story.html
             if (/^C[1-3]-test$/i.test(target)) {
-                return BASE + target + "/story.html";
+                return BASE + `${target}/story.html`;
             }
 
-            // 3. CONTENT (Rise or static HTML)
-            // C1a-content -> /content/C1a-content.html
+            // 3. CONTENT
+            // e.g., C1a-content -> /content/C1a-content.html
             if (/^C[1-3][a-c]-content$/i.test(target)) {
-                return BASE + "content/" + target + ".html";
+                return BASE + `content/${target}.html`;
             }
 
-            // 4. APPLY (Rise exported to folder)
-            // C1a-apply -> /apply/C1a/C1a-apply.html
+            // 4. APPLY
+            // e.g., C1a-apply -> /apply/C1a/C1a-apply.html
             if (/^C[1-3][a-c]-apply$/i.test(target)) {
                 const sub = target.replace("-apply", ""); // C1a
-                return BASE + "apply/" + sub + "/" + target + ".html";
+                return BASE + `apply/${sub}/${target}.html`;
             }
 
             // 5. Fallback
-            return BASE + target + ".html";
+            return BASE + `${target}.html`;
         }
+
 
 
         /* ---------- UI Helpers ---------- */
