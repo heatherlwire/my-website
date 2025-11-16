@@ -420,64 +420,75 @@ if (!window.__XAPI_HELPER_LOADED__) {
 
 window.Script6 = function()
 {
-  /* Question-level xAPI (Incorrect) */
-(function() {
-  const p = GetPlayer();
-  const learner = p.GetVar("learnerName");
-  const sid = p.GetVar("sessionId");
-  const comp = p.GetVar("currentComp");
-  const sub = p.GetVar("C1_SubCompetency");
-  const qid = sub + "-1";
-  const answer = p.GetVar("C1_Q1_Answer") || "";
+  /* Q1 Incorrect */
+(function () {
+    const p = GetPlayer();
 
-  sendXAPI(
-    "http://adlnet.gov/expapi/verbs/answered",
-    "answered",
-    `https://acbl.wirelxdfirm.com/activities/${comp}/questions/${qid}`,
-    `${qid}`,
-    {
-      success: false,
-      response: answer,
-      extensions: {
-        "https://acbl.wirelxdfirm.com/extensions/competencyId": comp,
-        "https://acbl.wirelxdfirm.com/extensions/questionId": qid,
-        "https://acbl.wirelxdfirm.com/extensions/subCompetency": sub,
-        "https://acbl.wirelxdfirm.com/extensions/sessionId": sid
-      }
-    }
-  );
+    const learner = p.GetVar("learnerName") || "Anonymous";
+    const sid = p.GetVar("sessionId") || "";
+    const comp = "C1";
+
+    const sub = p.GetVar("C1_Q1_Sub") || "";
+    const answer = p.GetVar("C1_Q1_Answer") || "";
+    const qText = p.GetVar("C1_Q1_Text") || "";
+
+    const qid = "C1" + sub + "-Q1";
+
+    sendXAPI(
+        "http://adlnet.gov/expapi/verbs/answered",
+        "answered",
+        `https://acbl.wirelxdfirm.com/activities/${comp}/questions/${qid}`,
+        qid,
+        {
+            success: false,
+            response: answer,
+            extensions: {
+                "https://acbl.wirelxdfirm.com/extensions/competencyId": comp,
+                "https://acbl.wirelxdfirm.com/extensions/subCompetency": "C1" + sub,
+                "https://acbl.wirelxdfirm.com/extensions/questionId": qid,
+                "https://acbl.wirelxdfirm.com/extensions/sessionId": sid
+            }
+        },
+        qText
+    );
 })();
 
 }
 
 window.Script7 = function()
 {
-  /* Question-level xAPI (Correct) */
-(function() {
-  const p = GetPlayer();
-  const learner = p.GetVar("learnerName");
-  const sid = p.GetVar("sessionId");
-  const comp = p.GetVar("currentComp");
-  const sub = p.GetVar("C1_SubCompetency");
-  const qid = sub + "-1";
-  const answer = p.GetVar("C1_Q1_Answer") || "";
+  /* Q1 Correct */
+(function () {
+    const p = GetPlayer();
 
-  sendXAPI(
-    "http://adlnet.gov/expapi/verbs/answered",
-    "answered",
-    `https://acbl.wirelxdfirm.com/activities/${comp}/questions/${qid}`,
-    `${qid}`,
-    {
-      success: true,
-      response: answer,
-      extensions: {
-        "https://acbl.wirelxdfirm.com/extensions/competencyId": comp,
-        "https://acbl.wirelxdfirm.com/extensions/questionId": qid,
-        "https://acbl.wirelxdfirm.com/extensions/subCompetency": sub,
-        "https://acbl.wirelxdfirm.com/extensions/sessionId": sid
-      }
-    }
-  );
+    const learner = p.GetVar("learnerName") || "Anonymous";
+    const sid = p.GetVar("sessionId") || "";
+    const comp = "C1";
+
+    const sub = p.GetVar("C1_Q1_Sub") || "";
+    const answer = p.GetVar("C1_Q1_Answer") || "";
+    const qText = p.GetVar("C1_Q1_Text") || "";
+    const success = p.GetVar("C1_Q1_IsCorrect");
+
+    const qid = "C1" + sub + "-Q1";
+
+    sendXAPI(
+        "http://adlnet.gov/expapi/verbs/answered",
+        "answered",
+        `https://acbl.wirelxdfirm.com/activities/${comp}/questions/${qid}`,
+        qid,
+        {
+            success: !!success,
+            response: answer,
+            extensions: {
+                "https://acbl.wirelxdfirm.com/extensions/competencyId": comp,
+                "https://acbl.wirelxdfirm.com/extensions/subCompetency": "C1" + sub,
+                "https://acbl.wirelxdfirm.com/extensions/questionId": qid,
+                "https://acbl.wirelxdfirm.com/extensions/sessionId": sid
+            }
+        },
+        qText
+    );
 })();
 
 }
@@ -624,65 +635,75 @@ if (!window.__XAPI_HELPER_LOADED__) {
 
 window.Script10 = function()
 {
-  /* Question-level xAPI (Incorrect – Q2) */
-(function() {
-  const p = GetPlayer();
-  const learner = p.GetVar("learnerName");
-  const sid = p.GetVar("sessionId");
-  const comp = p.GetVar("currentComp");
-  const sub = p.GetVar("C1_SubCompetency");
-  const qid = sub + "-2";                     // Q2 → "-2"
-  const answer = p.GetVar("C1_Q2_Answer") || "";  // Q2 answer var
+  /* Q2 Incorrect */
+(function () {
+    const p = GetPlayer();
 
-  sendXAPI(
-    "http://adlnet.gov/expapi/verbs/answered",
-    "answered",
-    `https://acbl.wirelxdfirm.com/activities/${comp}/questions/${qid}`,
-    `${qid}`,
-    {
-      success: false,
-      response: answer,
-      extensions: {
-        "https://acbl.wirelxdfirm.com/extensions/competencyId": comp,
-        "https://acbl.wirelxdfirm.com/extensions/questionId": qid,
-        "https://acbl.wirelxdfirm.com/extensions/subCompetency": sub,
-        "https://acbl.wirelxdfirm.com/extensions/sessionId": sid
-      }
-    }
-  );
+    const learner = p.GetVar("learnerName") || "Anonymous";
+    const sid = p.GetVar("sessionId") || "";
+    const comp = "C1";
+
+    const sub = p.GetVar("C1_Q2_Sub") || "";
+    const answer = p.GetVar("C1_Q2_Answer") || "";
+    const qText = p.GetVar("C1_Q2_Text") || "";
+
+    const qid = "C1" + sub + "-Q2";
+
+    sendXAPI(
+        "http://adlnet.gov/expapi/verbs/answered",
+        "answered",
+        `https://acbl.wirelxdfirm.com/activities/${comp}/questions/${qid}`,
+        qid,
+        {
+            success: false,
+            response: answer,
+            extensions: {
+                "https://acbl.wirelxdfirm.com/extensions/competencyId": comp,
+                "https://acbl.wirelxdfirm.com/extensions/subCompetency": "C1" + sub,
+                "https://acbl.wirelxdfirm.com/extensions/questionId": qid,
+                "https://acbl.wirelxdfirm.com/extensions/sessionId": sid
+            }
+        },
+        qText
+    );
 })();
 
 }
 
 window.Script11 = function()
 {
-  /* Question-level xAPI (Correct) */
-(function() {
-  const p = GetPlayer();
-  const learner = p.GetVar("learnerName");
-  const sid = p.GetVar("sessionId");
-  const comp = p.GetVar("currentComp");
-  const sub = p.GetVar("C1_SubCompetency");
-  const qid = sub + "-2";
+  /* Q2 Correct */
+(function () {
+    const p = GetPlayer();
 
-  const answer = p.GetVar("C1_Q2_Answer") || "";
+    const learner = p.GetVar("learnerName") || "Anonymous";
+    const sid = p.GetVar("sessionId") || "";
+    const comp = "C1";
 
-  sendXAPI(
-    "http://adlnet.gov/expapi/verbs/answered",
-    "answered",
-    `https://acbl.wirelxdfirm.com/activities/${comp}/questions/${qid}`,
-    `${qid}`,
-    {
-      success: true,
-      response: answer,
-      extensions: {
-        "https://acbl.wirelxdfirm.com/extensions/competencyId": comp,
-        "https://acbl.wirelxdfirm.com/extensions/questionId": qid,
-        "https://acbl.wirelxdfirm.com/extensions/subCompetency": sub,
-        "https://acbl.wirelxdfirm.com/extensions/sessionId": sid
-      }
-    }
-  );
+    const sub = p.GetVar("C1_Q2_Sub") || "";
+    const answer = p.GetVar("C1_Q2_Answer") || "";
+    const qText = p.GetVar("C1_Q2_Text") || "";
+    const success = p.GetVar("C1_Q2_IsCorrect");
+
+    const qid = "C1" + sub + "-Q2";
+
+    sendXAPI(
+        "http://adlnet.gov/expapi/verbs/answered",
+        "answered",
+        `https://acbl.wirelxdfirm.com/activities/${comp}/questions/${qid}`,
+        qid,
+        {
+            success: !!success,
+            response: answer,
+            extensions: {
+                "https://acbl.wirelxdfirm.com/extensions/competencyId": comp,
+                "https://acbl.wirelxdfirm.com/extensions/subCompetency": "C1" + sub,
+                "https://acbl.wirelxdfirm.com/extensions/questionId": qid,
+                "https://acbl.wirelxdfirm.com/extensions/sessionId": sid
+            }
+        },
+        qText
+    );
 })();
 
 }
@@ -829,32 +850,37 @@ if (!window.__XAPI_HELPER_LOADED__) {
 
 window.Script14 = function()
 {
-  /* Question-level xAPI (Incorrect – Q3) */
-(function() {
-  const p = GetPlayer();
-  const learner = p.GetVar("learnerName");
-  const sid = p.GetVar("sessionId");
-  const comp = p.GetVar("currentComp");
-  const sub = p.GetVar("C1_SubCompetency");
-  const qid = sub + "-3";                     // Q3 → "-3"
-  const answer = p.GetVar("C1_Q3_Answer") || "";  // Q3 answer var
+  /* Q3 Incorrect */
+(function () {
+    const p = GetPlayer();
 
-  sendXAPI(
-    "http://adlnet.gov/expapi/verbs/answered",
-    "answered",
-    `https://acbl.wirelxdfirm.com/activities/${comp}/questions/${qid}`,
-    `${qid}`,
-    {
-      success: false,
-      response: answer,
-      extensions: {
-        "https://acbl.wirelxdfirm.com/extensions/competencyId": comp,
-        "https://acbl.wirelxdfirm.com/extensions/questionId": qid,
-        "https://acbl.wirelxdfirm.com/extensions/subCompetency": sub,
-        "https://acbl.wirelxdfirm.com/extensions/sessionId": sid
-      }
-    }
-  );
+    const learner = p.GetVar("learnerName") || "Anonymous";
+    const sid = p.GetVar("sessionId") || "";
+    const comp = "C1";
+
+    const sub = p.GetVar("C1_Q3_Sub") || "";
+    const answer = p.GetVar("C1_Q3_Answer") || "";
+    const qText = p.GetVar("C1_Q3_Text") || "";
+
+    const qid = "C1" + sub + "-Q3";
+
+    sendXAPI(
+        "http://adlnet.gov/expapi/verbs/answered",
+        "answered",
+        `https://acbl.wirelxdfirm.com/activities/${comp}/questions/${qid}`,
+        qid,
+        {
+            success: false,
+            response: answer,
+            extensions: {
+                "https://acbl.wirelxdfirm.com/extensions/competencyId": comp,
+                "https://acbl.wirelxdfirm.com/extensions/subCompetency": "C1" + sub,
+                "https://acbl.wirelxdfirm.com/extensions/questionId": qid,
+                "https://acbl.wirelxdfirm.com/extensions/sessionId": sid
+            }
+        },
+        qText
+    );
 })();
 
 }
