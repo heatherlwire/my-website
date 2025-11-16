@@ -2,13 +2,18 @@
 <html lang="en">
 <head>
     <script>
-        if (location.hostname === "wirelearningsolutions.com") {
-            location.href =
-                "https://www.wirelearningsolutions.com"
-                + location.pathname
-                + location.search;
+        // Only redirect when this page is the top-level window (not inside an iframe)
+        if (window.top === window.self) {
+            if (location.hostname === "wirelearningsolutions.com") {
+                location.replace(
+                    "https://www.wirelearningsolutions.com" +
+                    location.pathname +
+                    location.search
+                );
+            }
         }
     </script>
+
     <meta charset="UTF-8" />
     <title>Adaptive Learning Unleashed</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
