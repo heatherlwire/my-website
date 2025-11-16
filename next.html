@@ -253,6 +253,7 @@
             </span>
         </div>
     </header>
+
     <main class="wrap">
         <section class="card" id="info">
             <div><b>Learner:</b> <span id="learnerNameLabel">—</span></div>
@@ -334,6 +335,7 @@
             localStorage.setItem("currentCompetency", hintedComp);
         }
 
+        // Default competency is C1 (your entry competency)
         var currentComp = (localStorage.getItem("currentCompetency") || "C1").toUpperCase();
 
         localStorage.setItem("learnerName", learnerName);
@@ -357,8 +359,7 @@
 
                 const ok = r.ok && (
                     bodyText.indexOf("Lambda OK") !== -1 ||
-                    (data && data.ok === true) ||
-                    bodyText.trim() === "[]" // your proxy's ping body
+                    (data && data.ok === true)
                 );
 
                 if (ok) {
@@ -726,9 +727,9 @@
                 // Already have a queue: peek first route
                 next = pendingRoutes[0];
             } else {
-                // No queue: compute from rules or default to test-first
+                // No queue: compute from rules or force first test
 
-                // New learner / no competency data → force test first
+                // New learner / no competency data → force first test (C1-test on first run)
                 var noState =
                     !state.mastery &&
                     !state.finalized &&
@@ -743,29 +744,32 @@
                         })
                     );
 
-                var route = null;
-
                 if (noState) {
-                    // brand new for this competency
-                    route = currentComp + "-test";
-                } else {
-                    // use adaptive rules
-                    route = evaluateRouting(currentComp, state, rules) || (currentComp + "-test");
-                }
-
-                if (Array.isArray(route)) {
-                    const normalized = route.map(normalize).filter(Boolean);
-                    next = normalized.length > 0 ? normalized[0] : currentComp + "-test";
-                    pendingRoutes = normalized.slice(1);
-                } else {
-                    next = normalize(route || (currentComp + "-test"));
+                    // Brand-new learner → ALWAYS start with entry competency test
+                    // Because currentComp defaults to "C1", this becomes "C1-test"
+                    currentComp = "C1";
+                    next = currentComp + "-test";
                     pendingRoutes = [];
-                }
-
-                if (pendingRoutes.length > 0) {
-                    localStorage.setItem("pendingRoutes", JSON.stringify(pendingRoutes));
-                } else {
                     localStorage.removeItem("pendingRoutes");
+                    localStorage.setItem("currentCompetency", currentComp);
+                } else {
+                    // Not brand-new → use adaptive rules
+                    var route = evaluateRouting(currentComp, state, rules) || (currentComp + "-test");
+
+                    if (Array.isArray(route)) {
+                        const normalized = route.map(normalize).filter(Boolean);
+                        next = normalized.length > 0 ? normalized[0] : currentComp + "-test";
+                        pendingRoutes = normalized.length > 1 ? normalized.slice(1) : [];
+                    } else {
+                        next = normalize(route || (currentComp + "-test"));
+                        pendingRoutes = [];
+                    }
+
+                    if (pendingRoutes.length > 0) {
+                        localStorage.setItem("pendingRoutes", JSON.stringify(pendingRoutes));
+                    } else {
+                        localStorage.removeItem("pendingRoutes");
+                    }
                 }
             }
 
