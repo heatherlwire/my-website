@@ -1,7 +1,11 @@
 ﻿<!DOCTYPE html>
 <html lang="en">
 <head>
-    <!-- Canonical redirect (top-level only so iframes are safe) -->
+    <meta charset="UTF-8" />
+    <title>Adaptive Learning Unleashed</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!-- Canonical redirect -->
     <script>
         if (window.top === window.self) {
             if (location.hostname === "wirelearningsolutions.com") {
@@ -13,10 +17,6 @@
             }
         }
     </script>
-
-    <meta charset="UTF-8" />
-    <title>Adaptive Learning Launch</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
 
     <style>
         :root {
@@ -37,30 +37,73 @@
         body {
             margin: 0;
             color: var(--ink-0);
-            font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+            font-family: ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;
             background: radial-gradient(1200px 800px at 70% -10%, rgba(34,211,238,.10), transparent 60%), radial-gradient(1000px 600px at -10% 20%, rgba(14,165,233,.15), transparent 55%), linear-gradient(180deg, #07101e 0%, #0a1322 50%, #0b1628 100%);
             min-height: 100dvh;
-        }
-
-        header {
-            padding: 28px 24px 10px;
-        }
-
-        .title-row {
             display: flex;
             align-items: center;
-            gap: 12px;
-            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .wrap {
+            background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.015)), var(--bg-1);
+            border: 1px solid rgba(148,163,184,.15);
+            border-radius: 16px;
+            box-shadow: var(--shadow);
+            padding: 40px 32px;
+            max-width: 520px;
+            width: 92%;
+            text-align: center;
         }
 
         h1 {
             margin: 0;
-            font-size: clamp(22px, 2.4vw, 28px);
+            font-size: clamp(24px,3vw,32px);
             background: linear-gradient(90deg, var(--ink-0), #cfe8ff);
             -webkit-background-clip: text;
             background-clip: text;
             color: transparent;
         }
+
+        .subtitle {
+            margin: 20px 0 0;
+            color: var(--ink-0);
+            font-size: 1.6rem;
+            font-weight: 600;
+            text-shadow: 0 1px 6px rgba(34,211,238,0.35);
+        }
+
+        input {
+            width: 100%;
+            padding: 12px 14px;
+            border-radius: 10px;
+            border: 1px solid rgba(148,163,184,.35);
+            background: #0f1a2e;
+            color: var(--ink-0);
+            font-size: 16px;
+            margin-top: 16px;
+            box-sizing: border-box;
+        }
+
+        button {
+            margin-top: 14px;
+            width: 100%;
+            padding: 12px 16px;
+            font-size: 16px;
+            border-radius: 10px;
+            border: 1px solid rgba(34,211,238,.55);
+            background: linear-gradient(180deg,#0e87c7,#0c6aa0);
+            color: #fff;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 6px 24px rgba(14,165,233,.35);
+            transition: transform .1s ease, box-shadow .2s ease;
+        }
+
+            button:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 8px 28px rgba(14,165,233,.45);
+            }
 
         .badge {
             display: inline-flex;
@@ -71,190 +114,89 @@
             border-radius: 999px;
             background: rgba(14,165,233,.10);
             border: 1px solid rgba(34,211,238,.35);
+            margin-top: 16px;
         }
 
-        .badge-dot {
+        .dot {
             width: 10px;
             height: 10px;
             border-radius: 50%;
             background: var(--warn);
         }
 
-            .badge-dot.ok {
+            .dot.ok {
                 background: var(--ok);
-                box-shadow: 0 0 0 0 rgba(34,197,94,.6);
                 animation: pulse 1.8s ease-out infinite;
             }
 
         @keyframes pulse {
             0% {
-                box-shadow: 0 0 0 0 rgba(34,197,94,.5);
+                box-shadow: 0 0 0 0 rgba(34,197,94,.5)
             }
 
             70% {
-                box-shadow: 0 0 0 10px rgba(34,197,94,0);
+                box-shadow: 0 0 0 10px rgba(34,197,94,0)
             }
 
             100% {
-                box-shadow: 0 0 0 0 rgba(34,197,94,0);
+                box-shadow: 0 0 0 0 rgba(34,197,94,0)
             }
         }
 
-        .wrap {
-            padding: 6px 24px 32px;
-            max-width: 1100px;
-            margin: 0 auto;
-        }
-
-        .card {
-            background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.015)), var(--bg-1);
-            border: 1px solid rgba(148,163,184,.15);
-            border-radius: 14px;
-            padding: 20px 18px;
-            margin: 16px 0;
-            box-shadow: var(--shadow);
-        }
-
-        .muted {
-            color: var(--ink-1);
-        }
-
-        .row {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 12px;
-            align-items: center;
-            margin-top: 16px;
-        }
-
-        .field-label {
+        .smallLink {
+            margin-top: 18px;
             font-size: 14px;
-            margin-bottom: 4px;
-        }
-
-        input {
-            width: 100%;
-            max-width: 360px;
-            padding: 10px 12px;
-            border-radius: 10px;
-            border: 1px solid rgba(148,163,184,.35);
-            background: #020617;
-            color: var(--ink-0);
-            font-size: 15px;
-            outline: none;
-            box-sizing: border-box;
-            margin-bottom: 8px;
-        }
-
-            input:focus {
-                border-color: var(--focus);
-                box-shadow: 0 0 0 1px rgba(147,197,253,.6);
-            }
-
-        .error {
-            color: var(--err);
-            font-size: 13px;
-            margin: 2px 0 4px;
-        }
-
-        button {
-            padding: 10px 16px;
-            border-radius: 10px;
             cursor: pointer;
-            font-size: 15px;
-            border: 1px solid rgba(148,163,184,.35);
-            background: #0f1a2e;
-            color: var(--ink-0);
-            transition: transform .05s ease, box-shadow .15s ease;
-        }
-
-            button.primary {
-                background: linear-gradient(180deg,#0e87c7,#0c6aa0);
-                border-color: rgba(34,211,238,.55);
-                box-shadow: 0 6px 24px rgba(14,165,233,.35);
-            }
-
-            button:hover:not(:disabled) {
-                transform: translateY(-1px);
-            }
-
-            button:disabled {
-                opacity: .6;
-                cursor: not-allowed;
-            }
-
-        .btn-outline {
-            background: transparent;
-            border-color: rgba(148,163,184,.5);
+            color: var(--ink-1);
+            text-decoration: underline;
         }
     </style>
 </head>
+
 <body>
-
-    <header>
-        <div class="title-row">
-            <h1>Adaptive Learning Launch</h1>
-
-            <span class="badge">
-                <span class="badge-dot" id="connDot"></span>
-                <span id="connText">Checking connection…</span>
-            </span>
-        </div>
-    </header>
-
     <main class="wrap">
-        <!-- New learner -->
-        <section class="card" id="newUserSection">
-            <h2 style="margin-top:0;margin-bottom:8px;">Welcome</h2>
-            <p class="muted">Enter your name and email to begin.</p>
+        <h1>Welcome to Adaptive Learning Unleashed</h1>
 
-            <div style="margin-top:14px;">
-                <div class="field-label">Learner name</div>
-                <input id="nameInput" type="text" placeholder="Type your name…" autocomplete="name" />
+        <div class="badge" aria-live="polite">
+            <span class="dot" id="connDot"></span>
+            <span id="connText">Checking connection…</span>
+        </div>
 
-                <div class="field-label">Email</div>
-                <input id="emailInput" type="email" placeholder="you@example.com" autocomplete="email" />
-                <p id="emailError" class="error" hidden>Enter a valid email like name@example.com.</p>
-            </div>
+        <p class="subtitle" id="subtitle">Please enter your name to begin.</p>
 
-            <div class="row">
-                <button class="primary" id="launchBtn" disabled>Launch</button>
-            </div>
-        </section>
+        <input id="nameInput" type="text" placeholder="Your Name" autocomplete="name" />
 
-        <!-- Returning learner -->
-        <section class="card" id="returningSection" hidden>
-            <h2 style="margin-top:0;margin-bottom:8px;">Welcome back</h2>
-            <p class="muted" id="welcomeText"></p>
+        <button id="btnLaunch">Launch</button>
 
-            <div class="row">
-                <button class="primary" id="continueBtn">Continue where you left off</button>
-                <button class="btn-outline" id="resetBtn">Reset learner</button>
-            </div>
-        </section>
+        <div id="returningLink" class="smallLink" hidden>
+            Continue where you left off
+        </div>
     </main>
 
     <script>
         const PROXY_URL = "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
 
+        // ============ Connection Badge ============
         async function checkConnection() {
             const dot = document.getElementById("connDot");
             const txt = document.getElementById("connText");
 
             try {
-                const res = await fetch(PROXY_URL + "?mode=ping", { cache: "no-store" });
-                const body = await res.text();
+                const res = await fetch(PROXY_URL + "?mode=ping", {
+                    method: "GET",
+                    cache: "no-store"
+                });
 
+                const text = await res.text();
                 const ok =
                     res.ok &&
-                    (body.includes("Lambda OK") ||
-                        (body.includes('"ok":true')));
+                    (text.includes("Lambda OK") ||
+                        text.includes('"ok":true'));
 
                 if (ok) {
                     dot.classList.add("ok");
                     txt.textContent = "Connected to LRS";
                 } else {
-                    dot.style.background = "var(--warn)";
                     txt.textContent = "Unstable connection";
                 }
             } catch {
@@ -264,40 +206,7 @@
         }
         checkConnection();
 
-        // ========= Elements =========
-        const newUserSection = document.getElementById("newUserSection");
-        const returningSection = document.getElementById("returningSection");
-        const nameInput = document.getElementById("nameInput");
-        const emailInput = document.getElementById("emailInput");
-        const emailError = document.getElementById("emailError");
-        const launchBtn = document.getElementById("launchBtn");
-        const continueBtn = document.getElementById("continueBtn");
-        const resetBtn = document.getElementById("resetBtn");
-        const welcomeText = document.getElementById("welcomeText");
-
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-
-        function isEmailValid(v) {
-            return emailRegex.test((v || "").trim());
-        }
-
-        function validate() {
-            const nameOk = nameInput.value.trim().length > 0;
-            const emailVal = emailInput.value.trim();
-            const emailOk = isEmailValid(emailVal);
-
-            emailError.hidden = (emailVal === "" || emailOk);
-            launchBtn.disabled = !(nameOk && emailOk);
-        }
-
-        ["input", "change", "blur"].forEach(ev => {
-            nameInput.addEventListener(ev, validate);
-            emailInput.addEventListener(ev, validate);
-        });
-
-        document.addEventListener("DOMContentLoaded", validate);
-
-        // ========= Session helpers =========
+        // ============ Session Helpers ============
         function ensureSid() {
             let sid = localStorage.getItem("sessionId");
             if (!sid) {
@@ -307,90 +216,49 @@
             return sid;
         }
 
-        function goToNext(name, email, sid) {
+        function goToNext(name, sid) {
             window.location.href =
-                "next.html" +
-                "?learnerName=" + encodeURIComponent(name) +
-                "&email=" + encodeURIComponent(email) +
+                "next.html?learnerName=" + encodeURIComponent(name) +
                 "&sid=" + encodeURIComponent(sid);
         }
 
-        function showCorrectSection() {
-            const storedName = localStorage.getItem("learnerName");
-            const storedEmail = localStorage.getItem("learnerEmail");
+        // ============ Detect Returning Learner ============
+        const returningLink = document.getElementById("returningLink");
+        const subtitle = document.getElementById("subtitle");
 
-            if (storedName && storedEmail) {
-                welcomeText.textContent = `Learner detected: ${storedName} (${storedEmail}).`;
-                newUserSection.hidden = true;
-                returningSection.hidden = false;
-            } else {
-                if (storedName) nameInput.value = storedName;
-                if (storedEmail) emailInput.value = storedEmail;
-                newUserSection.hidden = false;
-                returningSection.hidden = true;
-            }
+        const storedName = localStorage.getItem("learnerName");
+
+        if (storedName) {
+            subtitle.textContent = "Welcome back, " + storedName + ".";
+            returningLink.hidden = false;
         }
 
-        window.addEventListener("DOMContentLoaded", showCorrectSection);
-
-        // ========= New learner launch =========
-        launchBtn.addEventListener("click", () => {
-            const name = nameInput.value.trim();
-            const email = emailInput.value.trim().toLowerCase();
-
-            if (!name || !isEmailValid(email)) {
-                validate();
-                if (!isEmailValid(email)) emailInput.focus();
-                return;
-            }
-
-            localStorage.setItem("learnerName", name);
-            localStorage.setItem("learnerEmail", email);
-
-            const sid = ensureSid();
-            launchBtn.disabled = true;
-            launchBtn.textContent = "Launching…";
-
-            goToNext(name, email, sid);
-        });
-
-        // ========= Returning learner continue =========
-        continueBtn.addEventListener("click", () => {
+        returningLink.addEventListener("click", () => {
             const name = localStorage.getItem("learnerName");
-            const email = localStorage.getItem("learnerEmail");
+            const sid = ensureSid();
 
-            if (!name || !email) {
-                alert("No previous learner found. Please enter your details and Launch.");
-                newUserSection.hidden = false;
-                returningSection.hidden = true;
-                return;
-            }
-
-            // 🔥 FIX: Restore correct competency before continuing
+            // Restore correct competency (default C1)
             const lastComp = localStorage.getItem("currentCompetency") || "C1";
             localStorage.setItem("currentCompetency", lastComp);
 
+            goToNext(name, sid);
+        });
+
+        // ============ New Launch ============
+        document.getElementById("btnLaunch").addEventListener("click", () => {
+            const name = document.getElementById("nameInput").value.trim();
+            if (!name) return alert("Please enter your name.");
+
+            localStorage.setItem("learnerName", name);
+            localStorage.setItem("currentCompetency", "C1");
+
             const sid = ensureSid();
-            continueBtn.disabled = true;
-            continueBtn.textContent = "Continuing…";
-
-            goToNext(name, email, sid);
+            goToNext(name, sid);
         });
 
-        // ========= Reset learner =========
-        resetBtn.addEventListener("click", () => {
-            if (confirm("Clear saved learner data and restart?")) {
-                localStorage.clear();
-                sessionStorage.clear();
-                location.reload();
-            }
-        });
-
-        // Allow Enter key to trigger Launch
-        document.addEventListener("keydown", e => {
-            if (e.key === "Enter" && !launchBtn.disabled && !newUserSection.hidden) {
-                launchBtn.click();
-            }
+        // Enter key support
+        document.getElementById("nameInput").addEventListener("keydown", e => {
+            if (e.key === "Enter") document.getElementById("btnLaunch").click();
         });
     </script>
 </body>
