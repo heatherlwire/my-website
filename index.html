@@ -5,7 +5,7 @@
     <title>Adaptive Learning Unleashed</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <!-- Canonical redirect -->
+    <!-- Canonical redirect (top-level only so iframes are safe) -->
     <script>
         if (window.top === window.self) {
             if (location.hostname === "wirelearningsolutions.com") {
@@ -20,9 +20,11 @@
 
     <style>
         :root {
+            --bg-0: #0a0f1a;
             --bg-1: #0e1526;
             --ink-0: #e8f1ff;
             --ink-1: #b9c8e8;
+            --sky-1: #0ea5e9;
             --ok: #22c55e;
             --warn: #f59e0b;
             --err: #ef4444;
@@ -33,7 +35,7 @@
             margin: 0;
             color: var(--ink-0);
             font-family: ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;
-            background: radial-gradient(1200px 800px at 70% -10%, rgba(34,211,238,.10), transparent 60%), radial-gradient(1000px 600px at -10% 20%, rgba(14,165,233,.15), transparent 55%), linear-gradient(180deg,#07101e 0%,#0a1322 50%,#0b1628 100%);
+            background: radial-gradient(1200px 800px at 70% -10%,rgba(34,211,238,.10),transparent 60%), radial-gradient(1000px 600px at -10% 20%,rgba(14,165,233,.15),transparent 55%), linear-gradient(180deg,#07101e 0%,#0a1322 50%,#0b1628 100%);
             min-height: 100dvh;
             display: flex;
             align-items: center;
@@ -41,7 +43,7 @@
         }
 
         .wrap {
-            background: linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.015)), var(--bg-1);
+            background: linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.015)),var(--bg-1);
             border: 1px solid rgba(148,163,184,.15);
             border-radius: 16px;
             box-shadow: var(--shadow);
@@ -61,9 +63,9 @@
         }
 
         .subtitle {
-            margin: 18px 0 6px;
-            font-size: 1.2rem;
+            margin: 18px 0 10px;
             color: var(--ink-1);
+            font-size: 1rem;
         }
 
         .badge {
@@ -87,20 +89,21 @@
 
             .dot.ok {
                 background: var(--ok);
+                box-shadow: 0 0 0 0 rgba(34,197,94,.6);
                 animation: pulse 1.8s ease-out infinite;
             }
 
         @keyframes pulse {
             0% {
-                box-shadow: 0 0 0 0 rgba(34,197,94,.5)
+                box-shadow: 0 0 0 0 rgba(34,197,94,.5);
             }
 
             70% {
-                box-shadow: 0 0 0 10px rgba(34,197,94,0)
+                box-shadow: 0 0 0 10px rgba(34,197,94,0);
             }
 
             100% {
-                box-shadow: 0 0 0 0 rgba(34,197,94,0)
+                box-shadow: 0 0 0 0 rgba(34,197,94,0);
             }
         }
 
@@ -113,9 +116,24 @@
             color: var(--ink-0);
             font-size: 16px;
             margin-top: 12px;
+            box-sizing: border-box;
         }
 
-        button {
+            input:focus {
+                outline: none;
+                border-color: var(--sky-1);
+                box-shadow: 0 0 0 1px rgba(14,165,233,.6);
+            }
+
+        .error {
+            margin-top: 4px;
+            font-size: 14px;
+            color: var(--err);
+            display: none;
+            text-align: left;
+        }
+
+        .btn {
             margin-top: 16px;
             width: 100%;
             padding: 12px 16px;
@@ -127,167 +145,217 @@
             font-weight: 600;
             cursor: pointer;
             box-shadow: 0 6px 24px rgba(14,165,233,.35);
+            transition: transform .1s ease, box-shadow .2s ease;
         }
 
-            button:hover:not(:disabled) {
+            .btn:hover:not(:disabled) {
                 transform: translateY(-2px);
+                box-shadow: 0 8px 28px rgba(14,165,233,.45);
             }
 
-            button:disabled {
+            .btn:disabled {
                 opacity: .6;
                 cursor: not-allowed;
             }
 
-        .linkBtn {
-            margin-top: 16px;
-            font-size: 15px;
-            color: var(--ink-1);
-            cursor: pointer;
-            text-decoration: underline;
+        .btn-secondary {
+            background: #0f1a2e;
+            border-color: rgba(148,163,184,.55);
+            box-shadow: none;
+            color: var(--ink-0);
         }
 
-        .error {
-            margin-top: 4px;
+            .btn-secondary:hover:not(:disabled) {
+                box-shadow: 0 4px 16px rgba(15,23,42,.7);
+            }
+
+        .small-text {
+            margin-top: 8px;
             font-size: 14px;
-            color: var(--err);
-            display: none;
+            color: var(--ink-1);
         }
     </style>
 </head>
-
 <body>
     <main class="wrap">
-
         <h1>Adaptive Learning Unleashed</h1>
 
-        <div class="badge">
+        <div class="badge" aria-live="polite">
             <span class="dot" id="connDot"></span>
             <span id="connText">Checking connection…</span>
         </div>
 
-        <p class="subtitle" id="subtitle">Please enter your name and email to begin.</p>
+        <p class="subtitle" id="subtitle">
+            Please enter your name and email to begin.
+        </p>
 
         <input id="nameInput" type="text" placeholder="Your Name" autocomplete="name" />
         <input id="emailInput" type="email" placeholder="Your Email" autocomplete="email" />
-        <div id="emailError" class="error">Please enter a valid email.</div>
+        <div id="emailError" class="error">Please enter a valid email like name@example.com.</div>
 
-        <button id="btnLaunch" disabled>Launch</button>
+        <!-- Primary launch -->
+        <button id="btnLaunch" class="btn" disabled>Launch</button>
 
-        <!-- Returning learner options -->
-        <div id="continueLink" class="linkBtn" hidden>Continue where you left off</div>
-        <div id="resetLink" class="linkBtn" hidden>Reset learner</div>
+        <!-- Returning learner continue (only shown when recognized) -->
+        <button id="btnContinue" class="btn btn-secondary" style="display:none;">
+            Continue where you left off
+        </button>
 
+        <!-- Reset always available -->
+        <button id="btnReset" class="btn btn-secondary">
+            Reset learner
+        </button>
+
+        <div class="small-text" id="recognizedHint" style="display:none;">
+            We recognized you from a previous session. You can continue or start fresh.
+        </div>
     </main>
 
     <script>
-        const PROXY_URL = "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
+        const PROXY_URL =
+            "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
 
-        // ---- Connection check ----
+        // ---------- Connection badge ----------
         async function checkConnection() {
             const dot = document.getElementById("connDot");
             const txt = document.getElementById("connText");
 
             try {
-                const res = await fetch(PROXY_URL + "?mode=ping");
-                const t = await res.text();
-                const ok = res.ok && (t.includes("Lambda OK") || t.includes('"ok":true'));
-                if (ok) {
+                // Your Lambda returns 200 + "[]" for ping
+                const res = await fetch(PROXY_URL + "?mode=ping", {
+                    method: "GET",
+                    cache: "no-store"
+                });
+
+                if (res.ok) {
                     dot.classList.add("ok");
                     txt.textContent = "Connected to LRS";
                 } else {
                     txt.textContent = "Unstable connection";
+                    dot.style.background = "var(--warn)";
                 }
-            } catch {
-                dot.style.background = "var(--err)";
+            } catch (err) {
                 txt.textContent = "Offline";
+                dot.style.background = "var(--err)";
             }
         }
         checkConnection();
 
-        // ---- Helpers ----
+        // ---------- Helpers ----------
         function ensureSid() {
             let sid = localStorage.getItem("sessionId");
             if (!sid) {
-                sid = crypto.randomUUID();
+                sid = self.crypto?.randomUUID?.() || String(Date.now());
                 localStorage.setItem("sessionId", sid);
             }
             return sid;
         }
 
         function isEmailValid(v) {
-            return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.trim());
+            return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test((v || "").trim());
         }
 
-        // ---- DOM ----
+        function goToNext(name, email, sid) {
+            const url =
+                "next.html" +
+                "?learnerName=" + encodeURIComponent(name) +
+                "&email=" + encodeURIComponent(email) +
+                "&sid=" + encodeURIComponent(sid);
+            window.location.href = url;
+        }
+
+        // ---------- DOM ----------
         const nameInput = document.getElementById("nameInput");
         const emailInput = document.getElementById("emailInput");
-        const btnLaunch = document.getElementById("btnLaunch");
         const emailError = document.getElementById("emailError");
-        const continueLink = document.getElementById("continueLink");
-        const resetLink = document.getElementById("resetLink");
+        const btnLaunch = document.getElementById("btnLaunch");
+        const btnContinue = document.getElementById("btnContinue");
+        const btnReset = document.getElementById("btnReset");
+        const subtitle = document.getElementById("subtitle");
+        const recognizedHint = document.getElementById("recognizedHint");
 
         function validate() {
             const name = nameInput.value.trim();
             const email = emailInput.value.trim();
-            const valid = name.length > 0 && isEmailValid(email);
+            const emailOk = isEmailValid(email);
 
-            btnLaunch.disabled = !valid;
-            emailError.style.display = email && !isEmailValid(email) ? "block" : "none";
+            emailError.style.display = email && !emailOk ? "block" : "none";
+            btnLaunch.disabled = !(name && emailOk);
         }
 
         nameInput.addEventListener("input", validate);
         emailInput.addEventListener("input", validate);
 
-        // ---- Returning user detection ----
+        // ---------- Returning learner detection ----------
         const storedName = localStorage.getItem("learnerName");
         const storedEmail = localStorage.getItem("learnerEmail");
 
         if (storedName && storedEmail) {
-            document.getElementById("subtitle").textContent =
-                "Welcome back, " + storedName + ".";
-            continueLink.hidden = false;
-            resetLink.hidden = false;
-            nameInput.style.display = "none";
-            emailInput.style.display = "none";
-            btnLaunch.style.display = "none";
+            subtitle.textContent = "Welcome back, " + storedName + ".";
+            nameInput.value = storedName;
+            emailInput.value = storedEmail;
+            recognizedHint.style.display = "block";
+            btnContinue.style.display = "block";
+            validate();
         }
 
-        // ---- Continue ----
-        continueLink.addEventListener("click", () => {
-            const sid = ensureSid();
-            const name = storedName;
-            const email = storedEmail;
-
-            window.location.href =
-                "next.html?learnerName=" + encodeURIComponent(name) +
-                "&email=" + encodeURIComponent(email) +
-                "&sid=" + encodeURIComponent(sid);
-        });
-
-        // ---- Reset ----
-        resetLink.addEventListener("click", () => {
-            if (confirm("Reset your adaptive learning progress?")) {
-                localStorage.clear();
-                sessionStorage.clear();
-                location.reload();
-            }
-        });
-
-        // ---- Launch ----
+        // ---------- Launch for new or edited learner ----------
         btnLaunch.addEventListener("click", () => {
             const name = nameInput.value.trim();
             const email = emailInput.value.trim().toLowerCase();
-            if (!isEmailValid(email)) return;
+
+            if (!name || !isEmailValid(email)) {
+                validate();
+                if (!isEmailValid(email)) {
+                    emailInput.focus();
+                } else if (!name) {
+                    nameInput.focus();
+                }
+                return;
+            }
 
             localStorage.setItem("learnerName", name);
             localStorage.setItem("learnerEmail", email);
+            localStorage.setItem("currentCompetency", "C1");
 
             const sid = ensureSid();
+            btnLaunch.disabled = true;
+            btnLaunch.textContent = "Launching…";
 
-            window.location.href =
-                "next.html?learnerName=" + encodeURIComponent(name) +
-                "&email=" + encodeURIComponent(email) +
-                "&sid=" + encodeURIComponent(sid);
+            goToNext(name, email, sid);
+        });
+
+        // ---------- Continue where you left off (recognized only) ----------
+        btnContinue.addEventListener("click", () => {
+            const name = localStorage.getItem("learnerName");
+            const email = localStorage.getItem("learnerEmail");
+
+            if (!name || !email) {
+                alert("No previous learner found. Please enter your details and Launch.");
+                return;
+            }
+
+            const sid = ensureSid();
+            btnContinue.disabled = true;
+            btnContinue.textContent = "Continuing…";
+
+            goToNext(name, email, sid);
+        });
+
+        // ---------- Reset learner (always visible) ----------
+        btnReset.addEventListener("click", () => {
+            if (confirm("Clear saved learner data and restart?")) {
+                localStorage.clear();
+                sessionStorage.clear();
+                window.location.reload();
+            }
+        });
+
+        // Enter key triggers Launch when primary is enabled
+        document.addEventListener("keydown", e => {
+            if (e.key === "Enter" && !btnLaunch.disabled) {
+                btnLaunch.click();
+            }
         });
     </script>
 </body>
