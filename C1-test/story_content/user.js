@@ -201,15 +201,32 @@ window.Script3 = function()
     localStorage.setItem("actorMbox", mbox);
 
     /* ---------------------------------------
-       4. Auto-detect competency from filename
+       4. Detect competency from URL & push to Storyline
        --------------------------------------- */
     const url  = location.href.toUpperCase();
-    const comp = (url.match(/C[123]/) || ["C1"])[0];  // Detects C1, C2, or C3
+    const comp = (url.match(/C[123]/) || ["C1"])[0];
 
     localStorage.setItem("currentCompetency", comp);
+    p.SetVar("currentComp", comp);   // <-- REQUIRED FOR xAPI
 
     /* ---------------------------------------
-       5. Test-start tracking (runs only once)
+       5. Detect Sub-Competency from document title
+          Auto-detects patterns like C1a, C1b, C1c
+       --------------------------------------- */
+    const title = document.title || "";
+    const subMatch = title.match(/C[123][ABC]/i);
+
+    if (subMatch) {
+      const sub = subMatch[0];
+      p.SetVar("CurrentSub", sub);            // used by xAPI
+      p.SetVar("C1_SubCompetency", sub);      // backward compatible
+      localStorage.setItem("currentSub", sub);
+    } else {
+      console.log("🟡 No sub-competency found in title");
+    }
+
+    /* ---------------------------------------
+       6. Test-start tracking (runs only once)
        --------------------------------------- */
     const startKey = `${comp}.started`;
     if (!localStorage.getItem(startKey)) {
@@ -217,7 +234,6 @@ window.Script3 = function()
       localStorage.setItem(startKey, "true");
       localStorage.setItem(`${comp}.startedAt`, new Date().toISOString());
 
-      // Optional xAPI "launched"
       if (window.sendXAPI) {
         sendXAPI(
           "http://adlnet.gov/expapi/verbs/launched",
@@ -232,14 +248,11 @@ window.Script3 = function()
             }
           }
         );
-        console.log(`🚀 xAPI launched sent for ${comp}-test`);
-      } else {
-        console.log(`🚀 Marked ${comp}-test as begun`);
       }
     }
 
     /* ---------------------------------------
-       6. Resume logic (dynamic)
+       7. Resume Gate
        --------------------------------------- */
     const scoreKey     = `${comp}.score`;
     const completeKey  = `${comp}.completed`;
@@ -247,34 +260,16 @@ window.Script3 = function()
     const storedScore     = localStorage.getItem(scoreKey);
     const storedCompleted = localStorage.getItem(completeKey) === "true";
 
-    console.log("🔍 Resume Check", {
-      comp,
-      storedScore,
-      storedCompleted,
-      learner,
-      sid
-    });
+    // New attempt → nothing stored
+    if (!storedScore) return;
 
-    // Brand new attempt
-    if (!storedScore) {
-      console.log("✨ Starting a new attempt");
-      return;
+    // Completed attempt → force new attempt
+    if (storedCompleted) return;
+
+    // Otherwise resume
+    if (confirm("Do you want to resume your previous test attempt?")) {
+      console.log("▶ Resuming previous attempt");
     }
-
-    // Completed attempt
-    if (storedCompleted) {
-      console.log("✨ Previous attempt completed — forcing fresh start");
-      return;
-    }
-
-    // Attempt in progress → ask to resume
-    const resume = confirm("Do you want to resume your previous test attempt?");
-    if (!resume) {
-      console.log("🔄 Learner chose not to resume");
-      return;
-    }
-
-    console.log("▶ Resuming previous attempt");
 
   } catch (err) {
     console.warn("❌ Init Error:", err);
