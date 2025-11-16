@@ -1,4 +1,5 @@
-﻿<!DOCTYPE html>
+﻿\
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <script>
@@ -13,7 +14,6 @@
             }
         }
     </script>
-
 
     <meta charset="UTF-8" />
     <title>Analyzing your progress</title>
@@ -314,13 +314,14 @@
     </main>
 
     <script>
+        // --- constants ---
         const BASE = "https://www.wirelearningsolutions.com/";
         const PROXY_URL = "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
         const NS = "https://acbl.wirelearningsolutions.com/extensions/";
         const EX = k => NS + k;
         const REFRESH_MS = 15000;
 
-        /* ---------- Identity ---------- */
+        // ---------- Identity ----------
         const qs = new URLSearchParams(location.search);
         const learnerName = (qs.get("learnerName") ||
             localStorage.getItem("learnerName") ||
@@ -338,7 +339,7 @@
         localStorage.setItem("learnerName", learnerName);
         localStorage.setItem("sessionId", sid);
 
-        /* ---------- Connection Check ---------- */
+        // ---------- Connection Check ----------
         async function checkConnection() {
             const dot = document.getElementById("connDot");
             const txt = document.getElementById("connText");
@@ -358,7 +359,7 @@
             }
         }
 
-        /* ---------- Fetch Summary ---------- */
+        // ---------- Fetch Summary ----------
         async function fetchSummary() {
             try {
                 const r = await fetch(
@@ -370,7 +371,7 @@
             }
         }
 
-        /* ---------- Load Adaptive Rules ---------- */
+        // ---------- Load Adaptive Rules ----------
         let rulesCache = null;
         async function loadRules() {
             if (rulesCache) return rulesCache;
@@ -379,7 +380,7 @@
             return rulesCache;
         }
 
-        /* ---------- Evaluate Routing ---------- */
+        // ---------- Evaluate Routing (from JSON rules) ----------
         function evaluateRouting(compId, compState, rules) {
             const list = rules[compId];
             if (!list) return null;
@@ -387,13 +388,16 @@
             const routes = [];
             for (const rule of list) {
                 let match = true;
-                for (const key in rule.if || {}) {
+                const cond = rule.if || {};
+
+                for (const key in cond) {
                     if (key === "masteryIn") {
-                        if (!rule.if[key].includes(compState.mastery)) {
+                        const arr = cond[key] || [];
+                        if (!arr.includes(compState.mastery)) {
                             match = false;
                             break;
                         }
-                    } else if (compState[key] !== rule.if[key]) {
+                    } else if (compState[key] !== cond[key]) {
                         match = false;
                         break;
                     }
@@ -414,17 +418,15 @@
                         for (const item of compState[a.forEach]) {
                             for (const inner of a.do) {
                                 if (inner.route) {
-                                    let r =
-                                        inner.route[
-                                            Object.keys(inner.route)[0]
-                                        ].replace("{item}", item);
-                                    routes.push(r);
+                                    const k2 = Object.keys(inner.route)[0];
+                                    let r2 = inner.route[k2].replace("{item}", item);
+                                    routes.push(r2);
                                 }
                             }
                         }
                     }
                 }
-
+                // first matching rule wins
                 break;
             }
 
@@ -433,41 +435,36 @@
             return routes;
         }
 
-        /* ---------- Final URL Resolver (Your Correct Structure) ---------- */
+        // ---------- Final URL Resolver ----------
         function resolveTargetUrl(target) {
             if (!target) return null;
 
-            // 1. Program completion
+            // Program completion
             if (/program-complete/i.test(target)) {
                 return BASE + "program-complete.html";
             }
 
-            // 2. TESTS (Storyline)
-            // e.g., C1-test -> /C1-test/story.html
+            // TESTS (Storyline)  e.g. C1-test -> /C1-test/story.html
             if (/^C[1-3]-test$/i.test(target)) {
                 return BASE + `${target}/story.html`;
             }
 
-            // 3. CONTENT
-            // e.g., C1a-content -> /content/C1a-content.html
+            // CONTENT  e.g. C1a-content -> /content/C1a-content.html
             if (/^C[1-3][a-c]-content$/i.test(target)) {
                 return BASE + `content/${target}.html`;
             }
 
-            // 4. APPLY
-            // e.g., C1a-apply -> /apply/C1a/C1a-apply.html
+            // APPLY  e.g. C1a-apply -> /apply/C1a/C1a-apply.html
             if (/^C[1-3][a-c]-apply$/i.test(target)) {
                 const sub = target.replace("-apply", ""); // C1a
                 return BASE + `apply/${sub}/${target}.html`;
             }
 
-            // 5. Fallback
+            // Fallback
             return BASE + `${target}.html`;
         }
 
-
-
-        /* ---------- UI Helpers ---------- */
+        // ---------- UI Helpers ----------
         function displayMastery(m) {
             return m === "Mastery" ? "Mastered" : (m || "—");
         }
@@ -490,15 +487,15 @@
                     state = "InProgress";
 
                 tbody.innerHTML += `
-                <tr>
-                    <td>${comp}</td>
-                    <td>${displayMastery(s.mastery)}</td>
-                    <td>
-                        <span class="status ${state}">
-                            <span class="s-dot"></span>${labelStatus(state)}
-                        </span>
-                    </td>
-                </tr>`;
+                    <tr>
+                        <td>${comp}</td>
+                        <td>${displayMastery(s.mastery)}</td>
+                        <td>
+                            <span class="status ${state}">
+                                <span class="s-dot"></span>${labelStatus(state)}
+                            </span>
+                        </td>
+                    </tr>`;
             });
         }
 
@@ -507,8 +504,8 @@
             line.innerHTML =
                 `Current: <b>${current}</b> — <b>${displayMastery(state.mastery)}</b>`;
 
-            const comp = (next.match(/(C[1-3])/i)?.[1] || current).toUpperCase();
-            const subMatch = next.match(/C\d([a-c])/i);
+            const comp = (next && next.match(/(C[1-3])/i)?.[1] || current).toUpperCase();
+            const subMatch = next && next.match(/C\d([a-c])/i);
             const sub = subMatch ? `C${comp[1]}${subMatch[1]}` : "—";
 
             let type = "—";
@@ -522,7 +519,7 @@
             document.getElementById("upNextType").textContent = type;
         }
 
-        /* ---------- Finalize ---------- */
+        // ---------- Finalize (off-ramp) ----------
         async function finalize(current, mastery) {
             const stmt = {
                 actor: {
@@ -554,7 +551,7 @@
             localStorage.setItem(`${current}.finalized`, "true");
         }
 
-        /* ---------- MAIN LOOP ---------- */
+        // ---------- MAIN LOOP ----------
         async function refreshAll() {
             await checkConnection();
 
@@ -577,88 +574,40 @@
                 missed: []
             };
 
-            let next =
-                evaluateRouting(currentComp, state, rules) ||
-                `${currentComp}-test`;
-
             const normalize = r =>
                 /^C[1-3]$/i.test(r) ? `${r}-test` : r;
 
-            let pending =
+            // --- build or reuse queue ---
+            let queue =
                 JSON.parse(localStorage.getItem("pendingRoutes") || "[]")
-                    .filter(x => !!x)
-                    .map(normalize);
+                    .filter(x => !!x);
 
-            if (pending.length) {
-                localStorage.setItem("pendingRoutes", JSON.stringify(pending));
-            } else {
-                localStorage.removeItem("pendingRoutes");
+            if (!queue.length) {
+                // New chain from rules
+                let raw = evaluateRouting(currentComp, state, rules) || `${currentComp}-test`;
+                if (Array.isArray(raw)) {
+                    queue = raw.map(normalize);
+                } else {
+                    queue = [normalize(raw)];
+                }
+                localStorage.setItem("pendingRoutes", JSON.stringify(queue));
             }
 
-            if (Array.isArray(next)) {
-                next = next.map(normalize);
-                const [first, ...rest] = next;
-                if (rest.length)
-                    localStorage.setItem("pendingRoutes", JSON.stringify(rest));
-                next = first;
-            } else {
-                next = normalize(next);
-            }
-
+            const next = queue[0] || `${currentComp}-test`;
             writeSummary(currentComp, state, next);
 
             const continueBtn = document.getElementById("continueBtn");
             const acceptBtn = document.getElementById("acceptBtn");
+            const debug = document.getElementById("debug");
+            const toggleDbg = document.getElementById("toggleDebug");
 
             continueBtn.disabled = false;
             acceptBtn.disabled = false;
 
-            continueBtn.onclick = () => {
-                let q = JSON.parse(localStorage.getItem("pendingRoutes") || "[]");
-                if (q.length) {
-                    const nx = q.shift();
-                    localStorage.setItem("pendingRoutes", JSON.stringify(q));
-                    window.location.href =
-                        resolveTargetUrl(nx)
-                        + `?learnerName=${encodeURIComponent(learnerName)}&sid=${sid}`;
-                } else {
-                    window.location.href =
-                        resolveTargetUrl(next)
-                        + `?learnerName=${encodeURIComponent(learnerName)}&sid=${sid}`;
-                }
-            };
-
-            acceptBtn.onclick = async () => {
-                const mastery = state.mastery || "Unknown";
-                if (!confirm(`Accept mastery level "${mastery}" for ${currentComp}?`))
-                    return;
-
-                await finalize(currentComp, mastery);
-
-                let routed =
-                    evaluateRouting(currentComp, { ...state, finalized: true }, rules) ||
-                    "program-complete";
-
-                if (Array.isArray(routed)) {
-                    routed = routed.map(normalize);
-                    const [first, ...rest] = routed;
-                    if (rest.length)
-                        localStorage.setItem("pendingRoutes", JSON.stringify(rest));
-                    routed = first;
-                } else {
-                    routed = normalize(routed);
-                }
-
-                window.location.href =
-                    resolveTargetUrl(routed)
-                    + `?learnerName=${encodeURIComponent(learnerName)}&sid=${sid}`;
-            };
-
-            const debug = document.getElementById("debug");
-            const toggleDbg = document.getElementById("toggleDebug");
+            // Debug info
             debug.innerHTML =
                 `<pre>${JSON.stringify(
-                    { learnerName, sid, currentComp, state, next },
+                    { learnerName, sid, currentComp, state, queue, next },
                     null, 2
                 )}</pre>`;
 
@@ -670,6 +619,56 @@
                     : "Show Debug Info";
             };
 
+            // Continue button: always use the queue
+            continueBtn.onclick = () => {
+                let q = JSON.parse(localStorage.getItem("pendingRoutes") || "[]")
+                    .filter(x => !!x);
+
+                if (!q.length) {
+                    const fallback = `${currentComp}-test`;
+                    window.location.href =
+                        resolveTargetUrl(fallback)
+                        + `?learnerName=${encodeURIComponent(learnerName)}&sid=${sid}`;
+                    return;
+                }
+
+                const target = q.shift();
+                localStorage.setItem("pendingRoutes", JSON.stringify(q));
+
+                window.location.href =
+                    resolveTargetUrl(target)
+                    + `?learnerName=${encodeURIComponent(learnerName)}&sid=${sid}`;
+            };
+
+            // Accept mastery (off-ramp)
+            acceptBtn.onclick = async () => {
+                const mastery = state.mastery || "Unknown";
+                if (!confirm(`Accept mastery level "${mastery}" for ${currentComp}?`))
+                    return;
+
+                await finalize(currentComp, mastery);
+
+                let raw =
+                    evaluateRouting(currentComp, { ...state, finalized: true }, rules) ||
+                    "program-complete";
+
+                let list;
+                if (Array.isArray(raw)) {
+                    list = raw.map(normalize);
+                } else {
+                    list = [normalize(raw)];
+                }
+
+                // overwrite queue with new path
+                localStorage.setItem("pendingRoutes", JSON.stringify(list.slice(1)));
+                const firstTarget = list[0];
+
+                window.location.href =
+                    resolveTargetUrl(firstTarget)
+                    + `?learnerName=${encodeURIComponent(learnerName)}&sid=${sid}`;
+            };
+
+            // Reset learner
             document.getElementById("resetBtn").onclick = () => {
                 if (confirm("Clear all learner data?")) {
                     localStorage.clear();
