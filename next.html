@@ -329,21 +329,29 @@
         const REFRESH_MS = 15000;
 
         /* ============================================================
-           IDENTITY
-        ============================================================ */
+   IDENTITY (FIXED)
+   Priority:
+   1. If reset occurred: no URL params → treat as new learner
+   2. If URL params exist: they override everything
+   3. Otherwise use stored values
+============================================================ */
         const qs = new URLSearchParams(location.search);
-        const learnerName = (
-            qs.get("learnerName") ||
-            localStorage.getItem("learnerName") ||
-            "Anonymous"
-        ).trim();
+        let learnerName = qs.get("learnerName") || localStorage.getItem("learnerName");
+        let learnerEmail = qs.get("email") || localStorage.getItem("learnerEmail");
+        let sid = qs.get("sid") || localStorage.getItem("sessionId");
 
-        const sid =
-            qs.get("sid") ||
-            localStorage.getItem("sessionId") ||
-            (window.crypto && crypto.randomUUID
-                ? crypto.randomUUID()
-                : String(Date.now()));
+        if (!learnerName || !learnerEmail) {
+            // No identity → return to index
+            window.location.href = "index.html";
+        }
+
+        learnerName = learnerName.trim();
+        localStorage.setItem("learnerName", learnerName);
+        localStorage.setItem("learnerEmail", learnerEmail);
+
+        if (!sid) sid = crypto.randomUUID();
+        localStorage.setItem("sessionId", sid);
+
 
         const hintedComp = (qs.get("current") || "").toUpperCase();
         if (hintedComp) {
@@ -354,8 +362,6 @@
         let currentComp =
             (localStorage.getItem("currentCompetency") || "C1").toUpperCase();
 
-        localStorage.setItem("learnerName", learnerName);
-        localStorage.setItem("sessionId", sid);
 
         /* ============================================================
            CONNECTION CHECK
@@ -1024,12 +1030,64 @@
                RESET LEARNER
             -------------------------------------------------------- */
             document.getElementById("resetBtn").onclick = function () {
-                if (window.confirm("Clear all learner data?")) {
-                    localStorage.clear();
-                    sessionStorage.clear();
-                    location.href = "index.html";
+                if (!window.confirm("Clear ALL learner progress and restart?")) {
+                    return;
                 }
+
+                /* ----------------------------
+                   1. Remove Storyline resume data
+                   ---------------------------- */
+                Object.keys(localStorage).forEach(k => {
+                    if (
+                        k.includes("story") ||
+                        k.includes("story_html5") ||
+                        k.includes("suspend") ||
+                        k.startsWith("story_content")
+                    ) {
+                        localStorage.removeItem(k);
+                    }
+                });
+
+                /* ----------------------------
+                   2. Core identity and routing keys
+                   ---------------------------- */
+                [
+                    "learnerName",
+                    "learnerEmail",
+                    "sessionId",
+                    "actorName",
+                    "actorMbox",
+                    "currentCompetency",
+                    "pendingRoutes",
+                    "lastPath",
+                    "lastApplyLaunched"
+                ].forEach(k => localStorage.removeItem(k));
+
+                /* ----------------------------
+                   3. Competency-level state
+                   ---------------------------- */
+                ["C1", "C2", "C3"].forEach(c => {
+                    localStorage.removeItem(c + ".mastery");
+                    localStorage.removeItem(c + ".score");
+                    localStorage.removeItem(c + ".missed");
+                    localStorage.removeItem(c + ".finalized");
+                    localStorage.removeItem(c + ".testedOut");
+                    localStorage.removeItem(c + ".completed");
+                    localStorage.removeItem(c + ".startedAt");
+                });
+
+                /* ----------------------------
+                   4. Clear session storage
+                   ---------------------------- */
+                sessionStorage.clear();
+
+                /* ----------------------------
+                   5. Redirect to fresh start
+                   ---------------------------- */
+                window.location.href = "index.html";
             };
+
+
         }
 
         // Initial run + periodic refresh

@@ -395,12 +395,50 @@
 
         // ============ Reset learner ============
         resetBtn.addEventListener("click", () => {
-            if (confirm("Clear saved learner data and restart?")) {
-                localStorage.clear();
-                sessionStorage.clear();
-                location.reload();
-            }
+            if (!confirm("Clear ALL learner progress and restart?")) return;
+
+            // Remove ONLY Storyline resume junk
+            Object.keys(localStorage).forEach(k => {
+                if (
+                    k.includes("story") ||
+                    k.includes("story_html5") ||
+                    k.includes("suspend") ||
+                    k.startsWith("story_content")
+                ) {
+                    localStorage.removeItem(k);
+                }
+            });
+
+            // Core identity keys
+            [
+                "learnerName",
+                "learnerEmail",
+                "sessionId",
+                "actorName",
+                "actorMbox",
+                "currentCompetency",
+                "pendingRoutes",
+                "lastPath",
+                "lastApplyLaunched"
+            ].forEach(k => localStorage.removeItem(k));
+
+            // Competency-level keys
+            ["C1", "C2", "C3"].forEach(c => {
+                localStorage.removeItem(c + ".mastery");
+                localStorage.removeItem(c + ".score");
+                localStorage.removeItem(c + ".missed");
+                localStorage.removeItem(c + ".finalized");
+                localStorage.removeItem(c + ".testedOut");
+                localStorage.removeItem(c + ".completed");
+                localStorage.removeItem(c + ".startedAt");
+            });
+
+            sessionStorage.clear();
+
+            // Fresh reload of index
+            window.location.href = "index.html";
         });
+
 
         // Allow Enter to trigger Launch for new users
         document.addEventListener("keydown", e => {
