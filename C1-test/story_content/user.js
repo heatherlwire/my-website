@@ -1092,135 +1092,56 @@ window.Script16 = function()
 
 window.Script17 = function()
 {
-  (function () {
+  /* ============================================================
+   Adaptive Test Exit Handler
+   Run on BOTH Passed and Failed layers
+   ============================================================ */
+(function () {
   try {
-    console.log("🚀 Adaptive Continue (final stable build)");
-
-    // --- Guard: prevent double trigger ---
-    if (localStorage.getItem("continue.lock")) return;
-    localStorage.setItem("continue.lock", "1");
-    setTimeout(() => localStorage.removeItem("continue.lock"), 3000);
-
-    // --- Storyline Player ---
-    const p = GetPlayer && GetPlayer();
+    const p = GetPlayer();
     if (!p) return;
 
-    // --- Detect competency (C1/C2/C3) ---
+    // 1. Identify competency
     const url = window.location.href.toUpperCase();
     const compId = (url.match(/C[123]/) || ["C1"])[0];
-    console.log("📘 Competency:", compId);
 
-    // --- Quiz data ---
-    const correct = Number(p.GetVar(compId + "_Correct") || 0);
-    const missedSubs = (p.GetVar(compId + "_missedSubs") || "")
-      .split(",")
-      .map(s => s.trim())
-      .filter(Boolean);
+    // 2. Quiz data
+    const score = Number(p.GetVar("QuizScore") || 0);
+    const missedRaw = p.GetVar("MissedQuestions") || "";
+    const missed = missedRaw.split(",").map(s => s.trim()).filter(Boolean);
 
-    // --- Determine mastery ---
-    let mastery = "Failing";
-    if (correct === 3) mastery = "Mastery";
-    else if (correct === 2) mastery = "Proficient";
-    else if (correct === 1) mastery = "Emerging";
+    // 3. Determine mastery
+    let mastery = "Emerging";
+    if (score === 3) mastery = "Mastery";
+    else if (score === 2) mastery = "Proficient";
 
-    const testedOut = correct === 3;
-    const finalized = false;
+    // 4. Save summary data for next.html
+    localStorage.setItem(`${compId}.score`, score);
+    localStorage.setItem(`${compId}.missed`, JSON.stringify(missed));
+    localStorage.setItem(`${compId}.mastery`, mastery);
+    localStorage.setItem(`${compId}.completed`, "true");
 
-    // --- Identity & session ---
-    const learnerName = p.GetVar("learnerName") || localStorage.getItem("learnerName") || "Anonymous";
-    const sid = localStorage.getItem("sessionId") || crypto.randomUUID();
+    // 5. Identity & session
+    const learner =
+      p.GetVar("learnerName") || localStorage.getItem("learnerName") || "Anonymous";
+    const sid =
+      localStorage.getItem("sessionId") || p.GetVar("sessionId") || crypto.randomUUID();
+
     localStorage.setItem("sessionId", sid);
 
-    const NS = "https://acbl.wirelearningsolutions.com/extensions/";
-    const endpoint = "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
+    // 6. Clear Storyline resume state
+    const keys = Object.keys(localStorage).filter(k => k.includes("story"));
+    keys.forEach(k => localStorage.removeItem(k));
 
-    // --- Function to send statements ---
-    async function sendToLRS(statement, label) {
-      try {
-        const res = await fetch(endpoint + "?mode=write", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ statements: [statement] }),
-          keepalive: true
-        });
-        console.log(`📡 Sent ${label}:`, res.status);
-      } catch (e) {
-        console.warn(`⚠️ LRS send failed for ${label}:`, e);
-      }
-    }
+    // 7. Redirect to next.html (the adaptive engine)
+    const u = new URL("https://www.wirelearningsolutions.com/next.html");
+    u.searchParams.set("learnerName", learner);
+    u.searchParams.set("sid", sid);
+    u.searchParams.set("current", compId);
 
-    // --- Build xAPI statement ---
-    const stmt = {
-      actor: { name: learnerName, mbox: `mailto:${encodeURIComponent(learnerName)}@wirelxdfirm.com` },
-      verb: {
-        id: correct >= 2 ? "http://adlnet.gov/expapi/verbs/passed" : "http://adlnet.gov/expapi/verbs/failed",
-        display: { "en-US": correct >= 2 ? "passed" : "failed" }
-      },
-      object: {
-        id: `https://acbl.wirelearningsolutions.com/activities/${compId}/quiz`,
-        objectType: "Activity"
-      },
-      result: {
-        score: { raw: correct, min: 0, max: 3 },
-        success: correct >= 2,
-        completion: true,
-        extensions: {
-          [NS + "learnerName"]: learnerName,
-          [NS + "sessionId"]: sid,
-          [NS + "competencyId"]: compId,
-          [NS + "masteryLevel"]: mastery,
-          [NS + "missed"]: missedSubs,
-          [NS + "testedOut"]: testedOut,
-          [NS + "finalized"]: finalized
-        }
-      },
-      context: { registration: sid },
-      timestamp: new Date().toISOString()
-    };
-
-    // --- Save locally ---
-    localStorage.setItem(compId + ".mastery", mastery);
-    localStorage.setItem(compId + ".missed", JSON.stringify(missedSubs));
-    localStorage.setItem(compId + ".status", correct === 3 ? "Completed" : "InProgress");
-
-    // --- Send to Lambda/LRS ---
-    sendToLRS(stmt, `Quiz result (${compId})`);
-
-    // --- Adaptive Routing ---
-    let nextUrls = [];
-    let status = correct === 3 ? "Completed" : "InProgress";
-
-    if (mastery === "Mastery") {
-      nextUrls = [`C${Number(compId.replace("C", "")) + 1}-test/story.html`];
-    } else if (mastery === "Proficient") {
-      nextUrls = missedSubs.flatMap(sub => [
-        `content/${sub}-content.html`,
-        `apply/${sub}-apply.html`
-      ]);
-      nextUrls.push(`${compId}-test/story.html`);
-    } else {
-      const subs = ["a", "b", "c"].map(x => `${compId}${x}`);
-      nextUrls = subs.flatMap(sub => [
-        `content/${sub}-content.html`,
-        `apply/${sub}-apply.html`
-      ]);
-      nextUrls.push(`${compId}-test/story.html`);
-    }
-
-    localStorage.setItem("adaptivePath", JSON.stringify(nextUrls));
-    localStorage.setItem("currentCompetency", compId);
-    localStorage.setItem(`${compId}_status`, status);
-
-    // --- Redirect ---
-    const nextPage = nextUrls[0] || "next.html";
-    const base = "https://www.wirelearningsolutions.com/";
-    const redirectUrl = `${base}${nextPage}?learnerName=${encodeURIComponent(learnerName)}&sid=${encodeURIComponent(sid)}&current=${compId}`;
-
-    console.log("➡️ Redirecting to:", redirectUrl);
-    window.location.href = redirectUrl;
-
-  } catch (e) {
-    console.error("❌ Continue button error:", e);
+    window.location.href = u.toString();
+  } catch (err) {
+    console.error("Continue failed:", err);
   }
 })();
 
@@ -1281,135 +1202,56 @@ window.Script18 = function()
 
 window.Script19 = function()
 {
-  (function () {
+  /* ============================================================
+   Adaptive Test Exit Handler
+   Run on BOTH Passed and Failed layers
+   ============================================================ */
+(function () {
   try {
-    console.log("🚀 Adaptive Continue (final stable build)");
-
-    // --- Guard: prevent double trigger ---
-    if (localStorage.getItem("continue.lock")) return;
-    localStorage.setItem("continue.lock", "1");
-    setTimeout(() => localStorage.removeItem("continue.lock"), 3000);
-
-    // --- Storyline Player ---
-    const p = GetPlayer && GetPlayer();
+    const p = GetPlayer();
     if (!p) return;
 
-    // --- Detect competency (C1/C2/C3) ---
+    // 1. Identify competency
     const url = window.location.href.toUpperCase();
     const compId = (url.match(/C[123]/) || ["C1"])[0];
-    console.log("📘 Competency:", compId);
 
-    // --- Quiz data ---
-    const correct = Number(p.GetVar(compId + "_Correct") || 0);
-    const missedSubs = (p.GetVar(compId + "_missedSubs") || "")
-      .split(",")
-      .map(s => s.trim())
-      .filter(Boolean);
+    // 2. Quiz data
+    const score = Number(p.GetVar("QuizScore") || 0);
+    const missedRaw = p.GetVar("MissedQuestions") || "";
+    const missed = missedRaw.split(",").map(s => s.trim()).filter(Boolean);
 
-    // --- Determine mastery ---
-    let mastery = "Failing";
-    if (correct === 3) mastery = "Mastery";
-    else if (correct === 2) mastery = "Proficient";
-    else if (correct === 1) mastery = "Emerging";
+    // 3. Determine mastery
+    let mastery = "Emerging";
+    if (score === 3) mastery = "Mastery";
+    else if (score === 2) mastery = "Proficient";
 
-    const testedOut = correct === 3;
-    const finalized = false;
+    // 4. Save summary data for next.html
+    localStorage.setItem(`${compId}.score`, score);
+    localStorage.setItem(`${compId}.missed`, JSON.stringify(missed));
+    localStorage.setItem(`${compId}.mastery`, mastery);
+    localStorage.setItem(`${compId}.completed`, "true");
 
-    // --- Identity & session ---
-    const learnerName = p.GetVar("learnerName") || localStorage.getItem("learnerName") || "Anonymous";
-    const sid = localStorage.getItem("sessionId") || crypto.randomUUID();
+    // 5. Identity & session
+    const learner =
+      p.GetVar("learnerName") || localStorage.getItem("learnerName") || "Anonymous";
+    const sid =
+      localStorage.getItem("sessionId") || p.GetVar("sessionId") || crypto.randomUUID();
+
     localStorage.setItem("sessionId", sid);
 
-    const NS = "https://acbl.wirelearningsolutions.com/extensions/";
-    const endpoint = "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
+    // 6. Clear Storyline resume state
+    const keys = Object.keys(localStorage).filter(k => k.includes("story"));
+    keys.forEach(k => localStorage.removeItem(k));
 
-    // --- Function to send statements ---
-    async function sendToLRS(statement, label) {
-      try {
-        const res = await fetch(endpoint + "?mode=write", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ statements: [statement] }),
-          keepalive: true
-        });
-        console.log(`📡 Sent ${label}:`, res.status);
-      } catch (e) {
-        console.warn(`⚠️ LRS send failed for ${label}:`, e);
-      }
-    }
+    // 7. Redirect to next.html (the adaptive engine)
+    const u = new URL("https://www.wirelearningsolutions.com/next.html");
+    u.searchParams.set("learnerName", learner);
+    u.searchParams.set("sid", sid);
+    u.searchParams.set("current", compId);
 
-    // --- Build xAPI statement ---
-    const stmt = {
-      actor: { name: learnerName, mbox: `mailto:${encodeURIComponent(learnerName)}@wirelxdfirm.com` },
-      verb: {
-        id: correct >= 2 ? "http://adlnet.gov/expapi/verbs/passed" : "http://adlnet.gov/expapi/verbs/failed",
-        display: { "en-US": correct >= 2 ? "passed" : "failed" }
-      },
-      object: {
-        id: `https://acbl.wirelearningsolutions.com/activities/${compId}/quiz`,
-        objectType: "Activity"
-      },
-      result: {
-        score: { raw: correct, min: 0, max: 3 },
-        success: correct >= 2,
-        completion: true,
-        extensions: {
-          [NS + "learnerName"]: learnerName,
-          [NS + "sessionId"]: sid,
-          [NS + "competencyId"]: compId,
-          [NS + "masteryLevel"]: mastery,
-          [NS + "missed"]: missedSubs,
-          [NS + "testedOut"]: testedOut,
-          [NS + "finalized"]: finalized
-        }
-      },
-      context: { registration: sid },
-      timestamp: new Date().toISOString()
-    };
-
-    // --- Save locally ---
-    localStorage.setItem(compId + ".mastery", mastery);
-    localStorage.setItem(compId + ".missed", JSON.stringify(missedSubs));
-    localStorage.setItem(compId + ".status", correct === 3 ? "Completed" : "InProgress");
-
-    // --- Send to Lambda/LRS ---
-    sendToLRS(stmt, `Quiz result (${compId})`);
-
-    // --- Adaptive Routing ---
-    let nextUrls = [];
-    let status = correct === 3 ? "Completed" : "InProgress";
-
-    if (mastery === "Mastery") {
-      nextUrls = [`C${Number(compId.replace("C", "")) + 1}-test/story.html`];
-    } else if (mastery === "Proficient") {
-      nextUrls = missedSubs.flatMap(sub => [
-        `content/${sub}-content.html`,
-        `apply/${sub}-apply.html`
-      ]);
-      nextUrls.push(`${compId}-test/story.html`);
-    } else {
-      const subs = ["a", "b", "c"].map(x => `${compId}${x}`);
-      nextUrls = subs.flatMap(sub => [
-        `content/${sub}-content.html`,
-        `apply/${sub}-apply.html`
-      ]);
-      nextUrls.push(`${compId}-test/story.html`);
-    }
-
-    localStorage.setItem("adaptivePath", JSON.stringify(nextUrls));
-    localStorage.setItem("currentCompetency", compId);
-    localStorage.setItem(`${compId}_status`, status);
-
-    // --- Redirect ---
-    const nextPage = nextUrls[0] || "next.html";
-    const base = "https://www.wirelearningsolutions.com/";
-    const redirectUrl = `${base}${nextPage}?learnerName=${encodeURIComponent(learnerName)}&sid=${encodeURIComponent(sid)}&current=${compId}`;
-
-    console.log("➡️ Redirecting to:", redirectUrl);
-    window.location.href = redirectUrl;
-
-  } catch (e) {
-    console.error("❌ Continue button error:", e);
+    window.location.href = u.toString();
+  } catch (err) {
+    console.error("Continue failed:", err);
   }
 })();
 

@@ -1,16 +1,16 @@
 {
   "meta": {
-    "version": "1.0.2",
+    "version": "1.0.3",
     "lastUpdated": "2025-11-15",
     "author": "Wire LXD Firm",
-    "description": "Adaptive Routing Rules for Competency-Based Learning (C1–C3)",
+    "description": "Adaptive Routing Rules for Competency-Based Learning (C1–C3) – normalized for next.html",
     "namespace": "https://acbl.wirelxdfirm.com/extensions/",
     "conventions": {
       "masteryLevels": [ "Mastery", "Proficient", "Emerging", "Failing" ],
       "testedOut": "3/3 on first attempt",
-      "finalized": "from the off-ramp button on next.html",
+      "finalized": "set by off-ramp button on next.html",
       "missed": "array of missed sub-competencies like ['C1b']",
-      "targets": "strings that resolve to route keys like C1-test, C1a-content, C1a-apply, program-complete"
+      "targets": "strings such as C1-test, C1a-content, C1a-apply, program-complete"
     }
   },
 
@@ -18,79 +18,56 @@
     {
       "if": { "finalized": true },
       "then": [
-        { "set": { "status": "Finalized" } },
-        { "unlock": "C2" },
-        { "route": { "assessment": "C2-test" } },
-        { "note": "C1 finalized. Continue to C2 test." }
+        { "route": { "go": "C2-test" } }
       ]
     },
     {
       "if": { "testedOut": true },
       "then": [
-        { "set": { "status": "TestedOut" } },
-        { "unlock": "C2" },
-        { "route": { "assessment": "C2-test" } },
-        { "note": "C1 tested out on first attempt." }
+        { "route": { "go": "C2-test" } }
       ]
     },
     {
-      "if": {
-        "mastery": "Mastery",
-        "finalized": false,
-        "testedOut": false
-      },
+      "if": { "mastery": "Mastery" },
       "then": [
-        { "set": { "status": "Mastered" } },
-        { "unlock": "C2" },
-        { "route": { "assessment": "C2-test" } },
-        { "note": "C1 mastered. Proceed to C2 test." }
+        { "route": { "go": "C2-test" } }
       ]
     },
     {
-      "if": {
-        "mastery": "Proficient",
-        "finalized": false
-      },
+      "if": { "mastery": "Proficient" },
       "then": [
         {
           "forEach": "missed",
           "do": [
-            { "route": { "content": "{item}-content" } },
-            { "route": { "apply": "{item}-apply" } }
+            { "route": { "go": "{item}-content" } },
+            { "route": { "go": "{item}-apply" } }
           ]
         },
-        { "route": { "assessment": "C1-test" } },
-        { "note": "C1 proficient. Remediate missed items, then retake C1 test." }
+        { "route": { "go": "C1-test" } }
       ]
     },
     {
-      "if": {
-        "masteryIn": [ "Emerging", "Failing" ],
-        "finalized": false
-      },
+      "if": { "masteryIn": [ "Emerging", "Failing" ] },
       "then": [
-        { "route": { "content": "C1a-content" } },
-        { "route": { "apply": "C1a-apply" } },
-        { "route": { "content": "C1b-content" } },
-        { "route": { "apply": "C1b-apply" } },
-        { "route": { "content": "C1c-content" } },
-        { "route": { "apply": "C1c-apply" } },
-        { "route": { "assessment": "C1-test" } },
-        { "note": "C1 emerging or failing. Full remediation, then retake C1 test." }
+        { "route": { "go": "C1a-content" } },
+        { "route": { "go": "C1a-apply" } },
+        { "route": { "go": "C1b-content" } },
+        { "route": { "go": "C1b-apply" } },
+        { "route": { "go": "C1c-content" } },
+        { "route": { "go": "C1c-apply" } },
+        { "route": { "go": "C1-test" } }
       ]
     },
     {
       "if": { "mastery": null },
       "then": [
-        { "route": { "assessment": "C1-test" } },
-        { "note": "No C1 data. Begin with C1 test." }
+        { "route": { "go": "C1-test" } }
       ]
     },
     {
       "if": {},
       "then": [
-        { "route": { "assessment": "C1-test" } },
-        { "note": "Fallback: start with C1 test." }
+        { "route": { "go": "C1-test" } }
       ]
     }
   ],
@@ -99,79 +76,56 @@
     {
       "if": { "finalized": true },
       "then": [
-        { "set": { "status": "Finalized" } },
-        { "unlock": "C3" },
-        { "route": { "assessment": "C3-test" } },
-        { "note": "C2 finalized. Continue to C3 test." }
+        { "route": { "go": "C3-test" } }
       ]
     },
     {
       "if": { "testedOut": true },
       "then": [
-        { "set": { "status": "TestedOut" } },
-        { "unlock": "C3" },
-        { "route": { "assessment": "C3-test" } },
-        { "note": "C2 tested out on first attempt." }
+        { "route": { "go": "C3-test" } }
       ]
     },
     {
-      "if": {
-        "mastery": "Mastery",
-        "finalized": false,
-        "testedOut": false
-      },
+      "if": { "mastery": "Mastery" },
       "then": [
-        { "set": { "status": "Mastered" } },
-        { "unlock": "C3" },
-        { "route": { "assessment": "C3-test" } },
-        { "note": "C2 mastered. Proceed to C3 test." }
+        { "route": { "go": "C3-test" } }
       ]
     },
     {
-      "if": {
-        "mastery": "Proficient",
-        "finalized": false
-      },
+      "if": { "mastery": "Proficient" },
       "then": [
         {
           "forEach": "missed",
           "do": [
-            { "route": { "content": "{item}-content" } },
-            { "route": { "apply": "{item}-apply" } }
+            { "route": { "go": "{item}-content" } },
+            { "route": { "go": "{item}-apply" } }
           ]
         },
-        { "route": { "assessment": "C2-test" } },
-        { "note": "C2 proficient. Remediate missed items, then retake C2 test." }
+        { "route": { "go": "C2-test" } }
       ]
     },
     {
-      "if": {
-        "masteryIn": [ "Emerging", "Failing" ],
-        "finalized": false
-      },
+      "if": { "masteryIn": [ "Emerging", "Failing" ] },
       "then": [
-        { "route": { "content": "C2a-content" } },
-        { "route": { "apply": "C2a-apply" } },
-        { "route": { "content": "C2b-content" } },
-        { "route": { "apply": "C2b-apply" } },
-        { "route": { "content": "C2c-content" } },
-        { "route": { "apply": "C2c-apply" } },
-        { "route": { "assessment": "C2-test" } },
-        { "note": "C2 emerging or failing. Full remediation, then retake C2 test." }
+        { "route": { "go": "C2a-content" } },
+        { "route": { "go": "C2a-apply" } },
+        { "route": { "go": "C2b-content" } },
+        { "route": { "go": "C2b-apply" } },
+        { "route": { "go": "C2c-content" } },
+        { "route": { "go": "C2c-apply" } },
+        { "route": { "go": "C2-test" } }
       ]
     },
     {
       "if": { "mastery": null },
       "then": [
-        { "route": { "assessment": "C2-test" } },
-        { "note": "No C2 data. Begin with C2 test." }
+        { "route": { "go": "C2-test" } }
       ]
     },
     {
       "if": {},
       "then": [
-        { "route": { "assessment": "C2-test" } },
-        { "note": "Fallback: start with C2 test." }
+        { "route": { "go": "C2-test" } }
       ]
     }
   ],
@@ -180,88 +134,56 @@
     {
       "if": { "finalized": true },
       "then": [
-        { "set": { "status": "Finalized" } },
-        { "unlock": "ProgramComplete" },
-        { "route": { "finish": "program-complete" } },
-        { "note": "C3 finalized. Finish program." }
+        { "route": { "go": "program-complete" } }
       ]
     },
     {
       "if": { "testedOut": true },
       "then": [
-        { "set": { "status": "TestedOut" } },
-        { "unlock": "ProgramComplete" },
-        { "route": { "finish": "program-complete" } },
-        { "note": "C3 tested out on first attempt." }
+        { "route": { "go": "program-complete" } }
       ]
     },
     {
-      "if": {
-        "mastery": "Mastery",
-        "finalized": false,
-        "testedOut": false
-      },
+      "if": { "mastery": "Mastery" },
       "then": [
-        { "set": { "status": "Mastered" } },
-        { "unlock": "ProgramComplete" },
-        { "route": { "finish": "program-complete" } },
-        { "note": "C3 mastered. Finish program." }
+        { "route": { "go": "program-complete" } }
       ]
     },
     {
-      "if": {
-        "mastery": "Proficient",
-        "finalized": false
-      },
+      "if": { "mastery": "Proficient" },
       "then": [
         {
           "forEach": "missed",
           "do": [
-            { "route": { "content": "{item}-content" } },
-            { "route": { "apply": "{item}-apply" } }
+            { "route": { "go": "{item}-content" } },
+            { "route": { "go": "{item}-apply" } }
           ]
         },
-        { "route": { "assessment": "C3-test" } },
-        { "note": "C3 proficient. Remediate missed items, then retake C3 test." }
+        { "route": { "go": "C3-test" } }
       ]
     },
     {
-      "if": {
-        "masteryIn": [ "Emerging", "Failing" ],
-        "finalized": false
-      },
+      "if": { "masteryIn": [ "Emerging", "Failing" ] },
       "then": [
-        { "route": { "content": "C3a-content" } },
-        { "route": { "apply": "C3a-apply" } },
-        { "route": { "content": "C3b-content" } },
-        { "route": { "apply": "C3b-apply" } },
-        { "route": { "content": "C3c-content" } },
-        { "route": { "apply": "C3c-apply" } },
-        { "route": { "assessment": "C3-test" } },
-        { "note": "C3 emerging or failing. Full remediation, then retake C3 test." }
+        { "route": { "go": "C3a-content" } },
+        { "route": { "go": "C3a-apply" } },
+        { "route": { "go": "C3b-content" } },
+        { "route": { "go": "C3b-apply" } },
+        { "route": { "go": "C3c-content" } },
+        { "route": { "go": "C3c-apply" } },
+        { "route": { "go": "C3-test" } }
       ]
     },
     {
       "if": { "mastery": null },
       "then": [
-        { "route": { "assessment": "C3-test" } },
-        { "note": "No C3 data. Begin with C3 test." }
+        { "route": { "go": "C3-test" } }
       ]
     },
     {
       "if": {},
       "then": [
-        { "route": { "assessment": "C3-test" } },
-        { "note": "Fallback: start with C3 test." }
-      ]
-    }
-  ],
-
-  "ProgramComplete": [
-    {
-      "if": { "completed": true },
-      "then": [
-        { "note": "All competencies complete. End of adaptive path." }
+        { "route": { "go": "C3-test" } }
       ]
     }
   ]
