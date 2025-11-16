@@ -244,33 +244,23 @@
             const txt = document.getElementById("connText");
 
             try {
-                const res = await fetch(PROXY_URL + "?learner=__ping__&limit=1", {
+                const res = await fetch(PROXY_URL + "?mode=ping", {
                     method: "GET",
                     cache: "no-store",
-                    headers: { "Accept": "application/json, text/plain;q=0.8,*/*;q=0.5" }
+                    headers: { "Accept": "application/json" }
                 });
 
                 const bodyText = await res.text();
                 let data = null;
 
-                const trimmed = bodyText.trim();
-                if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
-                    try {
-                        data = JSON.parse(trimmed);
-                    } catch (e) {
-                        data = null;
-                    }
-                }
+                try { data = JSON.parse(bodyText); } catch (_) { }
 
-                const looksOk =
+                const ok =
                     res.ok &&
-                    (
-                        (typeof bodyText === "string" &&
-                            (bodyText.includes("Lambda OK") || bodyText.includes("OK"))) ||
-                        (data && data.ok === true)
-                    );
+                    (bodyText.includes("Lambda OK") ||
+                        (data && data.ok === true));
 
-                if (looksOk) {
+                if (ok) {
                     dot.classList.add("ok");
                     txt.textContent = "Connected to LRS";
                 } else {
@@ -282,6 +272,7 @@
                 txt.textContent = "Offline";
             }
         }
+
 
         checkConnection();
         // Optional: recheck periodically
