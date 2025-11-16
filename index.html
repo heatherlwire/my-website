@@ -1,8 +1,8 @@
 ﻿<!DOCTYPE html>
 <html lang="en">
 <head>
+    <!-- Safer canonical redirect: only when top-level, not in iframes -->
     <script>
-        // Only redirect when this page is the top-level window (not inside an iframe)
         if (window.top === window.self) {
             if (location.hostname === "wirelearningsolutions.com") {
                 location.replace(
@@ -15,8 +15,9 @@
     </script>
 
     <meta charset="UTF-8" />
-    <title>Adaptive Learning Unleashed</title>
+    <title>Adaptive Learning Launcher</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+
     <style>
         :root {
             --bg-0: #0a0f1a;
@@ -36,122 +37,29 @@
         body {
             margin: 0;
             color: var(--ink-0);
-            font-family: ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;
-            background: radial-gradient(1200px 800px at 70% -10%,rgba(34,211,238,.10),transparent 60%), radial-gradient(1000px 600px at -10% 20%,rgba(14,165,233,.15),transparent 55%), linear-gradient(180deg,#07101e 0%,#0a1322 50%,#0b1628 100%);
+            font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+            background: radial-gradient(1200px 800px at 70% -10%, rgba(34,211,238,.10), transparent 60%), radial-gradient(1000px 600px at -10% 20%, rgba(14,165,233,.15), transparent 55%), linear-gradient(180deg, #07101e 0%, #0a1322 50%, #0b1628 100%);
             min-height: 100dvh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
         }
 
-        .wrap {
-            background: linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.015)), var(--bg-1);
-            border: 1px solid rgba(148,163,184,.15);
-            border-radius: 16px;
-            box-shadow: var(--shadow);
-            padding: 40px 32px;
-            max-width: 520px;
-            width: 92%;
-            text-align: center;
+        header {
+            padding: 28px 24px 10px;
+        }
+
+        .title-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
         }
 
         h1 {
             margin: 0;
-            font-size: clamp(24px,3vw,32px);
-            background: linear-gradient(90deg,var(--ink-0),#cfe8ff);
+            font-size: clamp(22px, 2.4vw, 28px);
+            background: linear-gradient(90deg, var(--ink-0), #cfe8ff);
             -webkit-background-clip: text;
-            background-clip: text;
             color: transparent;
         }
-
-        .subtitle {
-            margin: 20px 0 0;
-            color: var(--ink-0);
-            font-size: 1.6rem;
-            font-weight: 600;
-            letter-spacing: .5px;
-            text-align: center;
-            text-shadow: 0 1px 6px rgba(34,211,238,.35);
-        }
-
-        input {
-            width: 100%;
-            padding: 12px 14px;
-            border-radius: 10px;
-            border: 1px solid rgba(148,163,184,.35);
-            background: #0f1a2e;
-            color: var(--ink-0);
-            font-size: 16px;
-            margin-top: 16px;
-            box-sizing: border-box;
-            outline: none;
-        }
-
-            input:focus {
-                border-color: var(--focus);
-                box-shadow: 0 0 0 3px rgba(147,197,253,.25);
-            }
-
-        .error {
-            margin: 8px 0 0;
-            color: var(--err);
-            font-size: .9rem;
-            text-align: left;
-        }
-
-        button {
-            margin-top: 14px;
-            width: 100%;
-            padding: 12px 16px;
-            font-size: 16px;
-            border-radius: 10px;
-            font-weight: 600;
-            cursor: pointer;
-            box-shadow: 0 6px 24px rgba(14,165,233,.35);
-            transition: transform .1s ease,box-shadow .2s ease,opacity .2s ease;
-        }
-
-            button:hover:not([disabled]) {
-                transform: translateY(-2px);
-                box-shadow: 0 8px 28px rgba(14,165,233,.45);
-            }
-
-            button[disabled] {
-                opacity: .6;
-                cursor: not-allowed;
-            }
-
-        .btn-row {
-            display: flex;
-            justify-content: center;
-            gap: 12px;
-            margin-top: 20px;
-        }
-
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            white-space: nowrap;
-        }
-
-        .btn-primary {
-            border: 1px solid rgba(34,211,238,.55);
-            background: linear-gradient(180deg,#0e87c7,#0c6aa0);
-            color: #fff;
-        }
-
-        .btn-outline {
-            background: transparent;
-            color: var(--sky-1);
-            border: 1px solid rgba(34,211,238,.55);
-        }
-
-            .btn-outline:hover {
-                background: rgba(14,165,233,.08);
-                transform: translateY(-2px);
-            }
 
         .badge {
             display: inline-flex;
@@ -162,292 +70,200 @@
             border-radius: 999px;
             background: rgba(14,165,233,.10);
             border: 1px solid rgba(34,211,238,.35);
+        }
+
+        .wrap {
+            padding: 6px 24px 32px;
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.015)), var(--bg-1);
+            border: 1px solid rgba(148,163,184,.15);
+            border-radius: 14px;
+            padding: 20px 18px;
+            margin: 16px 0;
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(6px);
+        }
+
+        .muted {
+            color: var(--ink-1);
+        }
+
+        .row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: center;
             margin-top: 16px;
         }
 
-        .dot {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            background: var(--warn);
+        button {
+            padding: 10px 16px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 15px;
+            border: 1px solid rgba(148,163,184,.35);
+            background: #0f1a2e;
+            color: var(--ink-0);
+            transition: transform .05s ease, box-shadow .2s ease, border-color .2s ease;
         }
 
-            .dot.ok {
-                background: var(--ok);
-                box-shadow: 0 0 0 0 rgba(34,197,94,.6);
-                animation: pulse 1.8s ease-out infinite;
+            button.primary {
+                background: linear-gradient(180deg,#0e87c7,#0c6aa0);
+                border-color: rgba(34,211,238,.55);
+                box-shadow: 0 6px 24px rgba(14,165,233,.35);
             }
 
-        @keyframes pulse {
-            0% {
-                box-shadow: 0 0 0 0 rgba(34,197,94,.5);
+            button:hover {
+                transform: translateY(-1px);
             }
 
-            70% {
-                box-shadow: 0 0 0 10px rgba(34,197,94,0);
+            button:disabled {
+                opacity: .6;
+                cursor: not-allowed;
+                filter: saturate(.6);
             }
 
-            100% {
-                box-shadow: 0 0 0 0 rgba(34,197,94,0);
-            }
+        .field-label {
+            font-size: 14px;
+            margin-bottom: 4px;
         }
 
-        .fade-in {
-            opacity: 0;
-            animation: fadeInUp .45s ease forwards;
+        input[type="text"] {
+            width: 100%;
+            max-width: 360px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px solid rgba(148,163,184,.35);
+            background: #020617;
+            color: var(--ink-0);
+            font-size: 15px;
+            outline: none;
+            box-sizing: border-box;
         }
 
-        @keyframes fadeInUp {
-            0% {
-                opacity: 0;
-                transform: translateY(8px);
+            input[type="text"]:focus {
+                border-color: var(--focus);
+                box-shadow: 0 0 0 1px rgba(147,197,253,.6);
             }
 
-            100% {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .delay-1 {
-            animation-delay: .06s;
-        }
-
-        .delay-2 {
-            animation-delay: .12s;
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 9px;
+            border-radius: 999px;
+            font-size: 12px;
+            border: 1px solid rgba(148,163,184,.3);
+            background: rgba(15,23,42,.8);
+            margin-top: 8px;
         }
     </style>
 </head>
 <body>
+    <header>
+        <div class="title-row">
+            <h1>Adaptive Learning Launch</h1>
+            <span class="badge">
+                <span>Start or continue your journey</span>
+            </span>
+        </div>
+    </header>
+
     <main class="wrap">
-        <h1>Welcome to Adaptive Learning Unleashed</h1>
-        <div class="badge" aria-live="polite">
-            <span class="dot" id="connDot"></span>
-            <span id="connText">Checking connection…</span>
-        </div>
+        <section class="card">
+            <h2 style="margin-top:0;margin-bottom:8px;">Welcome</h2>
+            <p class="muted">
+                Enter your name to begin, or use <b>Continue where you left off</b> if you have already started.
+                The next page will analyze your progress and decide what comes next.
+            </p>
 
-        <!-- New user -->
-        <div id="newUserSection">
-            <p class="subtitle">Please enter your name and email to begin.</p>
-            <input id="nameInput" type="text" placeholder="Your Name" autocomplete="name" required />
-            <input id="emailInput" type="email" placeholder="Your Email" autocomplete="email" required />
-            <p id="emailError" class="error" hidden>Enter a valid email like name@example.com.</p>
-            <p id="launchError" class="error" hidden></p>
-            <button id="btnLaunch" class="btn btn-primary" disabled>Launch</button>
-        </div>
-
-        <!-- Returning user -->
-        <div id="returningSection" hidden>
-            <p class="subtitle" id="welcomeText"></p>
-            <p id="resumeError" class="error" hidden></p>
-            <div class="btn-row">
-                <button id="btnContinue" class="btn btn-primary">Continue where you left off</button>
-                <button id="btnReset" class="btn btn-outline">Reset Learner</button>
+            <div style="margin-top:14px;">
+                <div class="field-label">Learner name</div>
+                <input id="nameInput" type="text" placeholder="Type your name…" autocomplete="name" />
+                <div class="pill" id="resumeHint" style="display:none;">
+                    Last learner: <span id="lastLearnerLabel"></span>
+                </div>
             </div>
-        </div>
+
+            <div class="row">
+                <button class="primary" id="startBtn">Start</button>
+                <button id="resumeBtn">Continue where you left off</button>
+            </div>
+
+            <p class="muted" style="margin-top:14px;font-size:13px;">
+                Note: All routing decisions (content, application, or test) are handled on the next page.
+            </p>
+        </section>
     </main>
 
     <script>
-        // ===== Lambda endpoint =====
-        const PROXY_URL = "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
+        // Pre-fill from localStorage if we have a previous learner
+        const storedName = localStorage.getItem("learnerName") || "";
+        const storedSid = localStorage.getItem("sessionId") || "";
 
-        // ===== Connection Check =====
-        async function checkConnection() {
-            const dot = document.getElementById("connDot");
-            const txt = document.getElementById("connText");
+        const nameInput = document.getElementById("nameInput");
+        const lastLearnerLabel = document.getElementById("lastLearnerLabel");
+        const resumeHint = document.getElementById("resumeHint");
+        const startBtn = document.getElementById("startBtn");
+        const resumeBtn = document.getElementById("resumeBtn");
 
-            try {
-                const r = await fetch(`${PROXY_URL}?learner=__ping__&limit=1`, {
-                    credentials: "include",
-                    cache: "no-store"
-                });
-
-                const raw = await r.text();
-                console.log("Ping:", r.status, raw);
-
-                if (r.ok && raw.trim().startsWith("[")) {
-                    dot.classList.add("ok");
-                    txt.textContent = "Connected to the LRS";
-                    return;
-                }
-
-                try {
-                    const parsed = JSON.parse(raw);
-                    if (typeof parsed === "object") {
-                        dot.classList.add("ok");
-                        txt.textContent = "Connected to the LRS";
-                        return;
-                    }
-                } catch (_) { }
-
-                txt.textContent = `Unstable (${r.status})`;
-                dot.style.background = "var(--warn)";
-            } catch (err) {
-                console.error("Ping error:", err);
-                txt.textContent = "Offline";
-                dot.style.background = "var(--err)";
-            }
+        if (storedName) {
+            nameInput.value = storedName;
+            lastLearnerLabel.textContent = storedName;
+            resumeHint.style.display = "inline-flex";
         }
 
-        checkConnection();
+        function goToNext(learnerName, sid) {
+            const url =
+                "next.html" +
+                `?learnerName=${encodeURIComponent(learnerName)}` +
+                `&sid=${encodeURIComponent(sid)}`;
+            window.location.href = url;
+        }
 
-        // ===== Session Handling =====
-        function ensureSid() {
+        // Start: require a name, create or reuse session, then go to next.html
+        startBtn.addEventListener("click", () => {
+            const name = nameInput.value.trim();
+            if (!name) {
+                alert("Please enter your name to start.");
+                nameInput.focus();
+                return;
+            }
+
+            localStorage.setItem("learnerName", name);
+
             let sid = localStorage.getItem("sessionId");
             if (!sid) {
                 sid = crypto.randomUUID();
                 localStorage.setItem("sessionId", sid);
             }
-            return sid;
-        }
 
-        // ===== Validation =====
-        const nameInput = document.getElementById("nameInput");
-        const emailInput = document.getElementById("emailInput");
-        const emailError = document.getElementById("emailError");
-        const btnLaunch = document.getElementById("btnLaunch");
-
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-        function isEmailValid(v) {
-            return emailRegex.test((v || "").trim());
-        }
-
-        function validate() {
-            const nameOk = nameInput.value.trim().length > 0;
-            const emailOk = isEmailValid(emailInput.value);
-            emailError.hidden = (emailInput.value.trim() === "" || emailOk);
-            btnLaunch.disabled = !(nameOk && emailOk);
-        }
-
-        ["input", "change", "blur"].forEach(e => {
-            nameInput.addEventListener(e, validate);
-            emailInput.addEventListener(e, validate);
+            goToNext(name, sid);
         });
 
-        document.addEventListener("DOMContentLoaded", validate);
-        window.addEventListener("pageshow", validate);
+        // Resume: use stored name + sid and send to next.html
+        resumeBtn.addEventListener("click", () => {
+            const savedName = localStorage.getItem("learnerName");
+            let sid = localStorage.getItem("sessionId");
 
-        document.addEventListener("keydown", e => {
-            if (e.key === "Enter" && !btnLaunch.disabled) {
-                btnLaunch.click();
-            }
-        });
-
-        // ===== Returning User UI Setup =====
-        const newUserSection = document.getElementById("newUserSection");
-        const returningSection = document.getElementById("returningSection");
-        const welcomeText = document.getElementById("welcomeText");
-        const btnContinue = document.getElementById("btnContinue");
-        const btnReset = document.getElementById("btnReset");
-        const launchErrorEl = document.getElementById("launchError");
-        const resumeErrorEl = document.getElementById("resumeError");
-
-        function showReturning() {
-            newUserSection.hidden = true;
-            returningSection.hidden = false;
-            welcomeText.classList.add("fade-in");
-            btnContinue.classList.add("fade-in", "delay-1");
-            btnReset.classList.add("fade-in", "delay-2");
-        }
-
-        function checkReturning() {
-            const name = localStorage.getItem("learnerName");
-            const email = localStorage.getItem("learnerEmail");
-            if (name && email) {
-                welcomeText.textContent = `Welcome back, ${name}.`;
-                showReturning();
-            } else {
-                newUserSection.hidden = false;
-                returningSection.hidden = true;
-            }
-        }
-
-        window.addEventListener("pageshow", checkReturning);
-        document.addEventListener("DOMContentLoaded", checkReturning);
-
-        // ===== Error helpers =====
-        function showLaunchError(msg) {
-            if (!launchErrorEl) return;
-            launchErrorEl.textContent = msg || "Could not open the next page.";
-            launchErrorEl.hidden = false;
-        }
-
-        function hideLaunchError() {
-            if (launchErrorEl) launchErrorEl.hidden = true;
-        }
-
-        function showResumeError(msg) {
-            if (!resumeErrorEl) return;
-            resumeErrorEl.textContent = msg || "Could not resume.";
-            resumeErrorEl.hidden = false;
-        }
-
-        function hideResumeError() {
-            if (resumeErrorEl) resumeErrorEl.hidden = true;
-        }
-
-        // ===== New learner: Launch → next.html (brain decides what’s next) =====
-        btnLaunch.addEventListener("click", () => {
-            hideLaunchError();
-
-            const name = nameInput.value.trim();
-            const email = emailInput.value.trim().toLowerCase();
-
-            if (!name || !isEmailValid(email)) {
-                validate();
-                if (!isEmailValid(email)) emailInput.focus();
+            if (!savedName) {
+                alert("No previous learner found. Please enter your name and press Start.");
+                nameInput.focus();
                 return;
             }
 
-            const sid = ensureSid();
-
-            localStorage.setItem("learnerName", name);
-            localStorage.setItem("learnerEmail", email);
-            localStorage.setItem("currentCompetency", "C1");
-            localStorage.removeItem("pendingRoutes");
-
-            btnLaunch.disabled = true;
-            btnLaunch.textContent = "Launching...";
-
-            const url =
-                `next.html` +
-                `?learnerName=${encodeURIComponent(name)}` +
-                `&sid=${encodeURIComponent(sid)}`;
-
-            window.location.href = url;
-        });
-
-        // ===== Returning learner: Continue → next.html (brain recomputes next step) =====
-        btnContinue.addEventListener("click", () => {
-            hideResumeError();
-
-            const name = localStorage.getItem("learnerName");
-            if (!name) {
-                showResumeError("No learner found. Please start again.");
-                return;
+            if (!sid) {
+                sid = crypto.randomUUID();
+                localStorage.setItem("sessionId", sid);
             }
 
-            const sid = ensureSid();
-
-            btnContinue.disabled = true;
-            btnContinue.textContent = "Resuming...";
-
-            const url =
-                `next.html` +
-                `?learnerName=${encodeURIComponent(name)}` +
-                `&sid=${encodeURIComponent(sid)}`;
-
-            window.location.href = url;
-        });
-
-        // ===== Reset =====
-        btnReset.addEventListener("click", () => {
-            if (confirm("Clear learner data and restart?")) {
-                localStorage.clear();
-                sessionStorage.clear();
-                location.reload();
-            }
+            goToNext(savedName, sid);
         });
     </script>
+
 </body>
 </html>
