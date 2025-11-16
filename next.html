@@ -284,9 +284,11 @@
                 <button id="continueBtn" class="primary" disabled>
                     Continue
                 </button>
-                <button id="acceptBtn" disabled>
+                <button id="acceptBtn" class="primary" disabled>
                     Accept Mastery Level and Move On
                 </button>
+
+
                 <button id="toggleDebug" aria-pressed="false">
                     Show Debug Info
                 </button>
@@ -785,6 +787,13 @@
 
             const state = mergeWithLocal(currentComp, rawState);
 
+            // Brand-new learner = has not taken the test yet for this competency
+            const isNewLearner =
+                !state.mastery &&
+                !state.finalized &&
+                !state.testedOut &&
+                (!state.missed || state.missed.length === 0);
+
             // Push patched state back to summary so table shows it
             summary[currentComp] = {
                 mastery: state.mastery,
@@ -795,6 +804,7 @@
             };
 
             renderProgress(summary);
+
 
             /* --------------------------------------------------------
                Routing decision
@@ -884,7 +894,9 @@
             const acceptBtn = document.getElementById("acceptBtn");
 
             continueBtn.disabled = false;
-            acceptBtn.disabled = false;
+            // Brand-new learners cannot finalize mastery yet
+            acceptBtn.disabled = isNewLearner;
+
 
             /* --------------------------------------------------------
                CONTINUE BUTTON
