@@ -425,22 +425,6 @@ if (!window.__XAPI_HELPER_LOADED__) {
 
 window.Script6 = function()
 {
-  var p = GetPlayer();
-var title = document.title || "";
-
-// Detect patterns like “C1a”, “C1b”, “C1c”
-var match = title.match(/C[123][abc]/i);
-
-if (match) {
-    p.SetVar("C1_SubCompetency", match[0]);
-} else {
-    console.log("Sub competency not found in title");
-}
-
-}
-
-window.Script7 = function()
-{
   (function(){
   var p = GetPlayer();
   var slide = window.location.href.split("/").pop(); // e.g., "C1_Q1.html"
@@ -464,7 +448,7 @@ window.Script7 = function()
 
 }
 
-window.Script8 = function()
+window.Script7 = function()
 {
   /* Question-level xAPI (Incorrect) */
 (function() {
@@ -495,38 +479,22 @@ window.Script8 = function()
 
 }
 
-window.Script9 = function()
+window.Script8 = function()
 {
-  /* Question-level xAPI (Correct) */
-(function() {
-  const p = GetPlayer();
-  const learner = p.GetVar("learnerName");
-  const sid = p.GetVar("sessionId");
-  const comp = p.GetVar("currentComp");
-  const sub = p.GetVar("CurrentSub");
-  const qid = sub + "-1";   // or sub + "-Q1" if you want a custom pattern
+  var p = GetPlayer();
 
-  sendXAPI(
-    "http://adlnet.gov/expapi/verbs/answered",
-    "answered",
-    `https://acbl.wirelxdfirm.com/activities/${comp}/questions/${qid}`,
-    `${qid}`,
-    {
-      success: true,
-      response: "correct",
-      extensions: {
-        "https://acbl.wirelxdfirm.com/extensions/competencyId": comp,
-        "https://acbl.wirelxdfirm.com/extensions/questionId": qid,
-        "https://acbl.wirelxdfirm.com/extensions/subCompetency": sub,
-        "https://acbl.wirelxdfirm.com/extensions/sessionId": sid
-      }
-    }
-  );
-})();
+// Capture learner's selected answer (choice text or text entry)
+var answer =
+  p.GetVar("SelectedAnswer") ||
+  p.GetVar("TextEntry") ||
+  "";
+
+// Store into per-question variable
+p.SetVar("C1_Q1_Answer", answer);
 
 }
 
-window.Script10 = function()
+window.Script9 = function()
 {
   // Load once (Master fires on every slide)
 if (!window.__XAPI_HELPER_LOADED__) {
@@ -595,7 +563,7 @@ if (!window.__XAPI_HELPER_LOADED__) {
 
 }
 
-window.Script11 = function()
+window.Script10 = function()
 {
   // --- Global xAPI Helper (runs once across all slides) ---
 if (!window.__XAPI_HELPER_LOADED__) {
@@ -666,7 +634,7 @@ if (!window.__XAPI_HELPER_LOADED__) {
 
 }
 
-window.Script12 = function()
+window.Script11 = function()
 {
   var p = GetPlayer();
 var title = document.title || "";
@@ -682,7 +650,7 @@ if (match) {
 
 }
 
-window.Script13 = function()
+window.Script12 = function()
 {
   (function(){
   var p = GetPlayer();
@@ -707,7 +675,7 @@ window.Script13 = function()
 
 }
 
-window.Script14 = function()
+window.Script13 = function()
 {
   /* Question-level xAPI (Incorrect) */
 (function() {
@@ -738,38 +706,22 @@ window.Script14 = function()
 
 }
 
-window.Script15 = function()
+window.Script14 = function()
 {
-  /* Question-level xAPI (Correct) */
-(function() {
-  const p = GetPlayer();
-  const learner = p.GetVar("learnerName");
-  const sid = p.GetVar("sessionId");
-  const comp = p.GetVar("currentComp");
-  const sub = p.GetVar("CurrentSub");
-  const qid = sub + "-1";   // or sub + "-Q1" if you want a custom pattern
+  var p = GetPlayer();
 
-  sendXAPI(
-    "http://adlnet.gov/expapi/verbs/answered",
-    "answered",
-    `https://acbl.wirelxdfirm.com/activities/${comp}/questions/${qid}`,
-    `${qid}`,
-    {
-      success: true,
-      response: "correct",
-      extensions: {
-        "https://acbl.wirelxdfirm.com/extensions/competencyId": comp,
-        "https://acbl.wirelxdfirm.com/extensions/questionId": qid,
-        "https://acbl.wirelxdfirm.com/extensions/subCompetency": sub,
-        "https://acbl.wirelxdfirm.com/extensions/sessionId": sid
-      }
-    }
-  );
-})();
+// Capture learner's selected answer (choice text or text entry)
+var answer =
+  p.GetVar("SelectedAnswer") ||
+  p.GetVar("TextEntry") ||
+  "";
+
+// Store into per-question variable
+p.SetVar("C1_Q2_Answer", answer);
 
 }
 
-window.Script16 = function()
+window.Script15 = function()
 {
   // Load once (Master fires on every slide)
 if (!window.__XAPI_HELPER_LOADED__) {
@@ -838,7 +790,7 @@ if (!window.__XAPI_HELPER_LOADED__) {
 
 }
 
-window.Script17 = function()
+window.Script16 = function()
 {
   // --- Global xAPI Helper (runs once across all slides) ---
 if (!window.__XAPI_HELPER_LOADED__) {
@@ -909,23 +861,7 @@ if (!window.__XAPI_HELPER_LOADED__) {
 
 }
 
-window.Script18 = function()
-{
-  var p = GetPlayer();
-var title = document.title || "";
-
-// Detect patterns like “C1a”, “C1b”, “C1c”
-var match = title.match(/C[123][abc]/i);
-
-if (match) {
-    p.SetVar("C1_SubCompetency", match[0]);
-} else {
-    console.log("Sub competency not found in title");
-}
-
-}
-
-window.Script19 = function()
+window.Script17 = function()
 {
   (function(){
   var p = GetPlayer();
@@ -950,7 +886,7 @@ window.Script19 = function()
 
 }
 
-window.Script20 = function()
+window.Script18 = function()
 {
   /* Question-level xAPI (Incorrect) */
 (function() {
@@ -981,38 +917,22 @@ window.Script20 = function()
 
 }
 
-window.Script21 = function()
+window.Script19 = function()
 {
-  /* Question-level xAPI (Correct) */
-(function() {
-  const p = GetPlayer();
-  const learner = p.GetVar("learnerName");
-  const sid = p.GetVar("sessionId");
-  const comp = p.GetVar("currentComp");
-  const sub = p.GetVar("CurrentSub");
-  const qid = sub + "-1";   // or sub + "-Q1" if you want a custom pattern
+  var p = GetPlayer();
 
-  sendXAPI(
-    "http://adlnet.gov/expapi/verbs/answered",
-    "answered",
-    `https://acbl.wirelxdfirm.com/activities/${comp}/questions/${qid}`,
-    `${qid}`,
-    {
-      success: true,
-      response: "correct",
-      extensions: {
-        "https://acbl.wirelxdfirm.com/extensions/competencyId": comp,
-        "https://acbl.wirelxdfirm.com/extensions/questionId": qid,
-        "https://acbl.wirelxdfirm.com/extensions/subCompetency": sub,
-        "https://acbl.wirelxdfirm.com/extensions/sessionId": sid
-      }
-    }
-  );
-})();
+// Capture learner's selected answer (choice text or text entry)
+var answer =
+  p.GetVar("SelectedAnswer") ||
+  p.GetVar("TextEntry") ||
+  "";
+
+// Store into per-question variable
+p.SetVar("C1_Q3_Answer", answer);
 
 }
 
-window.Script22 = function()
+window.Script20 = function()
 {
   // Load once (Master fires on every slide)
 if (!window.__XAPI_HELPER_LOADED__) {
@@ -1081,7 +1001,7 @@ if (!window.__XAPI_HELPER_LOADED__) {
 
 }
 
-window.Script23 = function()
+window.Script21 = function()
 {
   // --- Global xAPI Helper (runs once across all slides) ---
 if (!window.__XAPI_HELPER_LOADED__) {
@@ -1152,69 +1072,67 @@ if (!window.__XAPI_HELPER_LOADED__) {
 
 }
 
-window.Script24 = function()
+window.Script22 = function()
 {
-  (function () {
+  /* Results slide - scoring, mastery, xAPI, localStorage */
+(function () {
   try {
-    var p = GetPlayer();
+    const p = GetPlayer();
     if (!p) return;
 
-    /* ============================================================
-       1. Detect Competency (C1, C2, C3)
-    ============================================================ */
-    var url = window.location.href.toUpperCase();
-    var compMatch = url.match(/C[123]/);
-    var compId = compMatch ? compMatch[0] : "C1";
+    // 1) Detect competency from URL
+    const url = window.location.href.toUpperCase();
+    const compMatch = url.match(/C[123]/);
+    const compId = compMatch ? compMatch[0] : "C1";
 
-    /* ============================================================
-       2. Gather scoring variables
-    ============================================================ */
-    var correct = Number(p.GetVar(compId + "_Correct") || 0);
+    // 2) Gather scoring variables
+    const correct = Number(p.GetVar(compId + "_Correct") || 0);
 
-    // Missed list already accumulated: "C1a,C1c"
-    var missedSubs = (p.GetVar(compId + "_missedSubs") || "")
+    const missedSubs = (p.GetVar(compId + "_missedSubs") || "")
       .split(",")
       .map(s => s.trim())
       .filter(Boolean);
 
-    /* ============================================================
-       3. Determine mastery
-    ============================================================ */
-    var mastery = "Failing";
+    // 3) Determine mastery
+    let mastery = "Failing";
     if (correct === 3) mastery = "Mastery";
     else if (correct === 2) mastery = "Proficient";
     else if (correct === 1) mastery = "Emerging";
 
-    var testedOut = correct === 3;
-    var finalized = false;
+    const testedOut = correct === 3;
+    const finalized = false;
 
-    // Save to SL
     p.SetVar("currentComp", compId);
     p.SetVar("currentMasteryLevel", mastery);
 
-    /* ============================================================
-       4. Identity + Session
-    ============================================================ */
-    var name = localStorage.getItem("learnerName") || p.GetVar("actorName") || "Anonymous";
-    var sid = localStorage.getItem("sessionId") || p.GetVar("sessionId") || Date.now().toString();
-    var mbox = "mailto:" + encodeURIComponent(name) + "@wirelxdfirm.com";
+    // 4) Identity and session
+    const name =
+      localStorage.getItem("learnerName") ||
+      p.GetVar("actorName") ||
+      "Anonymous";
 
-    var endpoint = "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
+    const sid =
+      localStorage.getItem("sessionId") ||
+      p.GetVar("sessionId") ||
+      (Date.now().toString());
 
-    /* ============================================================
-       5. Send Question-Level xAPI (Dynamic Subcompetencies!)
-    ============================================================ */
+    const mbox =
+      "mailto:" + encodeURIComponent(name) + "@wirelxdfirm.com";
 
+    const endpoint =
+      "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
+
+    // 5) Question level xAPI - dynamic per sub
     for (let i = 1; i <= 3; i++) {
-      const subVar = `${compId}_Q${i}_Sub`;       // e.g. "C1_Q1_Sub" = "C1a"
+      const subVar = `${compId}_Q${i}_Sub`;       // C1_Q1_Sub = "C1a"
       const answerVar = `${compId}_Q${i}_Answer`;
       const correctVar = `${compId}_Q${i}_IsCorrect`;
       const textVar = `${compId}_Q${i}_Text`;
 
-      const sub = p.GetVar(subVar) || "";         // C1a, C1b, C1c
-      if (!sub) continue;                         // Skip if unset
+      const sub = p.GetVar(subVar) || "";
+      if (!sub) continue;
 
-      const qid = `${sub}-Q${i}`;                 // Dynamic, correct QID
+      const qid = `${sub}-Q${i}`;
 
       const answer = p.GetVar(answerVar) || "";
       const isCorrect = !!p.GetVar(correctVar);
@@ -1222,10 +1140,16 @@ window.Script24 = function()
 
       const qStmt = {
         actor: { name: name, mbox: mbox },
-        verb: { id: "http://adlnet.gov/expapi/verbs/answered", display: { "en-US": "answered" } },
+        verb: {
+          id: "http://adlnet.gov/expapi/verbs/answered",
+          display: { "en-US": "answered" }
+        },
         object: {
           id: `https://acbl.wirelxdfirm.com/activities/${compId}/questions/${qid}`,
-          definition: { name: { "en-US": qid }, description: { "en-US": qtext } }
+          definition: {
+            name: { "en-US": qid },
+            description: { "en-US": qtext }
+          }
         },
         result: {
           response: answer,
@@ -1247,26 +1171,34 @@ window.Script24 = function()
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(qStmt),
         keepalive: true
-      });
+      })
+        .then(r =>
+          console.log(`📘 Sent question ${qid} for ${compId}:`, r.status)
+        )
+        .catch(e =>
+          console.warn(`❌ Question ${qid} send failed:`, e)
+        );
     }
 
-    /* ============================================================
-       6. Send Summary Statement
-    ============================================================ */
+    // 6) Summary statement
+    const passed = correct >= 2;
+    const verbId = passed
+      ? "http://adlnet.gov/expapi/verbs/passed"
+      : "http://adlnet.gov/expapi/verbs/failed";
 
-    var summaryStmt = {
+    const verbDisplay = passed ? "passed" : "failed";
+
+    const summaryStmt = {
       actor: { name: name, mbox: mbox },
-      verb: {
-        id: correct >= 2 ? "http://adlnet.gov/expapi/verbs/passed" : "http://adlnet.gov/expapi/verbs/failed",
-        display: { "en-US": correct >= 2 ? "passed" : "failed" }
-      },
+      verb: { id: verbId, display: { "en-US": verbDisplay } },
       object: {
         id: `https://acbl.wirelxdfirm.com/activities/${compId}/test`,
         objectType: "Activity"
       },
       result: {
         score: { raw: correct, min: 0, max: 3 },
-        success: correct >= 2,
+        success: passed,
+        completion: true,
         extensions: {
           "https://acbl.wirelxdfirm.com/extensions/learnerName": name,
           "https://acbl.wirelxdfirm.com/extensions/sessionId": sid,
@@ -1286,20 +1218,143 @@ window.Script24 = function()
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(summaryStmt),
       keepalive: true
-    });
+    })
+      .then(r =>
+        console.log(
+          `✅ Sent ${verbDisplay} (${mastery}) for ${compId}. Status:`,
+          r.status
+        )
+      )
+      .catch(e => console.warn("❌ Summary send failed:", e));
 
-    /* ============================================================
-       7. Store locally for next.html
-    ============================================================ */
-
+    // 7) Store adaptive state for next.html
     localStorage.setItem(`${compId}.score`, correct);
     localStorage.setItem(`${compId}.missed`, JSON.stringify(missedSubs));
     localStorage.setItem(`${compId}.mastery`, mastery);
     localStorage.setItem(`${compId}.testedOut`, testedOut);
     localStorage.setItem(`${compId}.finalized`, finalized);
+    localStorage.setItem(`${compId}.completed`, "true");
+    localStorage.setItem("currentCompetency", compId);
+    localStorage.setItem("currentMasteryLevel", mastery);
+
+    console.log("💾 Stored adaptive state:", {
+      compId,
+      correct,
+      mastery,
+      testedOut,
+      finalized,
+      missedSubs
+    });
 
   } catch (e) {
-    console.warn("❌ Results script failed:", e);
+    console.warn("❌ Results slide script failed:", e);
+  }
+})();
+
+}
+
+window.Script23 = function()
+{
+  /* ============================================================
+   FAILURE LAYER INITIALIZER
+   Marks test attempt as completed & clears Storyline resume
+   ============================================================ */
+
+(function () {
+  try {
+    const url = window.location.href.toUpperCase();
+
+    /* ----------------------------------------------------------
+       1. Detect the competency dynamically
+    ---------------------------------------------------------- */
+    const compMatch = url.match(/C[123]/);
+    const compId = compMatch ? compMatch[0] : "C1";
+
+    /* ----------------------------------------------------------
+       2. Mark attempt as completed
+          NOTE: Mastery and missed subs are NOT stored here.
+          Results Slide handles all adaptive logic.
+    ---------------------------------------------------------- */
+    localStorage.setItem(`${compId}.completed`, "true");
+    console.log(`✔ Marked ${compId} attempt as completed (FAIL outcome)`);
+
+    /* ----------------------------------------------------------
+       3. SCORM completion (ignored for HTML export)
+    ---------------------------------------------------------- */
+    try {
+      const lms = window.lmsAPI || null;
+      if (lms && lms.SetStatus) {
+        lms.SetStatus("completed");
+        lms.CommitData();
+        console.log("✔ SCORM completion sent");
+      }
+    } catch (e) {
+      console.log("ℹ SCORM API unavailable (HTML export)");
+    }
+
+    /* ----------------------------------------------------------
+       4. Purge Storyline internal resume state ONLY
+          DO NOT clear your adaptive values like:
+          - C1_mastery
+          - C1_missed
+          - C1_score
+          - sessionId
+          - learnerName
+    ---------------------------------------------------------- */
+    try {
+      const keys = Object.keys(localStorage);
+      const slKeys = keys.filter(k =>
+        k.startsWith("story") || k.includes("story_html5")
+      );
+
+      slKeys.forEach(k => localStorage.removeItem(k));
+      console.log("✔ Storyline resume state cleared");
+
+    } catch (e) {
+      console.warn("⚠ Resume purge failed:", e);
+    }
+
+  } catch (err) {
+    console.error("❌ Failure-layer completion failed:", err);
+  }
+})();
+
+}
+
+window.Script24 = function()
+{
+  /* Results Continue button - send learner to next.html */
+(function () {
+  try {
+    const p = GetPlayer();
+    if (!p) return;
+
+    const url = window.location.href.toUpperCase();
+    const compMatch = url.match(/C[123]/);
+    const compId = compMatch ? compMatch[0] : "C1";
+
+    const learner =
+      p.GetVar("learnerName") ||
+      localStorage.getItem("learnerName") ||
+      "Anonymous";
+
+    const sid =
+      localStorage.getItem("sessionId") ||
+      p.GetVar("sessionId") ||
+      (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()));
+
+    localStorage.setItem("sessionId", sid);
+
+    const u = new URL("https://www.wirelearningsolutions.com/next.html");
+    u.searchParams.set("learnerName", learner);
+    u.searchParams.set("sid", sid);
+    u.searchParams.set("current", compId);
+
+    console.log("➡ Redirecting to adaptive next.html:", u.toString());
+
+    window.location.href = u.toString();
+  } catch (err) {
+    console.error("❌ Results Continue redirect failed:", err);
   }
 })();
 
@@ -1375,145 +1430,16 @@ window.Script25 = function()
 
 window.Script26 = function()
 {
-  /* ============================================================
-   Adaptive Test Exit Handler
-   Run on BOTH Passed and Failed layers
-   Sends learner to Results Slide ONLY
-   ============================================================ */
+  /* Results Continue button - send learner to next.html */
 (function () {
   try {
     const p = GetPlayer();
     if (!p) return;
 
-    /* ---------------------------------------
-       1. Identify competency dynamically
-    --------------------------------------- */
     const url = window.location.href.toUpperCase();
-    const compId = (url.match(/C[123]/) || ["C1"])[0];
-
-    /* ---------------------------------------
-       2. Identity & session
-    --------------------------------------- */
-    const learner =
-      p.GetVar("learnerName") ||
-      localStorage.getItem("learnerName") ||
-      "Anonymous";
-
-    const sid =
-      localStorage.getItem("sessionId") ||
-      p.GetVar("sessionId") ||
-      crypto.randomUUID();
-
-    localStorage.setItem("sessionId", sid);
-
-    /* ---------------------------------------
-       3. DO NOT calculate mastery here
-       DO NOT store missed subs here
-       DO NOT set score here
-       DO NOT set `.completed` here
-       DO NOT clear resume here
-       (Results Slide handles all adaptive logic)
-    --------------------------------------- */
-
-    /* ---------------------------------------
-       4. Redirect to RESULTS SLIDE
-    --------------------------------------- */
-    const u = new URL("results.html", window.location.href);
-    u.searchParams.set("learnerName", learner);
-    u.searchParams.set("sid", sid);
-    u.searchParams.set("current", compId);
-
-    console.log("➡ Redirecting to results slide:", u.toString());
-    window.location.href = u.toString();
-
-  } catch (err) {
-    console.error("❌ Continue button failed:", err);
-  }
-})();
-
-}
-
-window.Script27 = function()
-{
-  /* ============================================================
-   SUCCESS LAYER INITIALIZER
-   Marks test as completed & clears Storyline resume state only
-   ============================================================ */
-
-(function () {
-  try {
-    const p = GetPlayer && GetPlayer();
-    const url = window.location.href.toUpperCase();
-
-    /* ----------------------------------------------------------
-       1. Detect the competency (C1, C2, C3)
-    ---------------------------------------------------------- */
     const compMatch = url.match(/C[123]/);
     const compId = compMatch ? compMatch[0] : "C1";
 
-    /* ----------------------------------------------------------
-       2. Mark attempt as completed
-          (Results Slide handles mastery, missed, score, xAPI)
-    ---------------------------------------------------------- */
-    localStorage.setItem(`${compId}.completed`, "true");
-    console.log(`✔ Marked ${compId} attempt as completed`);
-
-    /* ----------------------------------------------------------
-       3. SCORM completion (ignored for HTML, safe for cmi5)
-    ---------------------------------------------------------- */
-    try {
-      const lms = window.lmsAPI || null;
-      if (lms && lms.SetStatus) {
-        lms.SetStatus("completed");
-        lms.CommitData();
-        console.log("✔ SCORM completion sent");
-      }
-    } catch (e) {
-      console.log("ℹ SCORM API unavailable (HTML export)");
-    }
-
-    /* ----------------------------------------------------------
-       4. Purge Storyline's internal resume state ONLY
-          DO NOT remove your adaptive data in localStorage
-    ---------------------------------------------------------- */
-    try {
-      const keys = Object.keys(localStorage);
-      const slKeys = keys.filter(k => k.startsWith("story") || k.includes("story_html5"));
-
-      slKeys.forEach(k => localStorage.removeItem(k));
-      console.log("✔ Storyline resume state cleared");
-    } catch (e) {
-      console.warn("⚠ Resume purge failed:", e);
-    }
-
-  } catch (err) {
-    console.error("❌ Success-layer completion failed:", err);
-  }
-})();
-
-}
-
-window.Script28 = function()
-{
-  /* ============================================================
-   Adaptive Test Exit Handler
-   Run on BOTH Passed and Failed layers
-   Sends learner to Results Slide ONLY
-   ============================================================ */
-(function () {
-  try {
-    const p = GetPlayer();
-    if (!p) return;
-
-    /* ---------------------------------------
-       1. Identify competency dynamically
-    --------------------------------------- */
-    const url = window.location.href.toUpperCase();
-    const compId = (url.match(/C[123]/) || ["C1"])[0];
-
-    /* ---------------------------------------
-       2. Identity & session
-    --------------------------------------- */
     const learner =
       p.GetVar("learnerName") ||
       localStorage.getItem("learnerName") ||
@@ -1522,32 +1448,20 @@ window.Script28 = function()
     const sid =
       localStorage.getItem("sessionId") ||
       p.GetVar("sessionId") ||
-      crypto.randomUUID();
+      (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()));
 
     localStorage.setItem("sessionId", sid);
 
-    /* ---------------------------------------
-       3. DO NOT calculate mastery here
-       DO NOT store missed subs here
-       DO NOT set score here
-       DO NOT set `.completed` here
-       DO NOT clear resume here
-       (Results Slide handles all adaptive logic)
-    --------------------------------------- */
-
-    /* ---------------------------------------
-       4. Redirect to RESULTS SLIDE
-    --------------------------------------- */
-    const u = new URL("results.html", window.location.href);
+    const u = new URL("https://www.wirelearningsolutions.com/next.html");
     u.searchParams.set("learnerName", learner);
     u.searchParams.set("sid", sid);
     u.searchParams.set("current", compId);
 
-    console.log("➡ Redirecting to results slide:", u.toString());
-    window.location.href = u.toString();
+    console.log("➡ Redirecting to adaptive next.html:", u.toString());
 
+    window.location.href = u.toString();
   } catch (err) {
-    console.error("❌ Continue button failed:", err);
+    console.error("❌ Results Continue redirect failed:", err);
   }
 })();
 
