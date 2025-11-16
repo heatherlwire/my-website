@@ -189,11 +189,11 @@
         }
     </style>
 </head>
+
 <body>
     <header>
         <div class="title-row">
             <h1>Adaptive Learning Launch</h1>
-            <!-- Connection badge -->
             <span class="badge">
                 <span class="badge-dot" id="connDot"></span>
                 <span id="connText">Checking connection…</span>
@@ -236,9 +236,9 @@
     </main>
 
     <script>
+        /* ---------------- CONNECTION CHECK ---------------- */
         const PROXY_URL = "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
 
-        // ============ Connection badge: ping Lambda/LRS ============
         async function checkConnection() {
             const dot = document.getElementById("connDot");
             const txt = document.getElementById("connText");
@@ -250,16 +250,11 @@
                     headers: { "Accept": "application/json" }
                 });
 
-                const bodyText = await res.text();
+                const body = await res.text();
                 let data = null;
+                try { data = JSON.parse(body); } catch { }
 
-                try { data = JSON.parse(bodyText); } catch (_) { }
-
-                const ok =
-                    res.ok &&
-                    (bodyText.includes("Lambda OK") ||
-                        (data && data.ok === true));
-
+                const ok = res.ok && (body.includes("Lambda OK") || (data && data.ok));
                 if (ok) {
                     dot.classList.add("ok");
                     txt.textContent = "Connected to LRS";
@@ -267,18 +262,15 @@
                     dot.style.background = "var(--warn)";
                     txt.textContent = "Unstable connection";
                 }
-            } catch (err) {
+            } catch {
                 dot.style.background = "var(--err)";
                 txt.textContent = "Offline";
             }
         }
 
-
         checkConnection();
-        // Optional: recheck periodically
-        // setInterval(checkConnection, 30000);
 
-        // ============ Elements ============
+        /* ---------------- ELEMENTS ---------------- */
         const newUserSection = document.getElementById("newUserSection");
         const returningSection = document.getElementById("returningSection");
         const nameInput = document.getElementById("nameInput");
@@ -289,6 +281,7 @@
         const resetBtn = document.getElementById("resetBtn");
         const welcomeText = document.getElementById("welcomeText");
 
+        /* ---------------- VALIDATION ---------------- */
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
         function isEmailValid(v) {
@@ -299,6 +292,7 @@
             const nameOk = nameInput.value.trim().length > 0;
             const emailVal = emailInput.value.trim();
             const emailOk = isEmailValid(emailVal);
+
             emailError.hidden = (emailVal === "" || emailOk);
             launchBtn.disabled = !(nameOk && emailOk);
         }
@@ -308,10 +302,7 @@
             emailInput.addEventListener(ev, validate);
         });
 
-        document.addEventListener("DOMContentLoaded", validate);
-        window.addEventListener("pageshow", validate);
-
-        // ============ Session helpers ============
+        /* ---------------- SESSION HELPERS ---------------- */
         function ensureSid() {
             let sid = localStorage.getItem("sessionId");
             if (!sid) {
@@ -322,45 +313,77 @@
         }
 
         function goToNext(name, email, sid) {
-            const url =
-                "next.html" +
+            const url = "next.html" +
                 "?learnerName=" + encodeURIComponent(name) +
                 "&email=" + encodeURIComponent(email) +
                 "&sid=" + encodeURIComponent(sid);
+
             window.location.href = url;
         }
 
+        /* ---------------- IDENTITY SANITIZATION ---------------- */
+        function sanitizeIdentity() {
+            const storedName = localStorage.getItem("learnerName");
+            const storedEmail = localStorage.getItem("learnerEmail");
+
+            const emailValid =
+                storedEmail &&
+                /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(storedEmail);
+
+            const invalid =
+                !storedName ||
+                !storedEmail ||
+                !emailValid;
+
+            if (invalid) {
+                [
+                    "learnerName",
+                    "learnerEmail",
+                    "sessionId",
+                    "actorName",
+                    "actorMbox",
+                    "currentCompetency",
+                    "pendingRoutes",
+                    "lastPath",
+                    "lastApplyLaunched"
+                ].forEach(k => localStorage.removeItem(k));
+            }
+        }
+
+        // Run BEFORE we decide which section to show
+        sanitizeIdentity();
+
+        /* ---------------- SECTION CONTROL ---------------- */
         function showCorrectSection() {
             const storedName = localStorage.getItem("learnerName");
             const storedEmail = localStorage.getItem("learnerEmail");
 
-            if (storedName && storedEmail) {
-                // Returning learner
-                welcomeText.textContent = "Learner detected: " + storedName + " (" + storedEmail + ").";
-                newUserSection.hidden = true;
-                returningSection.hidden = false;
-            } else {
-                // New learner
-                if (storedName) nameInput.value = storedName;
-                if (storedEmail) emailInput.value = storedEmail;
+            const emailValid = storedEmail && emailRegex.test(storedEmail);
+
+            if (!storedName || !emailValid) {
                 newUserSection.hidden = false;
                 returningSection.hidden = true;
+                return;
             }
+
+            welcomeText.textContent = `Learner detected: ${storedName} (${storedEmail})`;
+            newUserSection.hidden = true;
+            returningSection.hidden = false;
         }
 
-        document.addEventListener("DOMContentLoaded", showCorrectSection);
-        window.addEventListener("pageshow", showCorrectSection);
+        document.addEventListener("DOMContentLoaded", () => {
+            validate();
+            showCorrectSection();
+        });
 
-        // ============ New learner launch ============
+        /* ---------------- NEW LEARNER LAUNCH ---------------- */
         launchBtn.addEventListener("click", () => {
             const name = nameInput.value.trim();
             const email = emailInput.value.trim().toLowerCase();
 
             if (!name || !isEmailValid(email)) {
                 validate();
-                if (!isEmailValid(email)) {
-                    emailInput.focus();
-                }
+                if (!isEmailValid(email)) emailInput.focus();
                 return;
             }
 
@@ -374,7 +397,7 @@
             goToNext(name, email, sid);
         });
 
-        // ============ Returning learner continue ============
+        /* ---------------- RETURNING LEARNER ---------------- */
         continueBtn.addEventListener("click", () => {
             const name = localStorage.getItem("learnerName");
             const email = localStorage.getItem("learnerEmail");
@@ -393,11 +416,10 @@
             goToNext(name, email, sid);
         });
 
-        // ============ Reset learner ============
+        /* ---------------- RESET LEARNER ---------------- */
         resetBtn.addEventListener("click", () => {
             if (!confirm("Clear ALL learner progress and restart?")) return;
 
-            // Remove ONLY Storyline resume junk
             Object.keys(localStorage).forEach(k => {
                 if (
                     k.includes("story") ||
@@ -409,7 +431,6 @@
                 }
             });
 
-            // Core identity keys
             [
                 "learnerName",
                 "learnerEmail",
@@ -422,7 +443,6 @@
                 "lastApplyLaunched"
             ].forEach(k => localStorage.removeItem(k));
 
-            // Competency-level keys
             ["C1", "C2", "C3"].forEach(c => {
                 localStorage.removeItem(c + ".mastery");
                 localStorage.removeItem(c + ".score");
@@ -434,19 +454,16 @@
             });
 
             sessionStorage.clear();
-
-            // Fresh reload of index
             window.location.href = "index.html";
         });
 
-
-        // Allow Enter to trigger Launch for new users
+        /* ---------------- ENTER KEY ---------------- */
         document.addEventListener("keydown", e => {
             if (e.key === "Enter" && !launchBtn.disabled && !newUserSection.hidden) {
                 launchBtn.click();
             }
         });
     </script>
+
 </body>
 </html>
-
