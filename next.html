@@ -339,7 +339,7 @@
 ============================================================ */
         const qs = new URLSearchParams(location.search);
         let learnerName = qs.get("learnerName") || localStorage.getItem("learnerName");
-        let learnerEmail = qs.get("email") || localStorage.getItem("learnerEmail");
+        let learnerEmail = (qs.get("email") || localStorage.getItem("learnerEmail") || "").toLowerCase();
         let sid = qs.get("sid") || localStorage.getItem("sessionId");
 
         if (!learnerName || !learnerEmail) {
