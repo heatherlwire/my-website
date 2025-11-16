@@ -1,9 +1,8 @@
-﻿\
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
+    <!-- Canonical redirect (top-level only so iframes are safe) -->
     <script>
-        // Only redirect when this page is the top-level window (not inside an iframe)
         if (window.top === window.self) {
             if (location.hostname === "wirelearningsolutions.com") {
                 location.replace(
@@ -59,6 +58,7 @@
             font-size: clamp(22px, 2.4vw, 28px);
             background: linear-gradient(90deg, var(--ink-0), #cfe8ff);
             -webkit-background-clip: text;
+            background-clip: text;
             color: transparent;
         }
 
@@ -144,7 +144,7 @@
                 box-shadow: 0 6px 24px rgba(14,165,233,.35);
             }
 
-            button:hover {
+            button:hover:not(:disabled) {
                 transform: translateY(-1px);
             }
 
@@ -317,61 +317,78 @@
         const BASE = "https://www.wirelearningsolutions.com/";
         const PROXY_URL = "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
         const NS = "https://acbl.wirelearningsolutions.com/extensions/";
-        const EX = k => NS + k;
+        function EX(k) { return NS + k; }
         const REFRESH_MS = 15000;
 
-        /* ---------- Identity ---------- */
+        // ---------- Identity ----------
         const qs = new URLSearchParams(location.search);
         const learnerName = (qs.get("learnerName") ||
             localStorage.getItem("learnerName") ||
             "Anonymous").trim();
         const sid = qs.get("sid") ||
             localStorage.getItem("sessionId") ||
-            crypto.randomUUID();
+            (window.crypto && crypto.randomUUID ? crypto.randomUUID() : String(Date.now()));
 
         const hintedComp = (qs.get("current") || "").toUpperCase();
-        if (hintedComp) localStorage.setItem("currentCompetency", hintedComp);
+        if (hintedComp) {
+            localStorage.setItem("currentCompetency", hintedComp);
+        }
 
-        let currentComp =
-            (localStorage.getItem("currentCompetency") || "C1").toUpperCase();
+        var currentComp = (localStorage.getItem("currentCompetency") || "C1").toUpperCase();
 
         localStorage.setItem("learnerName", learnerName);
         localStorage.setItem("sessionId", sid);
 
-        /* ---------- Connection Check ---------- */
+        // ---------- Connection Check ----------
         async function checkConnection() {
             const dot = document.getElementById("connDot");
             const txt = document.getElementById("connText");
 
             try {
-                const r = await fetch(`${PROXY_URL}?learner=__ping__`);
-                if (r.ok) {
+                const r = await fetch(PROXY_URL + "?mode=ping", {
+                    method: "GET",
+                    cache: "no-store",
+                    headers: { "Accept": "application/json" }
+                });
+
+                const bodyText = await r.text();
+                let data = null;
+                try { data = JSON.parse(bodyText); } catch (e) { }
+
+                const ok = r.ok && (
+                    bodyText.indexOf("Lambda OK") !== -1 ||
+                    (data && data.ok === true) ||
+                    bodyText.trim() === "[]" // your proxy's ping body
+                );
+
+                if (ok) {
                     dot.classList.add("ok");
-                    txt.textContent = "Connected";
+                    txt.textContent = "Connected to LRS";
                 } else {
-                    txt.textContent = "Unstable";
                     dot.style.background = "var(--warn)";
+                    txt.textContent = "Unstable connection";
                 }
-            } catch {
-                txt.textContent = "Offline";
+            } catch (err) {
                 dot.style.background = "var(--err)";
+                txt.textContent = "Offline";
             }
         }
 
-        /* ---------- Fetch Summary ---------- */
+        // ---------- Fetch Summary from Lambda ----------
         async function fetchSummary() {
             try {
                 const r = await fetch(
-                    `${PROXY_URL}?learner=${encodeURIComponent(learnerName)}&mode=summary`
+                    PROXY_URL + "?learner=" + encodeURIComponent(learnerName) + "&mode=summary",
+                    { method: "GET", cache: "no-store" }
                 );
                 return await r.json();
-            } catch {
+            } catch (e) {
                 return {};
             }
         }
 
-        /* ---------- Load Adaptive Rules ---------- */
-        let rulesCache = null;
+        // ---------- Load Adaptive Rules ----------
+        var rulesCache = null;
         async function loadRules() {
             if (rulesCache) return rulesCache;
             const r = await fetch("adaptive_rules.json", { cache: "no-store" });
@@ -379,52 +396,83 @@
             return rulesCache;
         }
 
-        /* ---------- Evaluate Routing ---------- */
+        // ---------- Evaluate Routing using adaptive_rules.json ----------
         function evaluateRouting(compId, compState, rules) {
             const list = rules[compId];
             if (!list) return null;
 
             const routes = [];
-            for (const rule of list) {
-                let match = true;
-                for (const key in rule.if || {}) {
+
+            for (var i = 0; i < list.length; i++) {
+                const rule = list[i];
+                var match = true;
+
+                const cond = rule.if || {};
+                for (const key in cond) {
+                    if (!Object.prototype.hasOwnProperty.call(cond, key)) continue;
+
                     if (key === "masteryIn") {
-                        if (!rule.if[key].includes(compState.mastery)) {
+                        const allowed = cond[key] || [];
+                        if (!allowed || allowed.indexOf(compState.mastery) === -1) {
                             match = false;
                             break;
                         }
-                    } else if (compState[key] !== rule.if[key]) {
-                        match = false;
-                        break;
+                    } else {
+                        if (compState[key] !== cond[key]) {
+                            match = false;
+                            break;
+                        }
                     }
                 }
+
                 if (!match) continue;
 
-                for (const a of rule.then || []) {
+                // Matched rule: collect routes
+                const thenArr = rule.then || [];
+                for (var j = 0; j < thenArr.length; j++) {
+                    const a = thenArr[j];
+
+                    // direct route
                     if (a.route) {
-                        const key = Object.keys(a.route)[0];
-                        let r = a.route[key];
-                        if (r.includes("{item}")) {
-                            r = r.replace("{item}", compState.missed?.[0] || "");
+                        const keys = Object.keys(a.route);
+                        if (keys.length > 0) {
+                            const routeKey = keys[0];
+                            let r = a.route[routeKey];
+                            if (typeof r === "string" && r.indexOf("{item}") !== -1) {
+                                const firstMissed = (compState.missed && compState.missed.length > 0)
+                                    ? compState.missed[0]
+                                    : "";
+                                r = r.replace("{item}", firstMissed);
+                            }
+                            routes.push(r);
                         }
-                        routes.push(r);
                     }
 
+                    // forEach route, usually for "missed"
                     if (a.forEach && Array.isArray(compState[a.forEach]) && a.do) {
-                        for (const item of compState[a.forEach]) {
-                            for (const inner of a.do) {
+                        const items = compState[a.forEach];
+                        for (var k = 0; k < items.length; k++) {
+                            const item = items[k];
+                            const innerArr = a.do;
+                            for (var m = 0; m < innerArr.length; m++) {
+                                const inner = innerArr[m];
                                 if (inner.route) {
-                                    let r =
-                                        inner.route[
-                                            Object.keys(inner.route)[0]
-                                        ].replace("{item}", item);
-                                    routes.push(r);
+                                    const ikeys = Object.keys(inner.route);
+                                    if (ikeys.length > 0) {
+                                        const routeKey2 = ikeys[0];
+                                        let r2 = inner.route[routeKey2];
+                                        if (typeof r2 === "string") {
+                                            r2 = r2.replace("{item}", item);
+                                        }
+                                        routes.push(r2);
+                                    }
                                 }
                             }
                         }
                     }
                 }
 
+                // stop after first matching rule
                 break;
             }
 
@@ -433,42 +481,41 @@
             return routes;
         }
 
-        /* ---------- Final URL Resolver (Your Correct Structure) ---------- */
+        // ---------- Final URL Resolver ----------
         function resolveTargetUrl(target) {
             if (!target) return null;
 
-            // 1. Program completion
+            // Program completion
             if (/program-complete/i.test(target)) {
                 return BASE + "program-complete.html";
             }
 
-            // 2. TESTS (Storyline)
-            // e.g., C1-test -> /C1-test/story.html
+            // Tests (Storyline folder)
             if (/^C[1-3]-test$/i.test(target)) {
-                return BASE + `${target}/story.html`;
+                return BASE + target + "/story.html";
             }
 
-            // 3. CONTENT
-            // e.g., C1a-content -> /content/C1a-content.html
+            // Content
             if (/^C[1-3][a-c]-content$/i.test(target)) {
-                return BASE + `content/${target}.html`;
+                return BASE + "content/" + target + ".html";
             }
 
-            // 4. APPLY
-            // e.g., C1a-apply -> /apply/C1a/C1a-apply.html
+            // Apply
             if (/^C[1-3][a-c]-apply$/i.test(target)) {
                 const sub = target.replace("-apply", ""); // C1a
-                return BASE + `apply/${sub}/${target}.html`;
+                return BASE + "apply/" + sub + "/" + target + ".html";
             }
 
-            // 5. Fallback
-            return BASE + `${target}.html`;
+            // Fallback (for any custom target)
+            return BASE + target + ".html";
         }
 
-        /* ---------- UI Helpers ---------- */
+        // ---------- UI Helpers ----------
         function displayMastery(m) {
-            return m === "Mastery" ? "Mastered" : (m || "—");
+            if (m === "Mastery") return "Mastered";
+            return m || "—";
         }
+
         function labelStatus(s) {
             if (s === "Completed") return "Completed";
             if (s === "InProgress") return "In Progress";
@@ -476,52 +523,64 @@
         }
 
         function renderProgress(summary) {
-
             const tbody = document.getElementById("progressTable");
             tbody.innerHTML = "";
 
-            ["C1", "C2", "C3"].forEach(comp => {
+            ["C1", "C2", "C3"].forEach(function (comp) {
                 const s = summary[comp] || {};
-                let state = "NotStarted";
-                if (s.mastery === "Mastery" || s.finalized || s.testedOut)
-                    state = "Completed";
-                else if (s.mastery)
-                    state = "InProgress";
+                var state = "NotStarted";
 
-                tbody.innerHTML += `
-                    <tr>
-                        <td>${comp}</td>
-                        <td>${displayMastery(s.mastery)}</td>
-                        <td>
-                            <span class="status ${state}">
-                                <span class="s-dot"></span>${labelStatus(state)}
-                            </span>
-                        </td>
-                    </tr>`;
+                if (s.mastery === "Mastery" || s.finalized || s.testedOut) {
+                    state = "Completed";
+                } else if (s.mastery) {
+                    state = "InProgress";
+                }
+
+                tbody.innerHTML +=
+                    "<tr>" +
+                    "<td>" + comp + "</td>" +
+                    "<td>" + displayMastery(s.mastery) + "</td>" +
+                    "<td>" +
+                    '<span class="status ' + state + '">' +
+                    '<span class="s-dot"></span>' + labelStatus(state) +
+                    "</span>" +
+                    "</td>" +
+                    "</tr>";
             });
         }
 
         function writeSummary(current, state, next) {
             const line = document.getElementById("summaryLine");
             line.innerHTML =
-                `Current: <b>${current}</b> — <b>${displayMastery(state.mastery)}</b>`;
+                "Current: <b>" + current + "</b> — <b>" + displayMastery(state.mastery) + "</b>";
 
-            const comp = (next.match(/(C[1-3])/i)?.[1] || current).toUpperCase();
-            const subMatch = next.match(/C\d([a-c])/i);
-            const sub = subMatch ? `C${comp[1]}${subMatch[1]}` : "—";
+            var comp = current.toUpperCase();
+            var sub = "—";
+            var type = "—";
 
-            let type = "—";
-            if (/-content$/i.test(next)) type = "Content";
-            else if (/-apply$/i.test(next)) type = "Application";
-            else if (/-test$/i.test(next)) type = "Test";
-            else if (/program-complete/i.test(next)) type = "Finish";
+            if (typeof next === "string" && next.length > 0) {
+                const compMatch = next.match(/(C[1-3])/i);
+                if (compMatch && compMatch[1]) {
+                    comp = compMatch[1].toUpperCase();
+                }
+
+                const subMatch = next.match(/C(\d)([a-c])/i);
+                if (subMatch && subMatch[1] && subMatch[2]) {
+                    sub = "C" + subMatch[1] + subMatch[2];
+                }
+
+                if (/-content$/i.test(next)) type = "Content";
+                else if (/-apply$/i.test(next)) type = "Application";
+                else if (/-test$/i.test(next)) type = "Test";
+                else if (/program-complete/i.test(next)) type = "Finish";
+            }
 
             document.getElementById("upNextComp").textContent = comp;
             document.getElementById("upNextSub").textContent = sub;
             document.getElementById("upNextType").textContent = type;
         }
 
-        /* ---------- Merge with localStorage fallback ---------- */
+        // ---------- Merge with localStorage ----------
         function mergeWithLocal(current, state) {
             const comp = current.toUpperCase();
             const keyBase = comp + ".";
@@ -531,8 +590,14 @@
                 finalized: false,
                 testedOut: false,
                 missed: [],
-                ...state
+                subCompetencies: state && state.subCompetencies ? state.subCompetencies : [],
+                progressPercent: state && typeof state.progressPercent === "number" ? state.progressPercent : 0
             };
+
+            if (state && typeof state.mastery !== "undefined") merged.mastery = state.mastery;
+            if (state && typeof state.finalized !== "undefined") merged.finalized = state.finalized;
+            if (state && typeof state.testedOut !== "undefined") merged.testedOut = state.testedOut;
+            if (state && state.missed) merged.missed = state.missed;
 
             const lsMastery = localStorage.getItem(keyBase + "mastery");
             const lsMissed = localStorage.getItem(keyBase + "missed");
@@ -546,55 +611,59 @@
             if ((!merged.missed || merged.missed.length === 0) && lsMissed) {
                 try {
                     merged.missed = JSON.parse(lsMissed) || [];
-                } catch {
+                } catch (e) {
                     merged.missed = [];
                 }
             }
 
-            if (!merged.finalized && lsFinalized != null) {
-                merged.finalized = lsFinalized === "true";
+            if (!merged.finalized && lsFinalized !== null) {
+                merged.finalized = (lsFinalized === "true");
             }
 
-            if (!merged.testedOut && lsTestedOut != null) {
-                merged.testedOut = lsTestedOut === "true";
+            if (!merged.testedOut && lsTestedOut !== null) {
+                merged.testedOut = (lsTestedOut === "true");
             }
 
             return merged;
         }
 
-        /* ---------- Finalize ---------- */
+        // ---------- Finalize (off-ramp) ----------
         async function finalize(current, mastery) {
             const stmt = {
                 actor: {
                     name: learnerName,
-                    mbox: `mailto:${encodeURIComponent(learnerName)}@wirelxdfirm.com`
+                    mbox: "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com"
                 },
                 verb: { id: "http://id.tincanapi.com/verb/completed" },
                 object: {
-                    id: `https://acbl.wirelearningsolutions.com/activities/${current}/offramp`
+                    id: "https://acbl.wirelearningsolutions.com/activities/" + current + "/offramp"
                 },
                 result: {
                     completion: true,
-                    extensions: {
-                        [EX("learnerName")]: learnerName,
-                        [EX("finalized")]: true,
-                        [EX("competencyId")]: current,
-                        [EX("masteryLevel")]: mastery
-                    }
+                    extensions: {}
                 },
                 timestamp: new Date().toISOString()
             };
 
-            await fetch(`${PROXY_URL}?mode=write`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(stmt)
-            });
+            stmt.result.extensions[EX("learnerName")] = learnerName;
+            stmt.result.extensions[EX("finalized")] = true;
+            stmt.result.extensions[EX("competencyId")] = current;
+            stmt.result.extensions[EX("masteryLevel")] = mastery;
 
-            localStorage.setItem(`${current}.finalized`, "true");
+            try {
+                await fetch(PROXY_URL + "?mode=write", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(stmt)
+                });
+            } catch (e) {
+                // swallow; localStorage still keeps finalized
+            }
+
+            localStorage.setItem(current + ".finalized", "true");
         }
 
-        /* ---------- MAIN LOOP ---------- */
+        // ---------- MAIN LOOP ----------
         async function refreshAll() {
             await checkConnection();
 
@@ -606,56 +675,98 @@
                 return;
             }
 
-            // 1. Pull from LRS
+            // 1. Pull from LRS and rules
             const summary = await fetchSummary();
             const rules = await loadRules();
 
-            // 2. Build state and patch with localStorage
+            // 2. Build state for current competency and merge with local
             const rawState = summary[currentComp] || {
                 mastery: null,
                 finalized: false,
                 testedOut: false,
-                missed: []
+                missed: [],
+                subCompetencies: [],
+                progressPercent: 0
             };
+
             const state = mergeWithLocal(currentComp, rawState);
 
-            // 3. Push patched state back into summary so the table shows it
+            // Push patched state back to summary so table shows it
             summary[currentComp] = {
-                ...summary[currentComp],
                 mastery: state.mastery,
                 finalized: state.finalized,
-                testedOut: state.testedOut
+                testedOut: state.testedOut,
+                subCompetencies: state.subCompetencies,
+                progressPercent: state.progressPercent
             };
 
             renderProgress(summary);
 
-            // 4. Figure out next route
-            let next =
-                evaluateRouting(currentComp, state, rules) ||
-                `${currentComp}-test`;
-
-            const normalize = r =>
-                /^C[1-3]$/i.test(r) ? `${r}-test` : r;
-
-            let pending =
-                JSON.parse(localStorage.getItem("pendingRoutes") || "[]")
-                    .filter(x => !!x)
-                    .map(normalize);
-
-            if (pending.length) {
-                localStorage.setItem("pendingRoutes", JSON.stringify(pending));
-            } else {
-                localStorage.removeItem("pendingRoutes");
+            // ---------- Routing decision ----------
+            function normalize(r) {
+                if (!r) return null;
+                if (/^C[1-3]$/i.test(r)) return r + "-test";
+                return r;
             }
 
-            if (Array.isArray(next)) {
-                next = next.map(normalize);
-                const [first, ...rest] = next;
-                if (rest.length)
-                    localStorage.setItem("pendingRoutes", JSON.stringify(rest));
-                next = first;
+            var pendingRoutes = [];
+            try {
+                const stored = localStorage.getItem("pendingRoutes") || "[]";
+                const parsed = JSON.parse(stored);
+                if (Array.isArray(parsed)) {
+                    pendingRoutes = parsed.filter(Boolean).map(normalize).filter(Boolean);
+                }
+            } catch (e) {
+                pendingRoutes = [];
+            }
+
+            var next = null;
+
+            if (pendingRoutes.length > 0) {
+                // Already have a queue: peek first route
+                next = pendingRoutes[0];
             } else {
-                next = normalize(next);
+                // No queue: compute from rules or default to test-first
+
+                // New learner / no competency data → force test first
+                var noState =
+                    !state.mastery &&
+                    !state.finalized &&
+                    !state.testedOut &&
+                    (
+                        !state.subCompetencies ||
+                        !Array.isArray(state.subCompetencies) ||
+                        state.subCompetencies.length === 0 ||
+                        state.subCompetencies.every(function (s) {
+                            const st = s && s.status ? s.status : "NotStarted";
+                            return st === "NotStarted";
+                        })
+                    );
+
+                var route = null;
+
+                if (noState) {
+                    // brand new for this competency
+                    route = currentComp + "-test";
+                } else {
+                    // use adaptive rules
+                    route = evaluateRouting(currentComp, state, rules) || (currentComp + "-test");
+                }
+
+                if (Array.isArray(route)) {
+                    const normalized = route.map(normalize).filter(Boolean);
+                    next = normalized.length > 0 ? normalized[0] : currentComp + "-test";
+                    pendingRoutes = normalized.slice(1);
+                } else {
+                    next = normalize(route || (currentComp + "-test"));
+                    pendingRoutes = [];
+                }
+
+                if (pendingRoutes.length > 0) {
+                    localStorage.setItem("pendingRoutes", JSON.stringify(pendingRoutes));
+                } else {
+                    localStorage.removeItem("pendingRoutes");
+                }
             }
 
             writeSummary(currentComp, state, next);
@@ -666,65 +777,111 @@
             continueBtn.disabled = false;
             acceptBtn.disabled = false;
 
-            continueBtn.onclick = () => {
-                let q = JSON.parse(localStorage.getItem("pendingRoutes") || "[]");
-                if (q.length) {
-                    const nx = q.shift();
-                    localStorage.setItem("pendingRoutes", JSON.stringify(q));
-                    window.location.href =
-                        resolveTargetUrl(nx)
-                        + `?learnerName=${encodeURIComponent(learnerName)}&sid=${sid}`;
-                } else {
-                    window.location.href =
-                        resolveTargetUrl(next)
-                        + `?learnerName=${encodeURIComponent(learnerName)}&sid=${sid}`;
+            // ---------- CONTINUE ----------
+            continueBtn.onclick = function () {
+                var q = [];
+                try {
+                    const stored = localStorage.getItem("pendingRoutes") || "[]";
+                    const parsed = JSON.parse(stored);
+                    if (Array.isArray(parsed)) {
+                        q = parsed.filter(Boolean);
+                    }
+                } catch (e) {
+                    q = [];
                 }
+
+                var target = next;
+
+                if (q.length > 0 && q[0] === target) {
+                    q.shift();
+                    if (q.length > 0) {
+                        localStorage.setItem("pendingRoutes", JSON.stringify(q));
+                    } else {
+                        localStorage.removeItem("pendingRoutes");
+                    }
+                }
+
+                const url = resolveTargetUrl(target) +
+                    "?learnerName=" + encodeURIComponent(learnerName) +
+                    "&sid=" + encodeURIComponent(sid);
+                window.location.href = url;
             };
 
-            acceptBtn.onclick = async () => {
+            // ---------- ACCEPT MASTERY (OFF-RAMP) ----------
+            acceptBtn.onclick = async function () {
                 const mastery = state.mastery || "Unknown";
-                if (!confirm(`Accept mastery level "${mastery}" for ${currentComp}?`))
+                if (!window.confirm('Accept mastery level "' + mastery + '" for ' + currentComp + '?')) {
                     return;
+                }
 
                 await finalize(currentComp, mastery);
 
-                let routed =
-                    evaluateRouting(currentComp, { ...state, finalized: true }, rules) ||
-                    "program-complete";
+                // clear any queue
+                localStorage.removeItem("pendingRoutes");
 
-                if (Array.isArray(routed)) {
-                    routed = routed.map(normalize);
-                    const [first, ...rest] = routed;
-                    if (rest.length)
-                        localStorage.setItem("pendingRoutes", JSON.stringify(rest));
-                    routed = first;
-                } else {
-                    routed = normalize(routed);
+                const finalizeState = {
+                    mastery: state.mastery,
+                    finalized: true,
+                    testedOut: state.testedOut,
+                    missed: state.missed,
+                    subCompetencies: state.subCompetencies,
+                    progressPercent: state.progressPercent
+                };
+
+                var routed = evaluateRouting(currentComp, finalizeState, rules) || "program-complete";
+
+                function normalizeFinal(r) {
+                    if (!r) return null;
+                    if (/^C[1-3]$/i.test(r)) return r + "-test";
+                    return r;
                 }
 
-                window.location.href =
-                    resolveTargetUrl(routed)
-                    + `?learnerName=${encodeURIComponent(learnerName)}&sid=${sid}`;
+                if (Array.isArray(routed)) {
+                    const normalized = routed.map(normalizeFinal).filter(Boolean);
+                    const first = normalized.length > 0 ? normalized[0] : "program-complete";
+                    const rest = normalized.slice(1);
+                    if (rest.length > 0) {
+                        localStorage.setItem("pendingRoutes", JSON.stringify(rest));
+                    } else {
+                        localStorage.removeItem("pendingRoutes");
+                    }
+                    routed = first;
+                } else {
+                    routed = normalizeFinal(routed || "program-complete");
+                }
+
+                const url = resolveTargetUrl(routed) +
+                    "?learnerName=" + encodeURIComponent(learnerName) +
+                    "&sid=" + encodeURIComponent(sid);
+                window.location.href = url;
             };
 
+            // ---------- Debug UI ----------
             const debug = document.getElementById("debug");
             const toggleDbg = document.getElementById("toggleDebug");
-            debug.innerHTML =
-                `<pre>${JSON.stringify(
-                    { learnerName, sid, currentComp, state, next },
-                    null, 2
-                )}</pre>`;
 
-            toggleDbg.onclick = () => {
+            debug.innerHTML = "<pre>" + JSON.stringify(
+                {
+                    learnerName: learnerName,
+                    sid: sid,
+                    currentComp: currentComp,
+                    state: state,
+                    next: next,
+                    pendingRoutes: pendingRoutes
+                },
+                null,
+                2
+            ) + "</pre>";
+
+            toggleDbg.onclick = function () {
                 const show = debug.style.display === "none";
                 debug.style.display = show ? "block" : "none";
-                toggleDbg.textContent = show
-                    ? "Hide Debug Info"
-                    : "Show Debug Info";
+                toggleDbg.textContent = show ? "Hide Debug Info" : "Show Debug Info";
             };
 
-            document.getElementById("resetBtn").onclick = () => {
-                if (confirm("Clear all learner data?")) {
+            // ---------- Reset learner ----------
+            document.getElementById("resetBtn").onclick = function () {
+                if (window.confirm("Clear all learner data?")) {
                     localStorage.clear();
                     sessionStorage.clear();
                     location.href = "index.html";
@@ -733,9 +890,10 @@
         }
 
         refreshAll();
-        setInterval(() => {
-            if (document.visibilityState === "visible")
+        setInterval(function () {
+            if (document.visibilityState === "visible") {
                 refreshAll();
+            }
         }, REFRESH_MS);
     </script>
 

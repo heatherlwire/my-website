@@ -190,10 +190,11 @@
     </style>
 </head>
 <body>
+
     <header>
         <div class="title-row">
             <h1>Adaptive Learning Launch</h1>
-            <!-- Connection badge -->
+
             <span class="badge">
                 <span class="badge-dot" id="connDot"></span>
                 <span id="connText">Checking connection…</span>
@@ -202,12 +203,10 @@
     </header>
 
     <main class="wrap">
-        <!-- New learner section -->
+        <!-- New learner -->
         <section class="card" id="newUserSection">
             <h2 style="margin-top:0;margin-bottom:8px;">Welcome</h2>
-            <p class="muted">
-                Enter your name and email to begin. The next page will analyze your progress and decide what comes next.
-            </p>
+            <p class="muted">Enter your name and email to begin.</p>
 
             <div style="margin-top:14px;">
                 <div class="field-label">Learner name</div>
@@ -223,7 +222,7 @@
             </div>
         </section>
 
-        <!-- Returning learner section -->
+        <!-- Returning learner -->
         <section class="card" id="returningSection" hidden>
             <h2 style="margin-top:0;margin-bottom:8px;">Welcome back</h2>
             <p class="muted" id="welcomeText"></p>
@@ -238,27 +237,18 @@
     <script>
         const PROXY_URL = "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
 
-        // ============ Connection badge: ping Lambda/LRS ============
         async function checkConnection() {
             const dot = document.getElementById("connDot");
             const txt = document.getElementById("connText");
 
             try {
-                const res = await fetch(PROXY_URL + "?mode=ping", {
-                    method: "GET",
-                    cache: "no-store",
-                    headers: { "Accept": "application/json" }
-                });
-
-                const bodyText = await res.text();
-                let data = null;
-
-                try { data = JSON.parse(bodyText); } catch (_) { }
+                const res = await fetch(PROXY_URL + "?mode=ping", { cache: "no-store" });
+                const body = await res.text();
 
                 const ok =
                     res.ok &&
-                    (bodyText.includes("Lambda OK") ||
-                        (data && data.ok === true));
+                    (body.includes("Lambda OK") ||
+                        (body.includes('"ok":true')));
 
                 if (ok) {
                     dot.classList.add("ok");
@@ -267,18 +257,14 @@
                     dot.style.background = "var(--warn)";
                     txt.textContent = "Unstable connection";
                 }
-            } catch (err) {
+            } catch {
                 dot.style.background = "var(--err)";
                 txt.textContent = "Offline";
             }
         }
-
-
         checkConnection();
-        // Optional: recheck periodically
-        // setInterval(checkConnection, 30000);
 
-        // ============ Elements ============
+        // ========= Elements =========
         const newUserSection = document.getElementById("newUserSection");
         const returningSection = document.getElementById("returningSection");
         const nameInput = document.getElementById("nameInput");
@@ -299,6 +285,7 @@
             const nameOk = nameInput.value.trim().length > 0;
             const emailVal = emailInput.value.trim();
             const emailOk = isEmailValid(emailVal);
+
             emailError.hidden = (emailVal === "" || emailOk);
             launchBtn.disabled = !(nameOk && emailOk);
         }
@@ -309,9 +296,8 @@
         });
 
         document.addEventListener("DOMContentLoaded", validate);
-        window.addEventListener("pageshow", validate);
 
-        // ============ Session helpers ============
+        // ========= Session helpers =========
         function ensureSid() {
             let sid = localStorage.getItem("sessionId");
             if (!sid) {
@@ -322,12 +308,11 @@
         }
 
         function goToNext(name, email, sid) {
-            const url =
+            window.location.href =
                 "next.html" +
                 "?learnerName=" + encodeURIComponent(name) +
                 "&email=" + encodeURIComponent(email) +
                 "&sid=" + encodeURIComponent(sid);
-            window.location.href = url;
         }
 
         function showCorrectSection() {
@@ -335,12 +320,10 @@
             const storedEmail = localStorage.getItem("learnerEmail");
 
             if (storedName && storedEmail) {
-                // Returning learner
-                welcomeText.textContent = "Learner detected: " + storedName + " (" + storedEmail + ").";
+                welcomeText.textContent = `Learner detected: ${storedName} (${storedEmail}).`;
                 newUserSection.hidden = true;
                 returningSection.hidden = false;
             } else {
-                // New learner
                 if (storedName) nameInput.value = storedName;
                 if (storedEmail) emailInput.value = storedEmail;
                 newUserSection.hidden = false;
@@ -348,19 +331,16 @@
             }
         }
 
-        document.addEventListener("DOMContentLoaded", showCorrectSection);
-        window.addEventListener("pageshow", showCorrectSection);
+        window.addEventListener("DOMContentLoaded", showCorrectSection);
 
-        // ============ New learner launch ============
+        // ========= New learner launch =========
         launchBtn.addEventListener("click", () => {
             const name = nameInput.value.trim();
             const email = emailInput.value.trim().toLowerCase();
 
             if (!name || !isEmailValid(email)) {
                 validate();
-                if (!isEmailValid(email)) {
-                    emailInput.focus();
-                }
+                if (!isEmailValid(email)) emailInput.focus();
                 return;
             }
 
@@ -374,7 +354,7 @@
             goToNext(name, email, sid);
         });
 
-        // ============ Returning learner continue ============
+        // ========= Returning learner continue =========
         continueBtn.addEventListener("click", () => {
             const name = localStorage.getItem("learnerName");
             const email = localStorage.getItem("learnerEmail");
@@ -386,6 +366,10 @@
                 return;
             }
 
+            // 🔥 FIX: Restore correct competency before continuing
+            const lastComp = localStorage.getItem("currentCompetency") || "C1";
+            localStorage.setItem("currentCompetency", lastComp);
+
             const sid = ensureSid();
             continueBtn.disabled = true;
             continueBtn.textContent = "Continuing…";
@@ -393,7 +377,7 @@
             goToNext(name, email, sid);
         });
 
-        // ============ Reset learner ============
+        // ========= Reset learner =========
         resetBtn.addEventListener("click", () => {
             if (confirm("Clear saved learner data and restart?")) {
                 localStorage.clear();
@@ -402,7 +386,7 @@
             }
         });
 
-        // Allow Enter to trigger Launch for new users
+        // Allow Enter key to trigger Launch
         document.addEventListener("keydown", e => {
             if (e.key === "Enter" && !launchBtn.disabled && !newUserSection.hidden) {
                 launchBtn.click();
@@ -411,4 +395,3 @@
     </script>
 </body>
 </html>
-
