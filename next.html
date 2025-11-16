@@ -288,7 +288,6 @@
                     Accept Mastery Level and Move On
                 </button>
 
-
                 <button id="toggleDebug" aria-pressed="false">
                     Show Debug Info
                 </button>
@@ -331,12 +330,41 @@
         const REFRESH_MS = 15000;
 
         /* ============================================================
-   IDENTITY (FIXED)
-   Priority:
-   1. If reset occurred: no URL params → treat as new learner
-   2. If URL params exist: they override everything
-   3. Otherwise use stored values
-============================================================ */
+           SANITIZERS
+        ============================================================ */
+
+        // Only allow proper sub-competency IDs like C1a, C2b, C3c
+        function sanitizeItem(item) {
+            if (!item) return "";
+            const s = String(item).trim();
+            const m = s.match(/^(C[1-3][a-c])$/i);
+            return m ? m[1] : "";
+        }
+
+        // Strip stray quotes / whitespace from route targets
+        function sanitizeTarget(target) {
+            if (!target) return null;
+            let t = String(target).trim();
+
+            // Remove wrapping single or double quotes if present
+            if (
+                (t.startsWith('"') && t.endsWith('"')) ||
+                (t.startsWith("'") && t.endsWith("'"))
+            ) {
+                t = t.slice(1, -1).trim();
+            }
+
+            if (!t) return null;
+            return t;
+        }
+
+        /* ============================================================
+           IDENTITY (FIXED)
+           Priority:
+           1. If reset occurred: no URL params → treat as new learner
+           2. If URL params exist: they override everything
+           3. Otherwise use stored values
+        ============================================================ */
         const qs = new URLSearchParams(location.search);
         let learnerName = qs.get("learnerName") || localStorage.getItem("learnerName");
         let learnerEmail = (qs.get("email") || localStorage.getItem("learnerEmail") || "").toLowerCase();
@@ -354,7 +382,6 @@
         if (!sid) sid = crypto.randomUUID();
         localStorage.setItem("sessionId", sid);
 
-
         const hintedComp = (qs.get("current") || "").toUpperCase();
         if (hintedComp) {
             localStorage.setItem("currentCompetency", hintedComp);
@@ -363,7 +390,6 @@
         // Default entry competency is C1
         let currentComp =
             (localStorage.getItem("currentCompetency") || "C1").toUpperCase();
-
 
         /* ============================================================
            CONNECTION CHECK
@@ -458,7 +484,6 @@
                             break;
                         }
                     } else {
-                        // direct property compare
                         if (compState[key] !== cond[key]) {
                             match = false;
                             break;
@@ -477,15 +502,23 @@
                         const keys = Object.keys(a.route);
                         if (keys.length > 0) {
                             const routeKey = keys[0];
-                            let r = a.route[routeKey]; // "go"
+                            let r = a.route[routeKey];
+
                             if (typeof r === "string" && r.indexOf("{item}") !== -1) {
-                                const firstMissed =
+                                const firstMissedRaw =
                                     compState.missed && compState.missed.length > 0
                                         ? compState.missed[0]
                                         : "";
-                                r = r.replace("{item}", firstMissed);
+                                const firstMissed = sanitizeItem(firstMissedRaw);
+                                if (!firstMissed) {
+                                    r = null;
+                                } else {
+                                    r = r.replace("{item}", firstMissed);
+                                }
                             }
-                            routes.push(r);
+
+                            r = sanitizeTarget(r);
+                            if (r) routes.push(r);
                         }
                     }
 
@@ -493,7 +526,10 @@
                     if (a.forEach && Array.isArray(compState[a.forEach]) && a.do) {
                         const items = compState[a.forEach];
                         for (let k = 0; k < items.length; k++) {
-                            const item = items[k];
+                            const itemRaw = items[k];
+                            const cleanItem = sanitizeItem(itemRaw);
+                            if (!cleanItem) continue;
+
                             const innerArr = a.do;
                             for (let m = 0; m < innerArr.length; m++) {
                                 const inner = innerArr[m];
@@ -503,9 +539,10 @@
                                         const routeKey2 = ikeys[0];
                                         let r2 = inner.route[routeKey2];
                                         if (typeof r2 === "string") {
-                                            r2 = r2.replace("{item}", item);
+                                            r2 = r2.replace("{item}", cleanItem);
                                         }
-                                        routes.push(r2);
+                                        r2 = sanitizeTarget(r2);
+                                        if (r2) routes.push(r2);
                                     }
                                 }
                             }
@@ -527,6 +564,7 @@
            Translates targets like "C1a-apply" into full URLs
         ============================================================ */
         function resolveTargetUrl(target) {
+            target = sanitizeTarget(target);
             if (!target) return null;
 
             // Program completion
@@ -600,14 +638,10 @@
             line.innerHTML =
                 "Current: <b>" + current + "</b> — <b>" + displayMastery(state.mastery) + "</b>";
 
-            // Default UI placeholders
             let comp = "—";
             let sub = "—";
             let type = "—";
 
-            /* --------------------------------------------------------------
-               BRAND-NEW LEARNER
-            -------------------------------------------------------------- */
             const isNewLearner =
                 !state.mastery &&
                 !state.finalized &&
@@ -623,48 +657,30 @@
                 return;
             }
 
-            /* --------------------------------------------------------------
-               ROUTING CASE — parse “next” target
-               Expected patterns:
-                 C1-test
-                 C2a-content
-                 C2b-apply
-                 program-complete
-            -------------------------------------------------------------- */
             if (typeof next === "string" && next.length > 0) {
+                const cleanNext = sanitizeTarget(next) || "";
 
-                // Extract competency: C1, C2, C3
-                const compMatch = next.match(/(C[1-3])/i);
+                const compMatch = cleanNext.match(/(C[1-3])/i);
                 if (compMatch) comp = compMatch[1].toUpperCase();
 
-                // Extract sub-competency: C1a, C1b, etc.
-                const subMatch = next.match(/(C[1-3][a-c])/i);
+                const subMatch = cleanNext.match(/(C[1-3][a-c])/i);
                 if (subMatch) sub = subMatch[1];
 
-                // Extract type
-                if (/program-complete/i.test(next)) {
+                if (/program-complete/i.test(cleanNext)) {
                     type = "Finish";
-                }
-                else if (/-test$/i.test(next)) {
+                } else if (/-test$/i.test(cleanNext)) {
                     type = "Test";
-                }
-                else if (/-content$/i.test(next)) {
+                } else if (/-content$/i.test(cleanNext)) {
                     type = "Content";
-                }
-                else if (/-apply$/i.test(next)) {
+                } else if (/-apply$/i.test(cleanNext)) {
                     type = "Application";
                 }
             }
 
-            // Push labels to UI
             document.getElementById("upNextComp").textContent = comp;
             document.getElementById("upNextSub").textContent = sub;
             document.getElementById("upNextType").textContent = type;
         }
-
-
-            
-
 
         /* ============================================================
            MERGE LRS SUMMARY WITH LOCALSTORAGE
@@ -771,11 +787,9 @@
                 return;
             }
 
-            // 1. Pull from LRS and rules
             const summary = await fetchSummary();
             const rules = await loadRules();
 
-            // 2. Build state for current competency and merge with local
             const rawState = summary[currentComp] || {
                 mastery: null,
                 finalized: false,
@@ -787,14 +801,12 @@
 
             const state = mergeWithLocal(currentComp, rawState);
 
-            // Brand-new learner = has not taken the test yet for this competency
             const isNewLearner =
                 !state.mastery &&
                 !state.finalized &&
                 !state.testedOut &&
                 (!state.missed || state.missed.length === 0);
 
-            // Push patched state back to summary so table shows it
             summary[currentComp] = {
                 mastery: state.mastery,
                 finalized: state.finalized,
@@ -805,24 +817,22 @@
 
             renderProgress(summary);
 
-
-            /* --------------------------------------------------------
-               Routing decision
-            -------------------------------------------------------- */
             function normalize(r) {
+                r = sanitizeTarget(r);
                 if (!r) return null;
-                // If a bare competency appears ("C2"), treat as test
                 if (/^C[1-3]$/i.test(r)) return r.toUpperCase() + "-test";
                 return r;
             }
 
-            // Pull any queued routes from localStorage
             let pendingRoutes = [];
             try {
                 const stored = localStorage.getItem("pendingRoutes") || "[]";
                 const parsed = JSON.parse(stored);
                 if (Array.isArray(parsed)) {
-                    pendingRoutes = parsed.filter(Boolean).map(normalize).filter(Boolean);
+                    pendingRoutes = parsed
+                        .filter(Boolean)
+                        .map(normalize)
+                        .filter(Boolean);
                 }
             } catch (e) {
                 pendingRoutes = [];
@@ -831,11 +841,8 @@
             let next = null;
 
             if (pendingRoutes.length > 0) {
-                // Already have a queue: use first route
                 next = pendingRoutes[0];
             } else {
-                // No queue: compute from rules or force first test
-
                 const noState =
                     !state.mastery &&
                     !state.finalized &&
@@ -851,20 +858,20 @@
                     );
 
                 if (noState) {
-                    // Brand-new learner → ALWAYS start C1-test
                     currentComp = "C1";
                     next = currentComp + "-test";
                     pendingRoutes = [];
                     localStorage.removeItem("pendingRoutes");
                     localStorage.setItem("currentCompetency", currentComp);
                 } else {
-                    // Not brand-new → use adaptive rules
                     let route =
                         evaluateRouting(currentComp, state, rules) ||
                         (currentComp + "-test");
 
                     if (Array.isArray(route)) {
-                        const normalized = route.map(normalize).filter(Boolean);
+                        const normalized = route
+                            .map(normalize)
+                            .filter(Boolean);
                         next = normalized.length > 0
                             ? normalized[0]
                             : currentComp + "-test";
@@ -887,36 +894,35 @@
                 }
             }
 
-            // Update summary card
             writeSummary(currentComp, state, next);
 
             const continueBtn = document.getElementById("continueBtn");
             const acceptBtn = document.getElementById("acceptBtn");
 
             continueBtn.disabled = false;
-            // Brand-new learners cannot finalize mastery yet
             acceptBtn.disabled = isNewLearner;
 
-
-            /* --------------------------------------------------------
-               CONTINUE BUTTON
-               Uses queue + updates currentCompetency if moving to C2/C3
-            -------------------------------------------------------- */
             continueBtn.onclick = function () {
                 let q = [];
                 try {
                     const stored = localStorage.getItem("pendingRoutes") || "[]";
                     const parsed = JSON.parse(stored);
                     if (Array.isArray(parsed)) {
-                        q = parsed.filter(Boolean).map(normalize);
+                        q = parsed
+                            .filter(Boolean)
+                            .map(normalize)
+                            .filter(Boolean);
                     }
                 } catch (e) {
                     q = [];
                 }
 
-                let target = next;
+                let target = sanitizeTarget(next);
+                if (!target) {
+                    alert("No valid next step could be determined.");
+                    return;
+                }
 
-                // If the queue has the target as first, pop it
                 if (q.length > 0 && q[0] === target) {
                     q.shift();
                     if (q.length > 0) {
@@ -926,15 +932,20 @@
                     }
                 }
 
-                // If target advances competency (C2, C3), update currentCompetency
                 const compMatch = target.match(/(C[1-3])/i);
                 if (compMatch && compMatch[1]) {
                     const newComp = compMatch[1].toUpperCase();
                     localStorage.setItem("currentCompetency", newComp);
                 }
 
+                const urlBase = resolveTargetUrl(target);
+                if (!urlBase) {
+                    alert("Could not resolve the next activity URL.");
+                    return;
+                }
+
                 const url =
-                    resolveTargetUrl(target) +
+                    urlBase +
                     "?learnerName=" +
                     encodeURIComponent(learnerName) +
                     "&sid=" +
@@ -943,9 +954,6 @@
                 window.location.href = url;
             };
 
-            /* --------------------------------------------------------
-               ACCEPT MASTERY (OFF-RAMP)
-            -------------------------------------------------------- */
             acceptBtn.onclick = async function () {
                 const mastery = state.mastery || "Unknown";
                 if (
@@ -962,7 +970,6 @@
 
                 await finalize(currentComp, mastery);
 
-                // clear any queue
                 localStorage.removeItem("pendingRoutes");
 
                 const finalizeState = {
@@ -979,13 +986,16 @@
                     "program-complete";
 
                 function normalizeFinal(r) {
+                    r = sanitizeTarget(r);
                     if (!r) return null;
                     if (/^C[1-3]$/i.test(r)) return r.toUpperCase() + "-test";
                     return r;
                 }
 
                 if (Array.isArray(routed)) {
-                    const normalized = routed.map(normalizeFinal).filter(Boolean);
+                    const normalized = routed
+                        .map(normalizeFinal)
+                        .filter(Boolean);
                     const first =
                         normalized.length > 0
                             ? normalized[0]
@@ -1004,14 +1014,20 @@
                     routed = normalizeFinal(routed || "program-complete");
                 }
 
-                const compMatch2 = routed.match(/(C[1-3])/i);
+                const compMatch2 = routed && routed.match(/(C[1-3])/i);
                 if (compMatch2 && compMatch2[1]) {
                     const newComp = compMatch2[1].toUpperCase();
                     localStorage.setItem("currentCompetency", newComp);
                 }
 
+                const urlBase = resolveTargetUrl(routed);
+                if (!urlBase) {
+                    alert("Could not resolve the next activity URL after finalizing.");
+                    return;
+                }
+
                 const url =
-                    resolveTargetUrl(routed) +
+                    urlBase +
                     "?learnerName=" +
                     encodeURIComponent(learnerName) +
                     "&sid=" +
@@ -1019,9 +1035,6 @@
                 window.location.href = url;
             };
 
-            /* --------------------------------------------------------
-               DEBUG PANEL
-            -------------------------------------------------------- */
             const debug = document.getElementById("debug");
             const toggleDbg = document.getElementById("toggleDebug");
 
@@ -1049,17 +1062,11 @@
                     : "Show Debug Info";
             };
 
-            /* --------------------------------------------------------
-               RESET LEARNER
-            -------------------------------------------------------- */
             document.getElementById("resetBtn").onclick = function () {
                 if (!window.confirm("Clear ALL learner progress and restart?")) {
                     return;
                 }
 
-                /* ----------------------------
-                   1. Remove Storyline resume data
-                   ---------------------------- */
                 Object.keys(localStorage).forEach(k => {
                     if (
                         k.includes("story") ||
@@ -1071,9 +1078,6 @@
                     }
                 });
 
-                /* ----------------------------
-                   2. Core identity and routing keys
-                   ---------------------------- */
                 [
                     "learnerName",
                     "learnerEmail",
@@ -1086,9 +1090,6 @@
                     "lastApplyLaunched"
                 ].forEach(k => localStorage.removeItem(k));
 
-                /* ----------------------------
-                   3. Competency-level state
-                   ---------------------------- */
                 ["C1", "C2", "C3"].forEach(c => {
                     localStorage.removeItem(c + ".mastery");
                     localStorage.removeItem(c + ".score");
@@ -1099,21 +1100,12 @@
                     localStorage.removeItem(c + ".startedAt");
                 });
 
-                /* ----------------------------
-                   4. Clear session storage
-                   ---------------------------- */
                 sessionStorage.clear();
 
-                /* ----------------------------
-                   5. Redirect to fresh start
-                   ---------------------------- */
                 window.location.href = "index.html";
             };
-
-
         }
 
-        // Initial run + periodic refresh
         refreshAll();
         setInterval(function () {
             if (document.visibilityState === "visible") {
