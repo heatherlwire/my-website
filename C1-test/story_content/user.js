@@ -16,141 +16,134 @@ var slideHeight = player.slideHeight;
 window.Script1 = function()
 {
   /* ============================================================
-   Unified xAPI sender
-   - Intercepts Storyline's built-in sendXAPI(stmt)
-   - Also works as a helper: sendXAPI(verbId, verbDisplay, objectId, objectName, resultData)
-   - Always posts to your Lambda with mode=write
+   STORYLINE → OVERRIDE ALL XAPI PATHS → FORCE LAMBDA
+   Fully SCORM Cloud–compliant
 ============================================================ */
 
-if (!window.__XAPI_HELPER__) {
-  window.__XAPI_HELPER__ = true;
+(function () {
 
-  console.log("✅ Unified xAPI helper initialized on Master Slide");
-
-  // ---------------------------------------
-  // Rehydrate Storyline variables from localStorage
-  // ---------------------------------------
-  setTimeout(() => {
-    try {
-      const p = typeof GetPlayer === "function" ? GetPlayer() : null;
-      if (!p) return;
-
-      const storedName = localStorage.getItem("learnerName");
-      const storedSid  = localStorage.getItem("sessionId");
-
-      if (storedName && !p.GetVar("learnerName")) {
-        p.SetVar("learnerName", storedName);
-        p.SetVar("actorName", storedName);
-        p.SetVar(
-          "actorMbox",
-          "mailto:" + encodeURIComponent(storedName) + "@wirelxdfirm.com"
-        );
-      }
-
-      if (storedSid && !p.GetVar("sessionId")) {
-        p.SetVar("sessionId", storedSid);
-      }
-
-      console.log("🔁 Storyline vars synced from localStorage");
-    } catch (e) {
-      console.warn("⚠️ Sync from localStorage failed:", e);
-    }
-  }, 300);
-
-  // ---------------------------------------
-  // One function that handles BOTH cases:
-  //   1) sendXAPI(stmtObject)
-  //   2) sendXAPI(verbId, verbDisplay, objectId, objectName, resultData)
-  // ---------------------------------------
-  window.sendXAPI = async function (arg1, verbDisplay, objectId, objectName, resultData = {}) {
-    try {
-      const p = typeof GetPlayer === "function" ? GetPlayer() : null;
-      if (!p) throw new Error("GetPlayer unavailable");
-
-      const learnerName =
-        p.GetVar("learnerName") ||
-        localStorage.getItem("learnerName") ||
-        "Anonymous";
-
-      const sessionId =
-        p.GetVar("sessionId") ||
-        localStorage.getItem("sessionId") ||
-        (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()));
-
-      const mbox =
-        "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com";
-
-      let stmt;
-
-      // Case 1: Storyline internal call - first arg is already a full statement object
-      if (typeof arg1 === "object" && arg1 !== null && !Array.isArray(arg1)) {
-        stmt = arg1;
-
-        // Make sure actor and context are set
-        if (!stmt.actor) {
-          stmt.actor = { name: learnerName, mbox };
-        } else {
-          if (!stmt.actor.mbox) stmt.actor.mbox = mbox;
-          if (!stmt.actor.name) stmt.actor.name = learnerName;
+    /* ---------- Utility: Remove null/undefined ---------- */
+    function clean(o) {
+        for (let k in o) {
+            if (o[k] == null) delete o[k];
+            else if (typeof o[k] === "object") clean(o[k]);
         }
-
-        if (!stmt.context) stmt.context = {};
-        if (!stmt.context.registration) stmt.context.registration = sessionId;
-
-        if (!stmt.timestamp) stmt.timestamp = new Date().toISOString();
-
-        console.log("🔄 Intercepted Storyline xAPI statement:", stmt);
-      }
-      // Case 2: Your helper usage - build statement from pieces
-      else {
-        const verbId = arg1;
-        stmt = {
-          actor: { name: learnerName, mbox },
-          verb: { id: verbId, display: { "en-US": verbDisplay } },
-          object: {
-            id: objectId,
-            definition: { name: { "en-US": objectName } },
-            objectType: "Activity"
-          },
-          result: resultData || {},
-          context: { registration: sessionId },
-          timestamp: new Date().toISOString()
-        };
-
-        console.log("📝 Built helper xAPI statement:", stmt);
-      }
-
-      const endpoint =
-        "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
-
-      const r = await fetch(endpoint + "?mode=write", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(stmt),
-        keepalive: true
-      });
-
-      let body;
-      try {
-        body = await r.json();
-      } catch {
-        body = null;
-      }
-
-      if (r.ok) {
-        console.log("✅ Lambda write ok:", body || r.status);
-      } else {
-        console.warn("⚠️ LRS/Lambda returned status", r.status, body);
-      }
-
-      return body || { ok: r.ok, status: r.status };
-
-    } catch (err) {
-      console.error("❌ sendXAPI failed:", err);
-      return { ok: false, error: err.message };
+        return o;
     }
-  };
-}
+
+    /* ---------- Force full activity URL for SCORM Cloud ---------- */
+    function activityUrl(id) {
+        return "https://acbl.wirelxdfirm.com/activities/" + encodeURIComponent(id);
+    }
+
+    /* ---------- Actual send function ---------- */
+    async function __SEND(stmt) {
+
+        window.lastStatementSent = stmt;
+        console.log("📤 Sending to Lambda:", stmt);
+
+        try {
+            const r = await fetch(
+                "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws?mode=write",
+                {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(stmt),
+                    keepalive: true
+                }
+            );
+
+            const data = await r.json();
+            console.log("📩 Lambda response:", data);
+
+            if (!data.ok) {
+                console.error("❌ SCORM Cloud rejected:", data);
+            }
+
+            return data;
+
+        } catch (e) {
+            console.error("❌ Lambda write failed:", e);
+            return { ok: false, error: e.message };
+        }
+    }
+
+    /* ============================================================
+       STORYLINE BUILDS TERRIBLE STATEMENTS — REBUILD FROM SCRATCH
+    ============================================================= */
+    async function sendXAPI(verbId, verbDisplay, objectId, objectName, resultData = {}) {
+        try {
+
+            const p = GetPlayer();
+            if (!p) throw new Error("GetPlayer missing");
+
+            const learnerName =
+                p.GetVar("learnerName") ||
+                localStorage.getItem("learnerName") ||
+                "Anonymous";
+
+            const sid =
+                p.GetVar("sessionId") ||
+                localStorage.getItem("sessionId") ||
+                crypto.randomUUID();
+
+            const mbox =
+                "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com";
+
+            /* ---------- SCORM Cloud REQUIRED score field ---------- */
+            if (!resultData.score) {
+                resultData.score = { raw: 0, min: 0, max: 100, scaled: 0 };
+            }
+
+            /* ---------- Build full statement ---------- */
+            const stmt = {
+                actor: {
+                    name: learnerName,
+                    mbox
+                },
+                verb: {
+                    id: verbId,
+                    display: { "en-US": verbDisplay }
+                },
+                object: {
+                    id: activityUrl(objectId),
+                    definition: {
+                        name: { "en-US": objectName },
+                        type: "http://adlnet.gov/expapi/activities/lesson"
+                    },
+                    objectType: "Activity"
+                },
+                result: resultData,
+                context: {
+                    registration: sid,
+                    platform: "Storyline",
+                    language: "en-US"
+                },
+                timestamp: new Date().toISOString()
+            };
+
+            clean(stmt);
+            window.lastStatementSent = stmt;
+            console.log("📄 FINAL STATEMENT BUILT:", stmt);
+
+            return await __SEND(stmt);
+
+        } catch (e) {
+            console.error("❌ ERROR building statement:", e);
+        }
+    }
+
+    /* ============================================================
+       OVERRIDE EVERY VERSION STORYLINE TRIES TO CALL
+    ============================================================= */
+    window.sendXAPI = sendXAPI;
+    window.SendXAPI = sendXAPI;
+    if (window.parent) window.parent.sendXAPI = sendXAPI;
+    if (window.top) window.top.sendXAPI = sendXAPI;
+
+    console.log("✅ Master Slide xAPI override loaded");
+
+})();
 
 }
 
@@ -282,141 +275,134 @@ window.Script2 = function()
 window.Script3 = function()
 {
   /* ============================================================
-   Unified xAPI sender
-   - Intercepts Storyline's built-in sendXAPI(stmt)
-   - Also works as a helper: sendXAPI(verbId, verbDisplay, objectId, objectName, resultData)
-   - Always posts to your Lambda with mode=write
+   STORYLINE → OVERRIDE ALL XAPI PATHS → FORCE LAMBDA
+   Fully SCORM Cloud–compliant
 ============================================================ */
 
-if (!window.__XAPI_HELPER__) {
-  window.__XAPI_HELPER__ = true;
+(function () {
 
-  console.log("✅ Unified xAPI helper initialized on Master Slide");
-
-  // ---------------------------------------
-  // Rehydrate Storyline variables from localStorage
-  // ---------------------------------------
-  setTimeout(() => {
-    try {
-      const p = typeof GetPlayer === "function" ? GetPlayer() : null;
-      if (!p) return;
-
-      const storedName = localStorage.getItem("learnerName");
-      const storedSid  = localStorage.getItem("sessionId");
-
-      if (storedName && !p.GetVar("learnerName")) {
-        p.SetVar("learnerName", storedName);
-        p.SetVar("actorName", storedName);
-        p.SetVar(
-          "actorMbox",
-          "mailto:" + encodeURIComponent(storedName) + "@wirelxdfirm.com"
-        );
-      }
-
-      if (storedSid && !p.GetVar("sessionId")) {
-        p.SetVar("sessionId", storedSid);
-      }
-
-      console.log("🔁 Storyline vars synced from localStorage");
-    } catch (e) {
-      console.warn("⚠️ Sync from localStorage failed:", e);
-    }
-  }, 300);
-
-  // ---------------------------------------
-  // One function that handles BOTH cases:
-  //   1) sendXAPI(stmtObject)
-  //   2) sendXAPI(verbId, verbDisplay, objectId, objectName, resultData)
-  // ---------------------------------------
-  window.sendXAPI = async function (arg1, verbDisplay, objectId, objectName, resultData = {}) {
-    try {
-      const p = typeof GetPlayer === "function" ? GetPlayer() : null;
-      if (!p) throw new Error("GetPlayer unavailable");
-
-      const learnerName =
-        p.GetVar("learnerName") ||
-        localStorage.getItem("learnerName") ||
-        "Anonymous";
-
-      const sessionId =
-        p.GetVar("sessionId") ||
-        localStorage.getItem("sessionId") ||
-        (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()));
-
-      const mbox =
-        "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com";
-
-      let stmt;
-
-      // Case 1: Storyline internal call - first arg is already a full statement object
-      if (typeof arg1 === "object" && arg1 !== null && !Array.isArray(arg1)) {
-        stmt = arg1;
-
-        // Make sure actor and context are set
-        if (!stmt.actor) {
-          stmt.actor = { name: learnerName, mbox };
-        } else {
-          if (!stmt.actor.mbox) stmt.actor.mbox = mbox;
-          if (!stmt.actor.name) stmt.actor.name = learnerName;
+    /* ---------- Utility: Remove null/undefined ---------- */
+    function clean(o) {
+        for (let k in o) {
+            if (o[k] == null) delete o[k];
+            else if (typeof o[k] === "object") clean(o[k]);
         }
-
-        if (!stmt.context) stmt.context = {};
-        if (!stmt.context.registration) stmt.context.registration = sessionId;
-
-        if (!stmt.timestamp) stmt.timestamp = new Date().toISOString();
-
-        console.log("🔄 Intercepted Storyline xAPI statement:", stmt);
-      }
-      // Case 2: Your helper usage - build statement from pieces
-      else {
-        const verbId = arg1;
-        stmt = {
-          actor: { name: learnerName, mbox },
-          verb: { id: verbId, display: { "en-US": verbDisplay } },
-          object: {
-            id: objectId,
-            definition: { name: { "en-US": objectName } },
-            objectType: "Activity"
-          },
-          result: resultData || {},
-          context: { registration: sessionId },
-          timestamp: new Date().toISOString()
-        };
-
-        console.log("📝 Built helper xAPI statement:", stmt);
-      }
-
-      const endpoint =
-        "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
-
-      const r = await fetch(endpoint + "?mode=write", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(stmt),
-        keepalive: true
-      });
-
-      let body;
-      try {
-        body = await r.json();
-      } catch {
-        body = null;
-      }
-
-      if (r.ok) {
-        console.log("✅ Lambda write ok:", body || r.status);
-      } else {
-        console.warn("⚠️ LRS/Lambda returned status", r.status, body);
-      }
-
-      return body || { ok: r.ok, status: r.status };
-
-    } catch (err) {
-      console.error("❌ sendXAPI failed:", err);
-      return { ok: false, error: err.message };
+        return o;
     }
-  };
-}
+
+    /* ---------- Force full activity URL for SCORM Cloud ---------- */
+    function activityUrl(id) {
+        return "https://acbl.wirelxdfirm.com/activities/" + encodeURIComponent(id);
+    }
+
+    /* ---------- Actual send function ---------- */
+    async function __SEND(stmt) {
+
+        window.lastStatementSent = stmt;
+        console.log("📤 Sending to Lambda:", stmt);
+
+        try {
+            const r = await fetch(
+                "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws?mode=write",
+                {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(stmt),
+                    keepalive: true
+                }
+            );
+
+            const data = await r.json();
+            console.log("📩 Lambda response:", data);
+
+            if (!data.ok) {
+                console.error("❌ SCORM Cloud rejected:", data);
+            }
+
+            return data;
+
+        } catch (e) {
+            console.error("❌ Lambda write failed:", e);
+            return { ok: false, error: e.message };
+        }
+    }
+
+    /* ============================================================
+       STORYLINE BUILDS TERRIBLE STATEMENTS — REBUILD FROM SCRATCH
+    ============================================================= */
+    async function sendXAPI(verbId, verbDisplay, objectId, objectName, resultData = {}) {
+        try {
+
+            const p = GetPlayer();
+            if (!p) throw new Error("GetPlayer missing");
+
+            const learnerName =
+                p.GetVar("learnerName") ||
+                localStorage.getItem("learnerName") ||
+                "Anonymous";
+
+            const sid =
+                p.GetVar("sessionId") ||
+                localStorage.getItem("sessionId") ||
+                crypto.randomUUID();
+
+            const mbox =
+                "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com";
+
+            /* ---------- SCORM Cloud REQUIRED score field ---------- */
+            if (!resultData.score) {
+                resultData.score = { raw: 0, min: 0, max: 100, scaled: 0 };
+            }
+
+            /* ---------- Build full statement ---------- */
+            const stmt = {
+                actor: {
+                    name: learnerName,
+                    mbox
+                },
+                verb: {
+                    id: verbId,
+                    display: { "en-US": verbDisplay }
+                },
+                object: {
+                    id: activityUrl(objectId),
+                    definition: {
+                        name: { "en-US": objectName },
+                        type: "http://adlnet.gov/expapi/activities/lesson"
+                    },
+                    objectType: "Activity"
+                },
+                result: resultData,
+                context: {
+                    registration: sid,
+                    platform: "Storyline",
+                    language: "en-US"
+                },
+                timestamp: new Date().toISOString()
+            };
+
+            clean(stmt);
+            window.lastStatementSent = stmt;
+            console.log("📄 FINAL STATEMENT BUILT:", stmt);
+
+            return await __SEND(stmt);
+
+        } catch (e) {
+            console.error("❌ ERROR building statement:", e);
+        }
+    }
+
+    /* ============================================================
+       OVERRIDE EVERY VERSION STORYLINE TRIES TO CALL
+    ============================================================= */
+    window.sendXAPI = sendXAPI;
+    window.SendXAPI = sendXAPI;
+    if (window.parent) window.parent.sendXAPI = sendXAPI;
+    if (window.top) window.top.sendXAPI = sendXAPI;
+
+    console.log("✅ Master Slide xAPI override loaded");
+
+})();
 
 }
 
@@ -541,141 +527,134 @@ window.Script5 = function()
 window.Script6 = function()
 {
   /* ============================================================
-   Unified xAPI sender
-   - Intercepts Storyline's built-in sendXAPI(stmt)
-   - Also works as a helper: sendXAPI(verbId, verbDisplay, objectId, objectName, resultData)
-   - Always posts to your Lambda with mode=write
+   STORYLINE → OVERRIDE ALL XAPI PATHS → FORCE LAMBDA
+   Fully SCORM Cloud–compliant
 ============================================================ */
 
-if (!window.__XAPI_HELPER__) {
-  window.__XAPI_HELPER__ = true;
+(function () {
 
-  console.log("✅ Unified xAPI helper initialized on Master Slide");
-
-  // ---------------------------------------
-  // Rehydrate Storyline variables from localStorage
-  // ---------------------------------------
-  setTimeout(() => {
-    try {
-      const p = typeof GetPlayer === "function" ? GetPlayer() : null;
-      if (!p) return;
-
-      const storedName = localStorage.getItem("learnerName");
-      const storedSid  = localStorage.getItem("sessionId");
-
-      if (storedName && !p.GetVar("learnerName")) {
-        p.SetVar("learnerName", storedName);
-        p.SetVar("actorName", storedName);
-        p.SetVar(
-          "actorMbox",
-          "mailto:" + encodeURIComponent(storedName) + "@wirelxdfirm.com"
-        );
-      }
-
-      if (storedSid && !p.GetVar("sessionId")) {
-        p.SetVar("sessionId", storedSid);
-      }
-
-      console.log("🔁 Storyline vars synced from localStorage");
-    } catch (e) {
-      console.warn("⚠️ Sync from localStorage failed:", e);
-    }
-  }, 300);
-
-  // ---------------------------------------
-  // One function that handles BOTH cases:
-  //   1) sendXAPI(stmtObject)
-  //   2) sendXAPI(verbId, verbDisplay, objectId, objectName, resultData)
-  // ---------------------------------------
-  window.sendXAPI = async function (arg1, verbDisplay, objectId, objectName, resultData = {}) {
-    try {
-      const p = typeof GetPlayer === "function" ? GetPlayer() : null;
-      if (!p) throw new Error("GetPlayer unavailable");
-
-      const learnerName =
-        p.GetVar("learnerName") ||
-        localStorage.getItem("learnerName") ||
-        "Anonymous";
-
-      const sessionId =
-        p.GetVar("sessionId") ||
-        localStorage.getItem("sessionId") ||
-        (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()));
-
-      const mbox =
-        "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com";
-
-      let stmt;
-
-      // Case 1: Storyline internal call - first arg is already a full statement object
-      if (typeof arg1 === "object" && arg1 !== null && !Array.isArray(arg1)) {
-        stmt = arg1;
-
-        // Make sure actor and context are set
-        if (!stmt.actor) {
-          stmt.actor = { name: learnerName, mbox };
-        } else {
-          if (!stmt.actor.mbox) stmt.actor.mbox = mbox;
-          if (!stmt.actor.name) stmt.actor.name = learnerName;
+    /* ---------- Utility: Remove null/undefined ---------- */
+    function clean(o) {
+        for (let k in o) {
+            if (o[k] == null) delete o[k];
+            else if (typeof o[k] === "object") clean(o[k]);
         }
-
-        if (!stmt.context) stmt.context = {};
-        if (!stmt.context.registration) stmt.context.registration = sessionId;
-
-        if (!stmt.timestamp) stmt.timestamp = new Date().toISOString();
-
-        console.log("🔄 Intercepted Storyline xAPI statement:", stmt);
-      }
-      // Case 2: Your helper usage - build statement from pieces
-      else {
-        const verbId = arg1;
-        stmt = {
-          actor: { name: learnerName, mbox },
-          verb: { id: verbId, display: { "en-US": verbDisplay } },
-          object: {
-            id: objectId,
-            definition: { name: { "en-US": objectName } },
-            objectType: "Activity"
-          },
-          result: resultData || {},
-          context: { registration: sessionId },
-          timestamp: new Date().toISOString()
-        };
-
-        console.log("📝 Built helper xAPI statement:", stmt);
-      }
-
-      const endpoint =
-        "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
-
-      const r = await fetch(endpoint + "?mode=write", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(stmt),
-        keepalive: true
-      });
-
-      let body;
-      try {
-        body = await r.json();
-      } catch {
-        body = null;
-      }
-
-      if (r.ok) {
-        console.log("✅ Lambda write ok:", body || r.status);
-      } else {
-        console.warn("⚠️ LRS/Lambda returned status", r.status, body);
-      }
-
-      return body || { ok: r.ok, status: r.status };
-
-    } catch (err) {
-      console.error("❌ sendXAPI failed:", err);
-      return { ok: false, error: err.message };
+        return o;
     }
-  };
-}
+
+    /* ---------- Force full activity URL for SCORM Cloud ---------- */
+    function activityUrl(id) {
+        return "https://acbl.wirelxdfirm.com/activities/" + encodeURIComponent(id);
+    }
+
+    /* ---------- Actual send function ---------- */
+    async function __SEND(stmt) {
+
+        window.lastStatementSent = stmt;
+        console.log("📤 Sending to Lambda:", stmt);
+
+        try {
+            const r = await fetch(
+                "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws?mode=write",
+                {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(stmt),
+                    keepalive: true
+                }
+            );
+
+            const data = await r.json();
+            console.log("📩 Lambda response:", data);
+
+            if (!data.ok) {
+                console.error("❌ SCORM Cloud rejected:", data);
+            }
+
+            return data;
+
+        } catch (e) {
+            console.error("❌ Lambda write failed:", e);
+            return { ok: false, error: e.message };
+        }
+    }
+
+    /* ============================================================
+       STORYLINE BUILDS TERRIBLE STATEMENTS — REBUILD FROM SCRATCH
+    ============================================================= */
+    async function sendXAPI(verbId, verbDisplay, objectId, objectName, resultData = {}) {
+        try {
+
+            const p = GetPlayer();
+            if (!p) throw new Error("GetPlayer missing");
+
+            const learnerName =
+                p.GetVar("learnerName") ||
+                localStorage.getItem("learnerName") ||
+                "Anonymous";
+
+            const sid =
+                p.GetVar("sessionId") ||
+                localStorage.getItem("sessionId") ||
+                crypto.randomUUID();
+
+            const mbox =
+                "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com";
+
+            /* ---------- SCORM Cloud REQUIRED score field ---------- */
+            if (!resultData.score) {
+                resultData.score = { raw: 0, min: 0, max: 100, scaled: 0 };
+            }
+
+            /* ---------- Build full statement ---------- */
+            const stmt = {
+                actor: {
+                    name: learnerName,
+                    mbox
+                },
+                verb: {
+                    id: verbId,
+                    display: { "en-US": verbDisplay }
+                },
+                object: {
+                    id: activityUrl(objectId),
+                    definition: {
+                        name: { "en-US": objectName },
+                        type: "http://adlnet.gov/expapi/activities/lesson"
+                    },
+                    objectType: "Activity"
+                },
+                result: resultData,
+                context: {
+                    registration: sid,
+                    platform: "Storyline",
+                    language: "en-US"
+                },
+                timestamp: new Date().toISOString()
+            };
+
+            clean(stmt);
+            window.lastStatementSent = stmt;
+            console.log("📄 FINAL STATEMENT BUILT:", stmt);
+
+            return await __SEND(stmt);
+
+        } catch (e) {
+            console.error("❌ ERROR building statement:", e);
+        }
+    }
+
+    /* ============================================================
+       OVERRIDE EVERY VERSION STORYLINE TRIES TO CALL
+    ============================================================= */
+    window.sendXAPI = sendXAPI;
+    window.SendXAPI = sendXAPI;
+    if (window.parent) window.parent.sendXAPI = sendXAPI;
+    if (window.top) window.top.sendXAPI = sendXAPI;
+
+    console.log("✅ Master Slide xAPI override loaded");
+
+})();
 
 }
 
@@ -800,141 +779,134 @@ window.Script8 = function()
 window.Script9 = function()
 {
   /* ============================================================
-   Unified xAPI sender
-   - Intercepts Storyline's built-in sendXAPI(stmt)
-   - Also works as a helper: sendXAPI(verbId, verbDisplay, objectId, objectName, resultData)
-   - Always posts to your Lambda with mode=write
+   STORYLINE → OVERRIDE ALL XAPI PATHS → FORCE LAMBDA
+   Fully SCORM Cloud–compliant
 ============================================================ */
 
-if (!window.__XAPI_HELPER__) {
-  window.__XAPI_HELPER__ = true;
+(function () {
 
-  console.log("✅ Unified xAPI helper initialized on Master Slide");
-
-  // ---------------------------------------
-  // Rehydrate Storyline variables from localStorage
-  // ---------------------------------------
-  setTimeout(() => {
-    try {
-      const p = typeof GetPlayer === "function" ? GetPlayer() : null;
-      if (!p) return;
-
-      const storedName = localStorage.getItem("learnerName");
-      const storedSid  = localStorage.getItem("sessionId");
-
-      if (storedName && !p.GetVar("learnerName")) {
-        p.SetVar("learnerName", storedName);
-        p.SetVar("actorName", storedName);
-        p.SetVar(
-          "actorMbox",
-          "mailto:" + encodeURIComponent(storedName) + "@wirelxdfirm.com"
-        );
-      }
-
-      if (storedSid && !p.GetVar("sessionId")) {
-        p.SetVar("sessionId", storedSid);
-      }
-
-      console.log("🔁 Storyline vars synced from localStorage");
-    } catch (e) {
-      console.warn("⚠️ Sync from localStorage failed:", e);
-    }
-  }, 300);
-
-  // ---------------------------------------
-  // One function that handles BOTH cases:
-  //   1) sendXAPI(stmtObject)
-  //   2) sendXAPI(verbId, verbDisplay, objectId, objectName, resultData)
-  // ---------------------------------------
-  window.sendXAPI = async function (arg1, verbDisplay, objectId, objectName, resultData = {}) {
-    try {
-      const p = typeof GetPlayer === "function" ? GetPlayer() : null;
-      if (!p) throw new Error("GetPlayer unavailable");
-
-      const learnerName =
-        p.GetVar("learnerName") ||
-        localStorage.getItem("learnerName") ||
-        "Anonymous";
-
-      const sessionId =
-        p.GetVar("sessionId") ||
-        localStorage.getItem("sessionId") ||
-        (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()));
-
-      const mbox =
-        "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com";
-
-      let stmt;
-
-      // Case 1: Storyline internal call - first arg is already a full statement object
-      if (typeof arg1 === "object" && arg1 !== null && !Array.isArray(arg1)) {
-        stmt = arg1;
-
-        // Make sure actor and context are set
-        if (!stmt.actor) {
-          stmt.actor = { name: learnerName, mbox };
-        } else {
-          if (!stmt.actor.mbox) stmt.actor.mbox = mbox;
-          if (!stmt.actor.name) stmt.actor.name = learnerName;
+    /* ---------- Utility: Remove null/undefined ---------- */
+    function clean(o) {
+        for (let k in o) {
+            if (o[k] == null) delete o[k];
+            else if (typeof o[k] === "object") clean(o[k]);
         }
-
-        if (!stmt.context) stmt.context = {};
-        if (!stmt.context.registration) stmt.context.registration = sessionId;
-
-        if (!stmt.timestamp) stmt.timestamp = new Date().toISOString();
-
-        console.log("🔄 Intercepted Storyline xAPI statement:", stmt);
-      }
-      // Case 2: Your helper usage - build statement from pieces
-      else {
-        const verbId = arg1;
-        stmt = {
-          actor: { name: learnerName, mbox },
-          verb: { id: verbId, display: { "en-US": verbDisplay } },
-          object: {
-            id: objectId,
-            definition: { name: { "en-US": objectName } },
-            objectType: "Activity"
-          },
-          result: resultData || {},
-          context: { registration: sessionId },
-          timestamp: new Date().toISOString()
-        };
-
-        console.log("📝 Built helper xAPI statement:", stmt);
-      }
-
-      const endpoint =
-        "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
-
-      const r = await fetch(endpoint + "?mode=write", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(stmt),
-        keepalive: true
-      });
-
-      let body;
-      try {
-        body = await r.json();
-      } catch {
-        body = null;
-      }
-
-      if (r.ok) {
-        console.log("✅ Lambda write ok:", body || r.status);
-      } else {
-        console.warn("⚠️ LRS/Lambda returned status", r.status, body);
-      }
-
-      return body || { ok: r.ok, status: r.status };
-
-    } catch (err) {
-      console.error("❌ sendXAPI failed:", err);
-      return { ok: false, error: err.message };
+        return o;
     }
-  };
-}
+
+    /* ---------- Force full activity URL for SCORM Cloud ---------- */
+    function activityUrl(id) {
+        return "https://acbl.wirelxdfirm.com/activities/" + encodeURIComponent(id);
+    }
+
+    /* ---------- Actual send function ---------- */
+    async function __SEND(stmt) {
+
+        window.lastStatementSent = stmt;
+        console.log("📤 Sending to Lambda:", stmt);
+
+        try {
+            const r = await fetch(
+                "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws?mode=write",
+                {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(stmt),
+                    keepalive: true
+                }
+            );
+
+            const data = await r.json();
+            console.log("📩 Lambda response:", data);
+
+            if (!data.ok) {
+                console.error("❌ SCORM Cloud rejected:", data);
+            }
+
+            return data;
+
+        } catch (e) {
+            console.error("❌ Lambda write failed:", e);
+            return { ok: false, error: e.message };
+        }
+    }
+
+    /* ============================================================
+       STORYLINE BUILDS TERRIBLE STATEMENTS — REBUILD FROM SCRATCH
+    ============================================================= */
+    async function sendXAPI(verbId, verbDisplay, objectId, objectName, resultData = {}) {
+        try {
+
+            const p = GetPlayer();
+            if (!p) throw new Error("GetPlayer missing");
+
+            const learnerName =
+                p.GetVar("learnerName") ||
+                localStorage.getItem("learnerName") ||
+                "Anonymous";
+
+            const sid =
+                p.GetVar("sessionId") ||
+                localStorage.getItem("sessionId") ||
+                crypto.randomUUID();
+
+            const mbox =
+                "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com";
+
+            /* ---------- SCORM Cloud REQUIRED score field ---------- */
+            if (!resultData.score) {
+                resultData.score = { raw: 0, min: 0, max: 100, scaled: 0 };
+            }
+
+            /* ---------- Build full statement ---------- */
+            const stmt = {
+                actor: {
+                    name: learnerName,
+                    mbox
+                },
+                verb: {
+                    id: verbId,
+                    display: { "en-US": verbDisplay }
+                },
+                object: {
+                    id: activityUrl(objectId),
+                    definition: {
+                        name: { "en-US": objectName },
+                        type: "http://adlnet.gov/expapi/activities/lesson"
+                    },
+                    objectType: "Activity"
+                },
+                result: resultData,
+                context: {
+                    registration: sid,
+                    platform: "Storyline",
+                    language: "en-US"
+                },
+                timestamp: new Date().toISOString()
+            };
+
+            clean(stmt);
+            window.lastStatementSent = stmt;
+            console.log("📄 FINAL STATEMENT BUILT:", stmt);
+
+            return await __SEND(stmt);
+
+        } catch (e) {
+            console.error("❌ ERROR building statement:", e);
+        }
+    }
+
+    /* ============================================================
+       OVERRIDE EVERY VERSION STORYLINE TRIES TO CALL
+    ============================================================= */
+    window.sendXAPI = sendXAPI;
+    window.SendXAPI = sendXAPI;
+    if (window.parent) window.parent.sendXAPI = sendXAPI;
+    if (window.top) window.top.sendXAPI = sendXAPI;
+
+    console.log("✅ Master Slide xAPI override loaded");
+
+})();
 
 }
 
@@ -1061,141 +1033,134 @@ window.Script11 = function()
 window.Script12 = function()
 {
   /* ============================================================
-   Unified xAPI sender
-   - Intercepts Storyline's built-in sendXAPI(stmt)
-   - Also works as a helper: sendXAPI(verbId, verbDisplay, objectId, objectName, resultData)
-   - Always posts to your Lambda with mode=write
+   STORYLINE → OVERRIDE ALL XAPI PATHS → FORCE LAMBDA
+   Fully SCORM Cloud–compliant
 ============================================================ */
 
-if (!window.__XAPI_HELPER__) {
-  window.__XAPI_HELPER__ = true;
+(function () {
 
-  console.log("✅ Unified xAPI helper initialized on Master Slide");
-
-  // ---------------------------------------
-  // Rehydrate Storyline variables from localStorage
-  // ---------------------------------------
-  setTimeout(() => {
-    try {
-      const p = typeof GetPlayer === "function" ? GetPlayer() : null;
-      if (!p) return;
-
-      const storedName = localStorage.getItem("learnerName");
-      const storedSid  = localStorage.getItem("sessionId");
-
-      if (storedName && !p.GetVar("learnerName")) {
-        p.SetVar("learnerName", storedName);
-        p.SetVar("actorName", storedName);
-        p.SetVar(
-          "actorMbox",
-          "mailto:" + encodeURIComponent(storedName) + "@wirelxdfirm.com"
-        );
-      }
-
-      if (storedSid && !p.GetVar("sessionId")) {
-        p.SetVar("sessionId", storedSid);
-      }
-
-      console.log("🔁 Storyline vars synced from localStorage");
-    } catch (e) {
-      console.warn("⚠️ Sync from localStorage failed:", e);
-    }
-  }, 300);
-
-  // ---------------------------------------
-  // One function that handles BOTH cases:
-  //   1) sendXAPI(stmtObject)
-  //   2) sendXAPI(verbId, verbDisplay, objectId, objectName, resultData)
-  // ---------------------------------------
-  window.sendXAPI = async function (arg1, verbDisplay, objectId, objectName, resultData = {}) {
-    try {
-      const p = typeof GetPlayer === "function" ? GetPlayer() : null;
-      if (!p) throw new Error("GetPlayer unavailable");
-
-      const learnerName =
-        p.GetVar("learnerName") ||
-        localStorage.getItem("learnerName") ||
-        "Anonymous";
-
-      const sessionId =
-        p.GetVar("sessionId") ||
-        localStorage.getItem("sessionId") ||
-        (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()));
-
-      const mbox =
-        "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com";
-
-      let stmt;
-
-      // Case 1: Storyline internal call - first arg is already a full statement object
-      if (typeof arg1 === "object" && arg1 !== null && !Array.isArray(arg1)) {
-        stmt = arg1;
-
-        // Make sure actor and context are set
-        if (!stmt.actor) {
-          stmt.actor = { name: learnerName, mbox };
-        } else {
-          if (!stmt.actor.mbox) stmt.actor.mbox = mbox;
-          if (!stmt.actor.name) stmt.actor.name = learnerName;
+    /* ---------- Utility: Remove null/undefined ---------- */
+    function clean(o) {
+        for (let k in o) {
+            if (o[k] == null) delete o[k];
+            else if (typeof o[k] === "object") clean(o[k]);
         }
-
-        if (!stmt.context) stmt.context = {};
-        if (!stmt.context.registration) stmt.context.registration = sessionId;
-
-        if (!stmt.timestamp) stmt.timestamp = new Date().toISOString();
-
-        console.log("🔄 Intercepted Storyline xAPI statement:", stmt);
-      }
-      // Case 2: Your helper usage - build statement from pieces
-      else {
-        const verbId = arg1;
-        stmt = {
-          actor: { name: learnerName, mbox },
-          verb: { id: verbId, display: { "en-US": verbDisplay } },
-          object: {
-            id: objectId,
-            definition: { name: { "en-US": objectName } },
-            objectType: "Activity"
-          },
-          result: resultData || {},
-          context: { registration: sessionId },
-          timestamp: new Date().toISOString()
-        };
-
-        console.log("📝 Built helper xAPI statement:", stmt);
-      }
-
-      const endpoint =
-        "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
-
-      const r = await fetch(endpoint + "?mode=write", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(stmt),
-        keepalive: true
-      });
-
-      let body;
-      try {
-        body = await r.json();
-      } catch {
-        body = null;
-      }
-
-      if (r.ok) {
-        console.log("✅ Lambda write ok:", body || r.status);
-      } else {
-        console.warn("⚠️ LRS/Lambda returned status", r.status, body);
-      }
-
-      return body || { ok: r.ok, status: r.status };
-
-    } catch (err) {
-      console.error("❌ sendXAPI failed:", err);
-      return { ok: false, error: err.message };
+        return o;
     }
-  };
-}
+
+    /* ---------- Force full activity URL for SCORM Cloud ---------- */
+    function activityUrl(id) {
+        return "https://acbl.wirelxdfirm.com/activities/" + encodeURIComponent(id);
+    }
+
+    /* ---------- Actual send function ---------- */
+    async function __SEND(stmt) {
+
+        window.lastStatementSent = stmt;
+        console.log("📤 Sending to Lambda:", stmt);
+
+        try {
+            const r = await fetch(
+                "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws?mode=write",
+                {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(stmt),
+                    keepalive: true
+                }
+            );
+
+            const data = await r.json();
+            console.log("📩 Lambda response:", data);
+
+            if (!data.ok) {
+                console.error("❌ SCORM Cloud rejected:", data);
+            }
+
+            return data;
+
+        } catch (e) {
+            console.error("❌ Lambda write failed:", e);
+            return { ok: false, error: e.message };
+        }
+    }
+
+    /* ============================================================
+       STORYLINE BUILDS TERRIBLE STATEMENTS — REBUILD FROM SCRATCH
+    ============================================================= */
+    async function sendXAPI(verbId, verbDisplay, objectId, objectName, resultData = {}) {
+        try {
+
+            const p = GetPlayer();
+            if (!p) throw new Error("GetPlayer missing");
+
+            const learnerName =
+                p.GetVar("learnerName") ||
+                localStorage.getItem("learnerName") ||
+                "Anonymous";
+
+            const sid =
+                p.GetVar("sessionId") ||
+                localStorage.getItem("sessionId") ||
+                crypto.randomUUID();
+
+            const mbox =
+                "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com";
+
+            /* ---------- SCORM Cloud REQUIRED score field ---------- */
+            if (!resultData.score) {
+                resultData.score = { raw: 0, min: 0, max: 100, scaled: 0 };
+            }
+
+            /* ---------- Build full statement ---------- */
+            const stmt = {
+                actor: {
+                    name: learnerName,
+                    mbox
+                },
+                verb: {
+                    id: verbId,
+                    display: { "en-US": verbDisplay }
+                },
+                object: {
+                    id: activityUrl(objectId),
+                    definition: {
+                        name: { "en-US": objectName },
+                        type: "http://adlnet.gov/expapi/activities/lesson"
+                    },
+                    objectType: "Activity"
+                },
+                result: resultData,
+                context: {
+                    registration: sid,
+                    platform: "Storyline",
+                    language: "en-US"
+                },
+                timestamp: new Date().toISOString()
+            };
+
+            clean(stmt);
+            window.lastStatementSent = stmt;
+            console.log("📄 FINAL STATEMENT BUILT:", stmt);
+
+            return await __SEND(stmt);
+
+        } catch (e) {
+            console.error("❌ ERROR building statement:", e);
+        }
+    }
+
+    /* ============================================================
+       OVERRIDE EVERY VERSION STORYLINE TRIES TO CALL
+    ============================================================= */
+    window.sendXAPI = sendXAPI;
+    window.SendXAPI = sendXAPI;
+    if (window.parent) window.parent.sendXAPI = sendXAPI;
+    if (window.top) window.top.sendXAPI = sendXAPI;
+
+    console.log("✅ Master Slide xAPI override loaded");
+
+})();
 
 }
 
