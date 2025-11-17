@@ -15,20 +15,24 @@ var slideWidth = player.slideWidth;
 var slideHeight = player.slideHeight;
 window.Script1 = function()
 {
-  // =======================================================
-//   GLOBAL xAPI Helper (loads once, safe, consistent)
-// =======================================================
+  /* ============================================================
+   Unified xAPI sender
+   - Intercepts Storyline's built-in sendXAPI(stmt)
+   - Also works as a helper: sendXAPI(verbId, verbDisplay, objectId, objectName, resultData)
+   - Always posts to your Lambda with mode=write
+============================================================ */
+
 if (!window.__XAPI_HELPER__) {
   window.__XAPI_HELPER__ = true;
 
   console.log("✅ Unified xAPI helper initialized on Master Slide");
 
   // ---------------------------------------
-  // Rehydrate Storyline variables
+  // Rehydrate Storyline variables from localStorage
   // ---------------------------------------
   setTimeout(() => {
     try {
-      const p = GetPlayer && GetPlayer();
+      const p = typeof GetPlayer === "function" ? GetPlayer() : null;
       if (!p) return;
 
       const storedName = localStorage.getItem("learnerName");
@@ -54,17 +58,13 @@ if (!window.__XAPI_HELPER__) {
   }, 300);
 
   // ---------------------------------------
-  // Global sendXAPI helper
+  // One function that handles BOTH cases:
+  //   1) sendXAPI(stmtObject)
+  //   2) sendXAPI(verbId, verbDisplay, objectId, objectName, resultData)
   // ---------------------------------------
-  window.sendXAPI = async function (
-    verbId,
-    verbDisplay,
-    objectId,
-    objectName,
-    resultData = {}
-  ) {
+  window.sendXAPI = async function (arg1, verbDisplay, objectId, objectName, resultData = {}) {
     try {
-      const p = GetPlayer();
+      const p = typeof GetPlayer === "function" ? GetPlayer() : null;
       if (!p) throw new Error("GetPlayer unavailable");
 
       const learnerName =
@@ -80,18 +80,45 @@ if (!window.__XAPI_HELPER__) {
       const mbox =
         "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com";
 
-      const stmt = {
-        actor: { name: learnerName, mbox },
-        verb: { id: verbId, display: { "en-US": verbDisplay } },
-        object: {
-          id: objectId,
-          definition: { name: { "en-US": objectName } },
-          objectType: "Activity"
-        },
-        result: resultData,
-        context: { registration: sessionId },
-        timestamp: new Date().toISOString()
-      };
+      let stmt;
+
+      // Case 1: Storyline internal call - first arg is already a full statement object
+      if (typeof arg1 === "object" && arg1 !== null && !Array.isArray(arg1)) {
+        stmt = arg1;
+
+        // Make sure actor and context are set
+        if (!stmt.actor) {
+          stmt.actor = { name: learnerName, mbox };
+        } else {
+          if (!stmt.actor.mbox) stmt.actor.mbox = mbox;
+          if (!stmt.actor.name) stmt.actor.name = learnerName;
+        }
+
+        if (!stmt.context) stmt.context = {};
+        if (!stmt.context.registration) stmt.context.registration = sessionId;
+
+        if (!stmt.timestamp) stmt.timestamp = new Date().toISOString();
+
+        console.log("🔄 Intercepted Storyline xAPI statement:", stmt);
+      }
+      // Case 2: Your helper usage - build statement from pieces
+      else {
+        const verbId = arg1;
+        stmt = {
+          actor: { name: learnerName, mbox },
+          verb: { id: verbId, display: { "en-US": verbDisplay } },
+          object: {
+            id: objectId,
+            definition: { name: { "en-US": objectName } },
+            objectType: "Activity"
+          },
+          result: resultData || {},
+          context: { registration: sessionId },
+          timestamp: new Date().toISOString()
+        };
+
+        console.log("📝 Built helper xAPI statement:", stmt);
+      }
 
       const endpoint =
         "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
@@ -103,12 +130,24 @@ if (!window.__XAPI_HELPER__) {
         keepalive: true
       });
 
-      if (r.ok)
-        console.log(`✅ xAPI sent via Lambda: ${verbDisplay}`);
-      else
-        console.warn(`⚠️ LRS returned status ${r.status}`);
+      let body;
+      try {
+        body = await r.json();
+      } catch {
+        body = null;
+      }
+
+      if (r.ok) {
+        console.log("✅ Lambda write ok:", body || r.status);
+      } else {
+        console.warn("⚠️ LRS/Lambda returned status", r.status, body);
+      }
+
+      return body || { ok: r.ok, status: r.status };
+
     } catch (err) {
       console.error("❌ sendXAPI failed:", err);
+      return { ok: false, error: err.message };
     }
   };
 }
@@ -242,20 +281,24 @@ window.Script2 = function()
 
 window.Script3 = function()
 {
-  // =======================================================
-//   GLOBAL xAPI Helper (loads once, safe, consistent)
-// =======================================================
+  /* ============================================================
+   Unified xAPI sender
+   - Intercepts Storyline's built-in sendXAPI(stmt)
+   - Also works as a helper: sendXAPI(verbId, verbDisplay, objectId, objectName, resultData)
+   - Always posts to your Lambda with mode=write
+============================================================ */
+
 if (!window.__XAPI_HELPER__) {
   window.__XAPI_HELPER__ = true;
 
   console.log("✅ Unified xAPI helper initialized on Master Slide");
 
   // ---------------------------------------
-  // Rehydrate Storyline variables
+  // Rehydrate Storyline variables from localStorage
   // ---------------------------------------
   setTimeout(() => {
     try {
-      const p = GetPlayer && GetPlayer();
+      const p = typeof GetPlayer === "function" ? GetPlayer() : null;
       if (!p) return;
 
       const storedName = localStorage.getItem("learnerName");
@@ -281,17 +324,13 @@ if (!window.__XAPI_HELPER__) {
   }, 300);
 
   // ---------------------------------------
-  // Global sendXAPI helper
+  // One function that handles BOTH cases:
+  //   1) sendXAPI(stmtObject)
+  //   2) sendXAPI(verbId, verbDisplay, objectId, objectName, resultData)
   // ---------------------------------------
-  window.sendXAPI = async function (
-    verbId,
-    verbDisplay,
-    objectId,
-    objectName,
-    resultData = {}
-  ) {
+  window.sendXAPI = async function (arg1, verbDisplay, objectId, objectName, resultData = {}) {
     try {
-      const p = GetPlayer();
+      const p = typeof GetPlayer === "function" ? GetPlayer() : null;
       if (!p) throw new Error("GetPlayer unavailable");
 
       const learnerName =
@@ -307,18 +346,45 @@ if (!window.__XAPI_HELPER__) {
       const mbox =
         "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com";
 
-      const stmt = {
-        actor: { name: learnerName, mbox },
-        verb: { id: verbId, display: { "en-US": verbDisplay } },
-        object: {
-          id: objectId,
-          definition: { name: { "en-US": objectName } },
-          objectType: "Activity"
-        },
-        result: resultData,
-        context: { registration: sessionId },
-        timestamp: new Date().toISOString()
-      };
+      let stmt;
+
+      // Case 1: Storyline internal call - first arg is already a full statement object
+      if (typeof arg1 === "object" && arg1 !== null && !Array.isArray(arg1)) {
+        stmt = arg1;
+
+        // Make sure actor and context are set
+        if (!stmt.actor) {
+          stmt.actor = { name: learnerName, mbox };
+        } else {
+          if (!stmt.actor.mbox) stmt.actor.mbox = mbox;
+          if (!stmt.actor.name) stmt.actor.name = learnerName;
+        }
+
+        if (!stmt.context) stmt.context = {};
+        if (!stmt.context.registration) stmt.context.registration = sessionId;
+
+        if (!stmt.timestamp) stmt.timestamp = new Date().toISOString();
+
+        console.log("🔄 Intercepted Storyline xAPI statement:", stmt);
+      }
+      // Case 2: Your helper usage - build statement from pieces
+      else {
+        const verbId = arg1;
+        stmt = {
+          actor: { name: learnerName, mbox },
+          verb: { id: verbId, display: { "en-US": verbDisplay } },
+          object: {
+            id: objectId,
+            definition: { name: { "en-US": objectName } },
+            objectType: "Activity"
+          },
+          result: resultData || {},
+          context: { registration: sessionId },
+          timestamp: new Date().toISOString()
+        };
+
+        console.log("📝 Built helper xAPI statement:", stmt);
+      }
 
       const endpoint =
         "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
@@ -330,12 +396,24 @@ if (!window.__XAPI_HELPER__) {
         keepalive: true
       });
 
-      if (r.ok)
-        console.log(`✅ xAPI sent via Lambda: ${verbDisplay}`);
-      else
-        console.warn(`⚠️ LRS returned status ${r.status}`);
+      let body;
+      try {
+        body = await r.json();
+      } catch {
+        body = null;
+      }
+
+      if (r.ok) {
+        console.log("✅ Lambda write ok:", body || r.status);
+      } else {
+        console.warn("⚠️ LRS/Lambda returned status", r.status, body);
+      }
+
+      return body || { ok: r.ok, status: r.status };
+
     } catch (err) {
       console.error("❌ sendXAPI failed:", err);
+      return { ok: false, error: err.message };
     }
   };
 }
@@ -462,20 +540,24 @@ window.Script5 = function()
 
 window.Script6 = function()
 {
-  // =======================================================
-//   GLOBAL xAPI Helper (loads once, safe, consistent)
-// =======================================================
+  /* ============================================================
+   Unified xAPI sender
+   - Intercepts Storyline's built-in sendXAPI(stmt)
+   - Also works as a helper: sendXAPI(verbId, verbDisplay, objectId, objectName, resultData)
+   - Always posts to your Lambda with mode=write
+============================================================ */
+
 if (!window.__XAPI_HELPER__) {
   window.__XAPI_HELPER__ = true;
 
   console.log("✅ Unified xAPI helper initialized on Master Slide");
 
   // ---------------------------------------
-  // Rehydrate Storyline variables
+  // Rehydrate Storyline variables from localStorage
   // ---------------------------------------
   setTimeout(() => {
     try {
-      const p = GetPlayer && GetPlayer();
+      const p = typeof GetPlayer === "function" ? GetPlayer() : null;
       if (!p) return;
 
       const storedName = localStorage.getItem("learnerName");
@@ -501,17 +583,13 @@ if (!window.__XAPI_HELPER__) {
   }, 300);
 
   // ---------------------------------------
-  // Global sendXAPI helper
+  // One function that handles BOTH cases:
+  //   1) sendXAPI(stmtObject)
+  //   2) sendXAPI(verbId, verbDisplay, objectId, objectName, resultData)
   // ---------------------------------------
-  window.sendXAPI = async function (
-    verbId,
-    verbDisplay,
-    objectId,
-    objectName,
-    resultData = {}
-  ) {
+  window.sendXAPI = async function (arg1, verbDisplay, objectId, objectName, resultData = {}) {
     try {
-      const p = GetPlayer();
+      const p = typeof GetPlayer === "function" ? GetPlayer() : null;
       if (!p) throw new Error("GetPlayer unavailable");
 
       const learnerName =
@@ -527,18 +605,45 @@ if (!window.__XAPI_HELPER__) {
       const mbox =
         "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com";
 
-      const stmt = {
-        actor: { name: learnerName, mbox },
-        verb: { id: verbId, display: { "en-US": verbDisplay } },
-        object: {
-          id: objectId,
-          definition: { name: { "en-US": objectName } },
-          objectType: "Activity"
-        },
-        result: resultData,
-        context: { registration: sessionId },
-        timestamp: new Date().toISOString()
-      };
+      let stmt;
+
+      // Case 1: Storyline internal call - first arg is already a full statement object
+      if (typeof arg1 === "object" && arg1 !== null && !Array.isArray(arg1)) {
+        stmt = arg1;
+
+        // Make sure actor and context are set
+        if (!stmt.actor) {
+          stmt.actor = { name: learnerName, mbox };
+        } else {
+          if (!stmt.actor.mbox) stmt.actor.mbox = mbox;
+          if (!stmt.actor.name) stmt.actor.name = learnerName;
+        }
+
+        if (!stmt.context) stmt.context = {};
+        if (!stmt.context.registration) stmt.context.registration = sessionId;
+
+        if (!stmt.timestamp) stmt.timestamp = new Date().toISOString();
+
+        console.log("🔄 Intercepted Storyline xAPI statement:", stmt);
+      }
+      // Case 2: Your helper usage - build statement from pieces
+      else {
+        const verbId = arg1;
+        stmt = {
+          actor: { name: learnerName, mbox },
+          verb: { id: verbId, display: { "en-US": verbDisplay } },
+          object: {
+            id: objectId,
+            definition: { name: { "en-US": objectName } },
+            objectType: "Activity"
+          },
+          result: resultData || {},
+          context: { registration: sessionId },
+          timestamp: new Date().toISOString()
+        };
+
+        console.log("📝 Built helper xAPI statement:", stmt);
+      }
 
       const endpoint =
         "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
@@ -550,12 +655,24 @@ if (!window.__XAPI_HELPER__) {
         keepalive: true
       });
 
-      if (r.ok)
-        console.log(`✅ xAPI sent via Lambda: ${verbDisplay}`);
-      else
-        console.warn(`⚠️ LRS returned status ${r.status}`);
+      let body;
+      try {
+        body = await r.json();
+      } catch {
+        body = null;
+      }
+
+      if (r.ok) {
+        console.log("✅ Lambda write ok:", body || r.status);
+      } else {
+        console.warn("⚠️ LRS/Lambda returned status", r.status, body);
+      }
+
+      return body || { ok: r.ok, status: r.status };
+
     } catch (err) {
       console.error("❌ sendXAPI failed:", err);
+      return { ok: false, error: err.message };
     }
   };
 }
@@ -682,20 +799,24 @@ window.Script8 = function()
 
 window.Script9 = function()
 {
-  // =======================================================
-//   GLOBAL xAPI Helper (loads once, safe, consistent)
-// =======================================================
+  /* ============================================================
+   Unified xAPI sender
+   - Intercepts Storyline's built-in sendXAPI(stmt)
+   - Also works as a helper: sendXAPI(verbId, verbDisplay, objectId, objectName, resultData)
+   - Always posts to your Lambda with mode=write
+============================================================ */
+
 if (!window.__XAPI_HELPER__) {
   window.__XAPI_HELPER__ = true;
 
   console.log("✅ Unified xAPI helper initialized on Master Slide");
 
   // ---------------------------------------
-  // Rehydrate Storyline variables
+  // Rehydrate Storyline variables from localStorage
   // ---------------------------------------
   setTimeout(() => {
     try {
-      const p = GetPlayer && GetPlayer();
+      const p = typeof GetPlayer === "function" ? GetPlayer() : null;
       if (!p) return;
 
       const storedName = localStorage.getItem("learnerName");
@@ -721,17 +842,13 @@ if (!window.__XAPI_HELPER__) {
   }, 300);
 
   // ---------------------------------------
-  // Global sendXAPI helper
+  // One function that handles BOTH cases:
+  //   1) sendXAPI(stmtObject)
+  //   2) sendXAPI(verbId, verbDisplay, objectId, objectName, resultData)
   // ---------------------------------------
-  window.sendXAPI = async function (
-    verbId,
-    verbDisplay,
-    objectId,
-    objectName,
-    resultData = {}
-  ) {
+  window.sendXAPI = async function (arg1, verbDisplay, objectId, objectName, resultData = {}) {
     try {
-      const p = GetPlayer();
+      const p = typeof GetPlayer === "function" ? GetPlayer() : null;
       if (!p) throw new Error("GetPlayer unavailable");
 
       const learnerName =
@@ -747,18 +864,45 @@ if (!window.__XAPI_HELPER__) {
       const mbox =
         "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com";
 
-      const stmt = {
-        actor: { name: learnerName, mbox },
-        verb: { id: verbId, display: { "en-US": verbDisplay } },
-        object: {
-          id: objectId,
-          definition: { name: { "en-US": objectName } },
-          objectType: "Activity"
-        },
-        result: resultData,
-        context: { registration: sessionId },
-        timestamp: new Date().toISOString()
-      };
+      let stmt;
+
+      // Case 1: Storyline internal call - first arg is already a full statement object
+      if (typeof arg1 === "object" && arg1 !== null && !Array.isArray(arg1)) {
+        stmt = arg1;
+
+        // Make sure actor and context are set
+        if (!stmt.actor) {
+          stmt.actor = { name: learnerName, mbox };
+        } else {
+          if (!stmt.actor.mbox) stmt.actor.mbox = mbox;
+          if (!stmt.actor.name) stmt.actor.name = learnerName;
+        }
+
+        if (!stmt.context) stmt.context = {};
+        if (!stmt.context.registration) stmt.context.registration = sessionId;
+
+        if (!stmt.timestamp) stmt.timestamp = new Date().toISOString();
+
+        console.log("🔄 Intercepted Storyline xAPI statement:", stmt);
+      }
+      // Case 2: Your helper usage - build statement from pieces
+      else {
+        const verbId = arg1;
+        stmt = {
+          actor: { name: learnerName, mbox },
+          verb: { id: verbId, display: { "en-US": verbDisplay } },
+          object: {
+            id: objectId,
+            definition: { name: { "en-US": objectName } },
+            objectType: "Activity"
+          },
+          result: resultData || {},
+          context: { registration: sessionId },
+          timestamp: new Date().toISOString()
+        };
+
+        console.log("📝 Built helper xAPI statement:", stmt);
+      }
 
       const endpoint =
         "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
@@ -770,12 +914,24 @@ if (!window.__XAPI_HELPER__) {
         keepalive: true
       });
 
-      if (r.ok)
-        console.log(`✅ xAPI sent via Lambda: ${verbDisplay}`);
-      else
-        console.warn(`⚠️ LRS returned status ${r.status}`);
+      let body;
+      try {
+        body = await r.json();
+      } catch {
+        body = null;
+      }
+
+      if (r.ok) {
+        console.log("✅ Lambda write ok:", body || r.status);
+      } else {
+        console.warn("⚠️ LRS/Lambda returned status", r.status, body);
+      }
+
+      return body || { ok: r.ok, status: r.status };
+
     } catch (err) {
       console.error("❌ sendXAPI failed:", err);
+      return { ok: false, error: err.message };
     }
   };
 }
@@ -904,20 +1060,24 @@ window.Script11 = function()
 
 window.Script12 = function()
 {
-  // =======================================================
-//   GLOBAL xAPI Helper (loads once, safe, consistent)
-// =======================================================
+  /* ============================================================
+   Unified xAPI sender
+   - Intercepts Storyline's built-in sendXAPI(stmt)
+   - Also works as a helper: sendXAPI(verbId, verbDisplay, objectId, objectName, resultData)
+   - Always posts to your Lambda with mode=write
+============================================================ */
+
 if (!window.__XAPI_HELPER__) {
   window.__XAPI_HELPER__ = true;
 
   console.log("✅ Unified xAPI helper initialized on Master Slide");
 
   // ---------------------------------------
-  // Rehydrate Storyline variables
+  // Rehydrate Storyline variables from localStorage
   // ---------------------------------------
   setTimeout(() => {
     try {
-      const p = GetPlayer && GetPlayer();
+      const p = typeof GetPlayer === "function" ? GetPlayer() : null;
       if (!p) return;
 
       const storedName = localStorage.getItem("learnerName");
@@ -943,17 +1103,13 @@ if (!window.__XAPI_HELPER__) {
   }, 300);
 
   // ---------------------------------------
-  // Global sendXAPI helper
+  // One function that handles BOTH cases:
+  //   1) sendXAPI(stmtObject)
+  //   2) sendXAPI(verbId, verbDisplay, objectId, objectName, resultData)
   // ---------------------------------------
-  window.sendXAPI = async function (
-    verbId,
-    verbDisplay,
-    objectId,
-    objectName,
-    resultData = {}
-  ) {
+  window.sendXAPI = async function (arg1, verbDisplay, objectId, objectName, resultData = {}) {
     try {
-      const p = GetPlayer();
+      const p = typeof GetPlayer === "function" ? GetPlayer() : null;
       if (!p) throw new Error("GetPlayer unavailable");
 
       const learnerName =
@@ -969,18 +1125,45 @@ if (!window.__XAPI_HELPER__) {
       const mbox =
         "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com";
 
-      const stmt = {
-        actor: { name: learnerName, mbox },
-        verb: { id: verbId, display: { "en-US": verbDisplay } },
-        object: {
-          id: objectId,
-          definition: { name: { "en-US": objectName } },
-          objectType: "Activity"
-        },
-        result: resultData,
-        context: { registration: sessionId },
-        timestamp: new Date().toISOString()
-      };
+      let stmt;
+
+      // Case 1: Storyline internal call - first arg is already a full statement object
+      if (typeof arg1 === "object" && arg1 !== null && !Array.isArray(arg1)) {
+        stmt = arg1;
+
+        // Make sure actor and context are set
+        if (!stmt.actor) {
+          stmt.actor = { name: learnerName, mbox };
+        } else {
+          if (!stmt.actor.mbox) stmt.actor.mbox = mbox;
+          if (!stmt.actor.name) stmt.actor.name = learnerName;
+        }
+
+        if (!stmt.context) stmt.context = {};
+        if (!stmt.context.registration) stmt.context.registration = sessionId;
+
+        if (!stmt.timestamp) stmt.timestamp = new Date().toISOString();
+
+        console.log("🔄 Intercepted Storyline xAPI statement:", stmt);
+      }
+      // Case 2: Your helper usage - build statement from pieces
+      else {
+        const verbId = arg1;
+        stmt = {
+          actor: { name: learnerName, mbox },
+          verb: { id: verbId, display: { "en-US": verbDisplay } },
+          object: {
+            id: objectId,
+            definition: { name: { "en-US": objectName } },
+            objectType: "Activity"
+          },
+          result: resultData || {},
+          context: { registration: sessionId },
+          timestamp: new Date().toISOString()
+        };
+
+        console.log("📝 Built helper xAPI statement:", stmt);
+      }
 
       const endpoint =
         "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
@@ -992,12 +1175,24 @@ if (!window.__XAPI_HELPER__) {
         keepalive: true
       });
 
-      if (r.ok)
-        console.log(`✅ xAPI sent via Lambda: ${verbDisplay}`);
-      else
-        console.warn(`⚠️ LRS returned status ${r.status}`);
+      let body;
+      try {
+        body = await r.json();
+      } catch {
+        body = null;
+      }
+
+      if (r.ok) {
+        console.log("✅ Lambda write ok:", body || r.status);
+      } else {
+        console.warn("⚠️ LRS/Lambda returned status", r.status, body);
+      }
+
+      return body || { ok: r.ok, status: r.status };
+
     } catch (err) {
       console.error("❌ sendXAPI failed:", err);
+      return { ok: false, error: err.message };
     }
   };
 }
