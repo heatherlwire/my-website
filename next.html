@@ -50,7 +50,6 @@
             color: var(--ink-1);
         }
 
-        /* Dashboard layout */
         .dash-container {
             max-width: 850px;
             margin: 0 auto;
@@ -81,7 +80,7 @@
         }
 
         .big-btn {
-            margin-top: 24px;
+            margin-top: 16px;
             width: 100%;
             background: var(--action);
             border: none;
@@ -97,11 +96,19 @@
                 background: #0c8dc8;
             }
 
+        .off-btn {
+            background: #374151;
+        }
+
+            .off-btn:hover {
+                background: #4b5563;
+            }
+
         .small-btn {
-            margin-top: 12px;
+            margin-top: 16px;
             background: #22304a;
             border: none;
-            padding: 10px;
+            padding: 10px 14px;
             border-radius: 8px;
             color: var(--ink-1);
             cursor: pointer;
@@ -137,6 +144,8 @@
         const RULES_URL =
             "https://www.wirelearningsolutions.com/adaptive_rules.json";
 
+        const EXT_NS = "https://acbl.wirelxdfirm.com/extensions/";
+
         /* =========================================
            IDENTITY
         ========================================= */
@@ -169,6 +178,7 @@
         ========================================= */
         async function loadRules() {
             const res = await fetch(RULES_URL, { cache: "no-store" });
+            if (!res.ok) throw new Error("Failed to load adaptive rules");
             return res.json();
         }
 
@@ -181,7 +191,12 @@
 
             const res = await fetch(url);
             if (!res.ok) return {};
-            return res.json();
+            const data = await res.json();
+            return {
+                C1: data.C1 || {},
+                C2: data.C2 || {},
+                C3: data.C3 || {}
+            };
         }
 
         /* =========================================
@@ -219,7 +234,7 @@
         }
 
         /* =========================================
-           APPLY RULES
+           APPLY RULES (uses your JSON)
         ========================================= */
         function buildRoutes(summary, rules) {
             const current = detectCurrent(summary);
@@ -238,22 +253,31 @@
                 result.pending.push({ type, target });
             }
 
+            if (!Array.isArray(compRules) || compRules.length === 0) {
+                // No rules defined, default to pretest for that comp
+                result.pending.push({ type: "assessment", target: `${current}-test` });
+                return result;
+            }
+
             let matched = false;
 
             for (const rule of compRules) {
                 const cond = rule.if || {};
 
+                // finalized = true → off-ramp in JSON
                 if (cond.finalized === true && finalized === true) {
-                    (rule.then || []).forEach(step => {
+                    for (const step of rule.then || []) {
                         if (step.route) pushRoute(step.route);
-                    });
+                    }
                     matched = true;
                     break;
                 }
 
+                // Mastery exact match
                 if (cond.mastery && mastery === cond.mastery) {
                     for (const step of rule.then || []) {
                         if (step.forEach === "missed") {
+                            // Proficient: only missed subs
                             missed.forEach(item => {
                                 (step.do || []).forEach(d => {
                                     const r = JSON.parse(JSON.stringify(d.route));
@@ -268,6 +292,7 @@
                     break;
                 }
 
+                // masteryIn (Emerging / Failing → full remediation of all subs)
                 if (Array.isArray(cond.masteryIn) && cond.masteryIn.includes(mastery)) {
                     for (const step of rule.then || []) {
                         if (Array.isArray(step.forEach)) {
@@ -286,6 +311,7 @@
                 }
             }
 
+            // If no rule matched: treat as pretest for that competency
             if (!matched) {
                 result.pending.push({ type: "assessment", target: `${current}-test` });
             }
@@ -294,7 +320,7 @@
         }
 
         /* =========================================
-           ROUTE → URL
+           ROUTE → URL (matches your folder structure)
         ========================================= */
         function resolveRoute(route) {
             const { type, target } = route;
@@ -306,8 +332,14 @@
             }
 
             if (type === "assessment") return `${target}/story.html`;
-            if (type === "content") return `content/${target}-content.html`;
+
+            if (type === "content") {
+                // target like "C1a"
+                return `content/${target}-content.html`;
+            }
+
             if (type === "apply") {
+                // target like "C1a"
                 const item = target;
                 return `apply/${item}/${item}-apply.html`;
             }
@@ -316,7 +348,75 @@
         }
 
         /* =========================================
-           BUILD DASHBOARD
+           ACCEPT MASTERY OFF-RAMP
+        ========================================= */
+        async function acceptMastery(compId) {
+            try {
+                const actorName = learnerName || email || "Anonymous";
+                const mbox = "mailto:" + encodeURIComponent(actorName) + "@wirelxdfirm.com";
+
+                const stmt = {
+                    actor: {
+                        name: actorName,
+                        mbox: mbox
+                    },
+                    verb: {
+                        id: "http://adlnet.gov/expapi/verbs/experienced",
+                        display: { "en-US": "experienced" }
+                    },
+                    object: {
+                        id: `https://acbl.wirelxdfirm.com/activities/${compId}/finalize`,
+                        definition: {
+                            name: { "en-US": "Accepted Mastery Level" },
+                            description: {
+                                "en-US": "Learner chose to accept current mastery level and skip remaining remediation."
+                            },
+                            type: "http://adlnet.gov/expapi/activities/assessment"
+                        },
+                        objectType: "Activity"
+                    },
+                    result: {
+                        extensions: {
+                            [EXT_NS + "competencyId"]: compId,
+                            [EXT_NS + "finalized"]: true
+                        }
+                    },
+                    context: {
+                        registration: sid || undefined
+                    },
+                    timestamp: new Date().toISOString()
+                };
+
+                // Write statement via Lambda
+                await fetch(PROXY_URL + "?mode=write", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(stmt)
+                });
+
+                // Local hint
+                localStorage.setItem(compId + ".finalized", "true");
+
+                // Off-ramp routing: go straight to next competency test
+                let nextUrl;
+                if (compId === "C1") {
+                    nextUrl = "C2-test/story.html";
+                } else if (compId === "C2") {
+                    nextUrl = "C3-test/story.html";
+                } else {
+                    nextUrl = "program-complete.html";
+                }
+
+                window.location.href = withIdentity(nextUrl);
+
+            } catch (err) {
+                console.error("Accept mastery failed:", err);
+                alert("We could not finalize your mastery level. Please try again.");
+            }
+        }
+
+        /* =========================================
+           DASHBOARD RENDER
         ========================================= */
         function renderDashboard(summary, routes) {
             const dash = document.getElementById("dash");
@@ -324,6 +424,7 @@
             function masteryColor(m) {
                 if (m === "Mastery") return "status-good";
                 if (m === "Proficient") return "status-warn";
+                if (!m) return "";
                 return "status-fail";
             }
 
@@ -346,6 +447,21 @@
             const next = routes.pending.length ? routes.pending[0] : null;
             const nextUrl = next ? resolveRoute(next) : "C1-test/story.html";
 
+            const currentComp = routes.current;
+            const currentState = summary[currentComp] || {};
+            const mastery = currentState.mastery || null;
+            const finalized = !!currentState.finalized;
+
+            // Show off-ramp for any non-Mastery status that is not already finalized
+            const showOffRamp =
+                mastery && mastery !== "Mastery" && !finalized;
+
+            const offRampButton = showOffRamp
+                ? `<button class="big-btn off-btn" onclick="acceptMastery('${currentComp}')">
+                            Accept Mastery Level (Skip Remaining Remediation)
+                       </button>`
+                : "";
+
             dash.innerHTML = `
                     ${cardHTML("C1", summary.C1 || {})}
                     ${cardHTML("C2", summary.C2 || {})}
@@ -353,12 +469,18 @@
 
                     <div class="next-box">
                         <div style="font-size: 20px; margin-bottom: 8px;">Next Step</div>
-                        <div class="muted">${next ? `${next.type.toUpperCase()}: ${next.target}` : "Start C1"}</div>
-                    </div>
+                        <div class="muted" style="margin-bottom: 10px;">
+                            ${next
+                    ? `${next.type.toUpperCase()}: ${next.target}`
+                    : "Start with C1 pretest."}
+                        </div>
 
-                    <button class="big-btn" onclick="window.location.href=withIdentity('${nextUrl}')">
-                        Continue
-                    </button>
+                        <button class="big-btn" onclick="window.location.href=withIdentity('${nextUrl}')">
+                            Continue
+                        </button>
+
+                        ${offRampButton}
+                    </div>
 
                     <button class="small-btn"
                         onclick="localStorage.clear(); window.location.href='index.html';">
@@ -371,10 +493,25 @@
            MAIN
         ========================================= */
         (async () => {
-            const rules = await loadRules();
-            const summary = await loadSummary();
-            const routes = buildRoutes(summary, rules);
-            renderDashboard(summary, routes);
+            try {
+                const rules = await loadRules();
+                const summary = await loadSummary();
+                const routes = buildRoutes(summary, rules);
+                renderDashboard(summary, routes);
+            } catch (err) {
+                console.error(err);
+                const dash = document.getElementById("dash");
+                dash.innerHTML = `
+                        <div class="comp-card">
+                            <div class="stat-row status-fail">
+                                We had trouble loading your progress. Starting you at C1 pretest.
+                            </div>
+                            <button class="big-btn" onclick="window.location.href=withIdentity('C1-test/story.html')">
+                                Go to C1 Pretest
+                            </button>
+                        </div>
+                    `;
+            }
         })();
     </script>
 </body>
