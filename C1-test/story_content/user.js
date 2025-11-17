@@ -15,43 +15,72 @@ var slideWidth = player.slideWidth;
 var slideHeight = player.slideHeight;
 window.Script1 = function()
 {
-  // Load once (Master fires on every slide)
-if (!window.__XAPI_HELPER_LOADED__) {
-  window.__XAPI_HELPER_LOADED__ = true;
+  // =======================================================
+//   GLOBAL xAPI Helper (loads once, safe, consistent)
+// =======================================================
+if (!window.__XAPI_HELPER__) {
+  window.__XAPI_HELPER__ = true;
 
-  // --- Rehydrate Storyline variables from localStorage if missing ---
+  console.log("✅ Unified xAPI helper initialized on Master Slide");
+
+  // ---------------------------------------
+  // Rehydrate Storyline variables
+  // ---------------------------------------
   setTimeout(() => {
     try {
       const p = GetPlayer && GetPlayer();
       if (!p) return;
+
       const storedName = localStorage.getItem("learnerName");
       const storedSid  = localStorage.getItem("sessionId");
 
       if (storedName && !p.GetVar("learnerName")) {
         p.SetVar("learnerName", storedName);
         p.SetVar("actorName", storedName);
-        p.SetVar("actorMbox", "mailto:" + encodeURIComponent(storedName) + "@wirelxdfirm.com");
+        p.SetVar(
+          "actorMbox",
+          "mailto:" + encodeURIComponent(storedName) + "@wirelxdfirm.com"
+        );
       }
+
       if (storedSid && !p.GetVar("sessionId")) {
         p.SetVar("sessionId", storedSid);
       }
-      console.log("✅ Storyline variables synced from localStorage");
+
+      console.log("🔁 Storyline vars synced from localStorage");
     } catch (e) {
-      console.warn("Sync from localStorage failed:", e);
+      console.warn("⚠️ Sync from localStorage failed:", e);
     }
   }, 300);
 
-  // --- xAPI helper function ---
-  window.sendXAPI = async function (verbId, verbDisplay, objectId, objectName, resultData = {}) {
+  // ---------------------------------------
+  // Global sendXAPI helper
+  // ---------------------------------------
+  window.sendXAPI = async function (
+    verbId,
+    verbDisplay,
+    objectId,
+    objectName,
+    resultData = {}
+  ) {
     try {
       const p = GetPlayer();
-      if (!p) return;
+      if (!p) throw new Error("GetPlayer unavailable");
 
-      const learnerName = p.GetVar("learnerName") || localStorage.getItem("learnerName") || "Anonymous";
-      const sessionId   = p.GetVar("sessionId")   || localStorage.getItem("sessionId") || String(Date.now());
-      const mbox        = "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com";
+      const learnerName =
+        p.GetVar("learnerName") ||
+        localStorage.getItem("learnerName") ||
+        "Anonymous";
 
-      const statement = {
+      const sessionId =
+        p.GetVar("sessionId") ||
+        localStorage.getItem("sessionId") ||
+        (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()));
+
+      const mbox =
+        "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com";
+
+      const stmt = {
         actor: { name: learnerName, mbox },
         verb: { id: verbId, display: { "en-US": verbDisplay } },
         object: {
@@ -64,18 +93,22 @@ if (!window.__XAPI_HELPER_LOADED__) {
         timestamp: new Date().toISOString()
       };
 
-      // ✅ Send through Lambda proxy (which writes to SCORM Cloud)
-      const endpoint = "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
+      const endpoint =
+        "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
+
       const r = await fetch(endpoint + "?mode=write", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(statement),
+        body: JSON.stringify(stmt),
         keepalive: true
       });
 
-      console.log(r.ok ? `✅ xAPI sent via Lambda: ${verbDisplay}` : `⚠️ xAPI failed: ${r.status}`);
-    } catch (e) {
-      console.error("❌ sendXAPI error:", e);
+      if (r.ok)
+        console.log(`✅ xAPI sent via Lambda: ${verbDisplay}`);
+      else
+        console.warn(`⚠️ LRS returned status ${r.status}`);
+    } catch (err) {
+      console.error("❌ sendXAPI failed:", err);
     }
   };
 }
@@ -83,77 +116,6 @@ if (!window.__XAPI_HELPER_LOADED__) {
 }
 
 window.Script2 = function()
-{
-  // --- Global xAPI Helper (runs once across all slides) ---
-if (!window.__XAPI_HELPER_LOADED__) {
-  window.__XAPI_HELPER_LOADED__ = true;
-
-  console.log("✅ xAPI helper initialized on Slide Master");
-
-  // --- Sync Storyline variables from localStorage ---
-  setTimeout(() => {
-    try {
-      const p = GetPlayer && GetPlayer();
-      if (!p) return;
-      const storedName = localStorage.getItem("learnerName");
-      const storedSid  = localStorage.getItem("sessionId");
-
-      if (storedName && !p.GetVar("learnerName")) {
-        p.SetVar("learnerName", storedName);
-        p.SetVar("actorName", storedName);
-        p.SetVar("actorMbox", "mailto:" + encodeURIComponent(storedName) + "@wirelxdfirm.com");
-      }
-      if (storedSid && !p.GetVar("sessionId")) {
-        p.SetVar("sessionId", storedSid);
-      }
-      console.log("🔁 Storyline variables synced from localStorage");
-    } catch (err) {
-      console.warn("⚠️ Variable sync failed:", err);
-    }
-  }, 300);
-
-  // --- Global sendXAPI() helper ---
-  window.sendXAPI = async function (verbId, verbDisplay, objectId, objectName, resultData = {}) {
-    try {
-      const p = GetPlayer();
-      if (!p) throw new Error("GetPlayer() not available");
-
-      const learnerName = p.GetVar("learnerName") || localStorage.getItem("learnerName") || "Anonymous";
-      const sessionId   = p.GetVar("sessionId")   || localStorage.getItem("sessionId") || crypto.randomUUID();
-      const mbox        = "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com";
-
-      const statement = {
-        actor: { name: learnerName, mbox },
-        verb: { id: verbId, display: { "en-US": verbDisplay } },
-        object: {
-          id: objectId,
-          definition: { name: { "en-US": objectName } },
-          objectType: "Activity"
-        },
-        result: resultData,
-        context: { registration: sessionId },
-        timestamp: new Date().toISOString()
-      };
-
-      const endpoint = "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
-      const response = await fetch(endpoint + "?mode=write", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(statement),
-        keepalive: true
-      });
-
-      if (response.ok) console.log(`✅ xAPI sent via Lambda: ${verbDisplay}`);
-      else console.warn(`⚠️ LRS returned status ${response.status}`);
-    } catch (err) {
-      console.error("❌ sendXAPI() failed:", err);
-    }
-  };
-}
-
-}
-
-window.Script3 = function()
 {
   /* ============================================================
    Adaptive Learning – Test Start + Resume Gate (Dynamic)
@@ -278,45 +240,74 @@ window.Script3 = function()
 
 }
 
-window.Script4 = function()
+window.Script3 = function()
 {
-  // Load once (Master fires on every slide)
-if (!window.__XAPI_HELPER_LOADED__) {
-  window.__XAPI_HELPER_LOADED__ = true;
+  // =======================================================
+//   GLOBAL xAPI Helper (loads once, safe, consistent)
+// =======================================================
+if (!window.__XAPI_HELPER__) {
+  window.__XAPI_HELPER__ = true;
 
-  // --- Rehydrate Storyline variables from localStorage if missing ---
+  console.log("✅ Unified xAPI helper initialized on Master Slide");
+
+  // ---------------------------------------
+  // Rehydrate Storyline variables
+  // ---------------------------------------
   setTimeout(() => {
     try {
       const p = GetPlayer && GetPlayer();
       if (!p) return;
+
       const storedName = localStorage.getItem("learnerName");
       const storedSid  = localStorage.getItem("sessionId");
 
       if (storedName && !p.GetVar("learnerName")) {
         p.SetVar("learnerName", storedName);
         p.SetVar("actorName", storedName);
-        p.SetVar("actorMbox", "mailto:" + encodeURIComponent(storedName) + "@wirelxdfirm.com");
+        p.SetVar(
+          "actorMbox",
+          "mailto:" + encodeURIComponent(storedName) + "@wirelxdfirm.com"
+        );
       }
+
       if (storedSid && !p.GetVar("sessionId")) {
         p.SetVar("sessionId", storedSid);
       }
-      console.log("✅ Storyline variables synced from localStorage");
+
+      console.log("🔁 Storyline vars synced from localStorage");
     } catch (e) {
-      console.warn("Sync from localStorage failed:", e);
+      console.warn("⚠️ Sync from localStorage failed:", e);
     }
   }, 300);
 
-  // --- xAPI helper function ---
-  window.sendXAPI = async function (verbId, verbDisplay, objectId, objectName, resultData = {}) {
+  // ---------------------------------------
+  // Global sendXAPI helper
+  // ---------------------------------------
+  window.sendXAPI = async function (
+    verbId,
+    verbDisplay,
+    objectId,
+    objectName,
+    resultData = {}
+  ) {
     try {
       const p = GetPlayer();
-      if (!p) return;
+      if (!p) throw new Error("GetPlayer unavailable");
 
-      const learnerName = p.GetVar("learnerName") || localStorage.getItem("learnerName") || "Anonymous";
-      const sessionId   = p.GetVar("sessionId")   || localStorage.getItem("sessionId") || String(Date.now());
-      const mbox        = "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com";
+      const learnerName =
+        p.GetVar("learnerName") ||
+        localStorage.getItem("learnerName") ||
+        "Anonymous";
 
-      const statement = {
+      const sessionId =
+        p.GetVar("sessionId") ||
+        localStorage.getItem("sessionId") ||
+        (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()));
+
+      const mbox =
+        "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com";
+
+      const stmt = {
         actor: { name: learnerName, mbox },
         verb: { id: verbId, display: { "en-US": verbDisplay } },
         object: {
@@ -329,96 +320,29 @@ if (!window.__XAPI_HELPER_LOADED__) {
         timestamp: new Date().toISOString()
       };
 
-      // ✅ Send through Lambda proxy (which writes to SCORM Cloud)
-      const endpoint = "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
+      const endpoint =
+        "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
+
       const r = await fetch(endpoint + "?mode=write", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(statement),
+        body: JSON.stringify(stmt),
         keepalive: true
       });
 
-      console.log(r.ok ? `✅ xAPI sent via Lambda: ${verbDisplay}` : `⚠️ xAPI failed: ${r.status}`);
-    } catch (e) {
-      console.error("❌ sendXAPI error:", e);
+      if (r.ok)
+        console.log(`✅ xAPI sent via Lambda: ${verbDisplay}`);
+      else
+        console.warn(`⚠️ LRS returned status ${r.status}`);
+    } catch (err) {
+      console.error("❌ sendXAPI failed:", err);
     }
   };
 }
 
 }
 
-window.Script5 = function()
-{
-  // --- Global xAPI Helper (runs once across all slides) ---
-if (!window.__XAPI_HELPER_LOADED__) {
-  window.__XAPI_HELPER_LOADED__ = true;
-
-  console.log("✅ xAPI helper initialized on Slide Master");
-
-  // --- Sync Storyline variables from localStorage ---
-  setTimeout(() => {
-    try {
-      const p = GetPlayer && GetPlayer();
-      if (!p) return;
-      const storedName = localStorage.getItem("learnerName");
-      const storedSid  = localStorage.getItem("sessionId");
-
-      if (storedName && !p.GetVar("learnerName")) {
-        p.SetVar("learnerName", storedName);
-        p.SetVar("actorName", storedName);
-        p.SetVar("actorMbox", "mailto:" + encodeURIComponent(storedName) + "@wirelxdfirm.com");
-      }
-      if (storedSid && !p.GetVar("sessionId")) {
-        p.SetVar("sessionId", storedSid);
-      }
-      console.log("🔁 Storyline variables synced from localStorage");
-    } catch (err) {
-      console.warn("⚠️ Variable sync failed:", err);
-    }
-  }, 300);
-
-  // --- Global sendXAPI() helper ---
-  window.sendXAPI = async function (verbId, verbDisplay, objectId, objectName, resultData = {}) {
-    try {
-      const p = GetPlayer();
-      if (!p) throw new Error("GetPlayer() not available");
-
-      const learnerName = p.GetVar("learnerName") || localStorage.getItem("learnerName") || "Anonymous";
-      const sessionId   = p.GetVar("sessionId")   || localStorage.getItem("sessionId") || crypto.randomUUID();
-      const mbox        = "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com";
-
-      const statement = {
-        actor: { name: learnerName, mbox },
-        verb: { id: verbId, display: { "en-US": verbDisplay } },
-        object: {
-          id: objectId,
-          definition: { name: { "en-US": objectName } },
-          objectType: "Activity"
-        },
-        result: resultData,
-        context: { registration: sessionId },
-        timestamp: new Date().toISOString()
-      };
-
-      const endpoint = "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
-      const response = await fetch(endpoint + "?mode=write", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(statement),
-        keepalive: true
-      });
-
-      if (response.ok) console.log(`✅ xAPI sent via Lambda: ${verbDisplay}`);
-      else console.warn(`⚠️ LRS returned status ${response.status}`);
-    } catch (err) {
-      console.error("❌ sendXAPI() failed:", err);
-    }
-  };
-}
-
-}
-
-window.Script6 = function()
+window.Script4 = function()
 {
   /* Q1 Incorrect – Final Patched Version */
 (function () {
@@ -477,7 +401,7 @@ window.Script6 = function()
 
 }
 
-window.Script7 = function()
+window.Script5 = function()
 {
   /* Q1 Correct – Final Patched Version */
 (function () {
@@ -536,45 +460,74 @@ window.Script7 = function()
 
 }
 
-window.Script8 = function()
+window.Script6 = function()
 {
-  // Load once (Master fires on every slide)
-if (!window.__XAPI_HELPER_LOADED__) {
-  window.__XAPI_HELPER_LOADED__ = true;
+  // =======================================================
+//   GLOBAL xAPI Helper (loads once, safe, consistent)
+// =======================================================
+if (!window.__XAPI_HELPER__) {
+  window.__XAPI_HELPER__ = true;
 
-  // --- Rehydrate Storyline variables from localStorage if missing ---
+  console.log("✅ Unified xAPI helper initialized on Master Slide");
+
+  // ---------------------------------------
+  // Rehydrate Storyline variables
+  // ---------------------------------------
   setTimeout(() => {
     try {
       const p = GetPlayer && GetPlayer();
       if (!p) return;
+
       const storedName = localStorage.getItem("learnerName");
       const storedSid  = localStorage.getItem("sessionId");
 
       if (storedName && !p.GetVar("learnerName")) {
         p.SetVar("learnerName", storedName);
         p.SetVar("actorName", storedName);
-        p.SetVar("actorMbox", "mailto:" + encodeURIComponent(storedName) + "@wirelxdfirm.com");
+        p.SetVar(
+          "actorMbox",
+          "mailto:" + encodeURIComponent(storedName) + "@wirelxdfirm.com"
+        );
       }
+
       if (storedSid && !p.GetVar("sessionId")) {
         p.SetVar("sessionId", storedSid);
       }
-      console.log("✅ Storyline variables synced from localStorage");
+
+      console.log("🔁 Storyline vars synced from localStorage");
     } catch (e) {
-      console.warn("Sync from localStorage failed:", e);
+      console.warn("⚠️ Sync from localStorage failed:", e);
     }
   }, 300);
 
-  // --- xAPI helper function ---
-  window.sendXAPI = async function (verbId, verbDisplay, objectId, objectName, resultData = {}) {
+  // ---------------------------------------
+  // Global sendXAPI helper
+  // ---------------------------------------
+  window.sendXAPI = async function (
+    verbId,
+    verbDisplay,
+    objectId,
+    objectName,
+    resultData = {}
+  ) {
     try {
       const p = GetPlayer();
-      if (!p) return;
+      if (!p) throw new Error("GetPlayer unavailable");
 
-      const learnerName = p.GetVar("learnerName") || localStorage.getItem("learnerName") || "Anonymous";
-      const sessionId   = p.GetVar("sessionId")   || localStorage.getItem("sessionId") || String(Date.now());
-      const mbox        = "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com";
+      const learnerName =
+        p.GetVar("learnerName") ||
+        localStorage.getItem("learnerName") ||
+        "Anonymous";
 
-      const statement = {
+      const sessionId =
+        p.GetVar("sessionId") ||
+        localStorage.getItem("sessionId") ||
+        (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()));
+
+      const mbox =
+        "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com";
+
+      const stmt = {
         actor: { name: learnerName, mbox },
         verb: { id: verbId, display: { "en-US": verbDisplay } },
         object: {
@@ -587,96 +540,29 @@ if (!window.__XAPI_HELPER_LOADED__) {
         timestamp: new Date().toISOString()
       };
 
-      // ✅ Send through Lambda proxy (which writes to SCORM Cloud)
-      const endpoint = "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
+      const endpoint =
+        "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
+
       const r = await fetch(endpoint + "?mode=write", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(statement),
+        body: JSON.stringify(stmt),
         keepalive: true
       });
 
-      console.log(r.ok ? `✅ xAPI sent via Lambda: ${verbDisplay}` : `⚠️ xAPI failed: ${r.status}`);
-    } catch (e) {
-      console.error("❌ sendXAPI error:", e);
+      if (r.ok)
+        console.log(`✅ xAPI sent via Lambda: ${verbDisplay}`);
+      else
+        console.warn(`⚠️ LRS returned status ${r.status}`);
+    } catch (err) {
+      console.error("❌ sendXAPI failed:", err);
     }
   };
 }
 
 }
 
-window.Script9 = function()
-{
-  // --- Global xAPI Helper (runs once across all slides) ---
-if (!window.__XAPI_HELPER_LOADED__) {
-  window.__XAPI_HELPER_LOADED__ = true;
-
-  console.log("✅ xAPI helper initialized on Slide Master");
-
-  // --- Sync Storyline variables from localStorage ---
-  setTimeout(() => {
-    try {
-      const p = GetPlayer && GetPlayer();
-      if (!p) return;
-      const storedName = localStorage.getItem("learnerName");
-      const storedSid  = localStorage.getItem("sessionId");
-
-      if (storedName && !p.GetVar("learnerName")) {
-        p.SetVar("learnerName", storedName);
-        p.SetVar("actorName", storedName);
-        p.SetVar("actorMbox", "mailto:" + encodeURIComponent(storedName) + "@wirelxdfirm.com");
-      }
-      if (storedSid && !p.GetVar("sessionId")) {
-        p.SetVar("sessionId", storedSid);
-      }
-      console.log("🔁 Storyline variables synced from localStorage");
-    } catch (err) {
-      console.warn("⚠️ Variable sync failed:", err);
-    }
-  }, 300);
-
-  // --- Global sendXAPI() helper ---
-  window.sendXAPI = async function (verbId, verbDisplay, objectId, objectName, resultData = {}) {
-    try {
-      const p = GetPlayer();
-      if (!p) throw new Error("GetPlayer() not available");
-
-      const learnerName = p.GetVar("learnerName") || localStorage.getItem("learnerName") || "Anonymous";
-      const sessionId   = p.GetVar("sessionId")   || localStorage.getItem("sessionId") || crypto.randomUUID();
-      const mbox        = "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com";
-
-      const statement = {
-        actor: { name: learnerName, mbox },
-        verb: { id: verbId, display: { "en-US": verbDisplay } },
-        object: {
-          id: objectId,
-          definition: { name: { "en-US": objectName } },
-          objectType: "Activity"
-        },
-        result: resultData,
-        context: { registration: sessionId },
-        timestamp: new Date().toISOString()
-      };
-
-      const endpoint = "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
-      const response = await fetch(endpoint + "?mode=write", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(statement),
-        keepalive: true
-      });
-
-      if (response.ok) console.log(`✅ xAPI sent via Lambda: ${verbDisplay}`);
-      else console.warn(`⚠️ LRS returned status ${response.status}`);
-    } catch (err) {
-      console.error("❌ sendXAPI() failed:", err);
-    }
-  };
-}
-
-}
-
-window.Script10 = function()
+window.Script7 = function()
 {
   /* Q2 Incorrect – Final Patched Version */
 (function () {
@@ -735,7 +621,7 @@ window.Script10 = function()
 
 }
 
-window.Script11 = function()
+window.Script8 = function()
 {
   /* Q2 Correct – Final Patched Version */
 (function () {
@@ -794,45 +680,74 @@ window.Script11 = function()
 
 }
 
-window.Script12 = function()
+window.Script9 = function()
 {
-  // Load once (Master fires on every slide)
-if (!window.__XAPI_HELPER_LOADED__) {
-  window.__XAPI_HELPER_LOADED__ = true;
+  // =======================================================
+//   GLOBAL xAPI Helper (loads once, safe, consistent)
+// =======================================================
+if (!window.__XAPI_HELPER__) {
+  window.__XAPI_HELPER__ = true;
 
-  // --- Rehydrate Storyline variables from localStorage if missing ---
+  console.log("✅ Unified xAPI helper initialized on Master Slide");
+
+  // ---------------------------------------
+  // Rehydrate Storyline variables
+  // ---------------------------------------
   setTimeout(() => {
     try {
       const p = GetPlayer && GetPlayer();
       if (!p) return;
+
       const storedName = localStorage.getItem("learnerName");
       const storedSid  = localStorage.getItem("sessionId");
 
       if (storedName && !p.GetVar("learnerName")) {
         p.SetVar("learnerName", storedName);
         p.SetVar("actorName", storedName);
-        p.SetVar("actorMbox", "mailto:" + encodeURIComponent(storedName) + "@wirelxdfirm.com");
+        p.SetVar(
+          "actorMbox",
+          "mailto:" + encodeURIComponent(storedName) + "@wirelxdfirm.com"
+        );
       }
+
       if (storedSid && !p.GetVar("sessionId")) {
         p.SetVar("sessionId", storedSid);
       }
-      console.log("✅ Storyline variables synced from localStorage");
+
+      console.log("🔁 Storyline vars synced from localStorage");
     } catch (e) {
-      console.warn("Sync from localStorage failed:", e);
+      console.warn("⚠️ Sync from localStorage failed:", e);
     }
   }, 300);
 
-  // --- xAPI helper function ---
-  window.sendXAPI = async function (verbId, verbDisplay, objectId, objectName, resultData = {}) {
+  // ---------------------------------------
+  // Global sendXAPI helper
+  // ---------------------------------------
+  window.sendXAPI = async function (
+    verbId,
+    verbDisplay,
+    objectId,
+    objectName,
+    resultData = {}
+  ) {
     try {
       const p = GetPlayer();
-      if (!p) return;
+      if (!p) throw new Error("GetPlayer unavailable");
 
-      const learnerName = p.GetVar("learnerName") || localStorage.getItem("learnerName") || "Anonymous";
-      const sessionId   = p.GetVar("sessionId")   || localStorage.getItem("sessionId") || String(Date.now());
-      const mbox        = "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com";
+      const learnerName =
+        p.GetVar("learnerName") ||
+        localStorage.getItem("learnerName") ||
+        "Anonymous";
 
-      const statement = {
+      const sessionId =
+        p.GetVar("sessionId") ||
+        localStorage.getItem("sessionId") ||
+        (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()));
+
+      const mbox =
+        "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com";
+
+      const stmt = {
         actor: { name: learnerName, mbox },
         verb: { id: verbId, display: { "en-US": verbDisplay } },
         object: {
@@ -845,96 +760,29 @@ if (!window.__XAPI_HELPER_LOADED__) {
         timestamp: new Date().toISOString()
       };
 
-      // ✅ Send through Lambda proxy (which writes to SCORM Cloud)
-      const endpoint = "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
+      const endpoint =
+        "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
+
       const r = await fetch(endpoint + "?mode=write", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(statement),
+        body: JSON.stringify(stmt),
         keepalive: true
       });
 
-      console.log(r.ok ? `✅ xAPI sent via Lambda: ${verbDisplay}` : `⚠️ xAPI failed: ${r.status}`);
-    } catch (e) {
-      console.error("❌ sendXAPI error:", e);
+      if (r.ok)
+        console.log(`✅ xAPI sent via Lambda: ${verbDisplay}`);
+      else
+        console.warn(`⚠️ LRS returned status ${r.status}`);
+    } catch (err) {
+      console.error("❌ sendXAPI failed:", err);
     }
   };
 }
 
 }
 
-window.Script13 = function()
-{
-  // --- Global xAPI Helper (runs once across all slides) ---
-if (!window.__XAPI_HELPER_LOADED__) {
-  window.__XAPI_HELPER_LOADED__ = true;
-
-  console.log("✅ xAPI helper initialized on Slide Master");
-
-  // --- Sync Storyline variables from localStorage ---
-  setTimeout(() => {
-    try {
-      const p = GetPlayer && GetPlayer();
-      if (!p) return;
-      const storedName = localStorage.getItem("learnerName");
-      const storedSid  = localStorage.getItem("sessionId");
-
-      if (storedName && !p.GetVar("learnerName")) {
-        p.SetVar("learnerName", storedName);
-        p.SetVar("actorName", storedName);
-        p.SetVar("actorMbox", "mailto:" + encodeURIComponent(storedName) + "@wirelxdfirm.com");
-      }
-      if (storedSid && !p.GetVar("sessionId")) {
-        p.SetVar("sessionId", storedSid);
-      }
-      console.log("🔁 Storyline variables synced from localStorage");
-    } catch (err) {
-      console.warn("⚠️ Variable sync failed:", err);
-    }
-  }, 300);
-
-  // --- Global sendXAPI() helper ---
-  window.sendXAPI = async function (verbId, verbDisplay, objectId, objectName, resultData = {}) {
-    try {
-      const p = GetPlayer();
-      if (!p) throw new Error("GetPlayer() not available");
-
-      const learnerName = p.GetVar("learnerName") || localStorage.getItem("learnerName") || "Anonymous";
-      const sessionId   = p.GetVar("sessionId")   || localStorage.getItem("sessionId") || crypto.randomUUID();
-      const mbox        = "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com";
-
-      const statement = {
-        actor: { name: learnerName, mbox },
-        verb: { id: verbId, display: { "en-US": verbDisplay } },
-        object: {
-          id: objectId,
-          definition: { name: { "en-US": objectName } },
-          objectType: "Activity"
-        },
-        result: resultData,
-        context: { registration: sessionId },
-        timestamp: new Date().toISOString()
-      };
-
-      const endpoint = "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
-      const response = await fetch(endpoint + "?mode=write", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(statement),
-        keepalive: true
-      });
-
-      if (response.ok) console.log(`✅ xAPI sent via Lambda: ${verbDisplay}`);
-      else console.warn(`⚠️ LRS returned status ${response.status}`);
-    } catch (err) {
-      console.error("❌ sendXAPI() failed:", err);
-    }
-  };
-}
-
-}
-
-window.Script14 = function()
+window.Script10 = function()
 {
   /* Q3 Incorrect – Final Patched Version */
 (function () {
@@ -995,7 +843,7 @@ window.Script14 = function()
 
 }
 
-window.Script15 = function()
+window.Script11 = function()
 {
   /* Q3 Correct – Final Patched Version */
 (function () {
@@ -1054,45 +902,74 @@ window.Script15 = function()
 
 }
 
-window.Script16 = function()
+window.Script12 = function()
 {
-  // Load once (Master fires on every slide)
-if (!window.__XAPI_HELPER_LOADED__) {
-  window.__XAPI_HELPER_LOADED__ = true;
+  // =======================================================
+//   GLOBAL xAPI Helper (loads once, safe, consistent)
+// =======================================================
+if (!window.__XAPI_HELPER__) {
+  window.__XAPI_HELPER__ = true;
 
-  // --- Rehydrate Storyline variables from localStorage if missing ---
+  console.log("✅ Unified xAPI helper initialized on Master Slide");
+
+  // ---------------------------------------
+  // Rehydrate Storyline variables
+  // ---------------------------------------
   setTimeout(() => {
     try {
       const p = GetPlayer && GetPlayer();
       if (!p) return;
+
       const storedName = localStorage.getItem("learnerName");
       const storedSid  = localStorage.getItem("sessionId");
 
       if (storedName && !p.GetVar("learnerName")) {
         p.SetVar("learnerName", storedName);
         p.SetVar("actorName", storedName);
-        p.SetVar("actorMbox", "mailto:" + encodeURIComponent(storedName) + "@wirelxdfirm.com");
+        p.SetVar(
+          "actorMbox",
+          "mailto:" + encodeURIComponent(storedName) + "@wirelxdfirm.com"
+        );
       }
+
       if (storedSid && !p.GetVar("sessionId")) {
         p.SetVar("sessionId", storedSid);
       }
-      console.log("✅ Storyline variables synced from localStorage");
+
+      console.log("🔁 Storyline vars synced from localStorage");
     } catch (e) {
-      console.warn("Sync from localStorage failed:", e);
+      console.warn("⚠️ Sync from localStorage failed:", e);
     }
   }, 300);
 
-  // --- xAPI helper function ---
-  window.sendXAPI = async function (verbId, verbDisplay, objectId, objectName, resultData = {}) {
+  // ---------------------------------------
+  // Global sendXAPI helper
+  // ---------------------------------------
+  window.sendXAPI = async function (
+    verbId,
+    verbDisplay,
+    objectId,
+    objectName,
+    resultData = {}
+  ) {
     try {
       const p = GetPlayer();
-      if (!p) return;
+      if (!p) throw new Error("GetPlayer unavailable");
 
-      const learnerName = p.GetVar("learnerName") || localStorage.getItem("learnerName") || "Anonymous";
-      const sessionId   = p.GetVar("sessionId")   || localStorage.getItem("sessionId") || String(Date.now());
-      const mbox        = "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com";
+      const learnerName =
+        p.GetVar("learnerName") ||
+        localStorage.getItem("learnerName") ||
+        "Anonymous";
 
-      const statement = {
+      const sessionId =
+        p.GetVar("sessionId") ||
+        localStorage.getItem("sessionId") ||
+        (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()));
+
+      const mbox =
+        "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com";
+
+      const stmt = {
         actor: { name: learnerName, mbox },
         verb: { id: verbId, display: { "en-US": verbDisplay } },
         object: {
@@ -1105,395 +982,241 @@ if (!window.__XAPI_HELPER_LOADED__) {
         timestamp: new Date().toISOString()
       };
 
-      // ✅ Send through Lambda proxy (which writes to SCORM Cloud)
-      const endpoint = "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
+      const endpoint =
+        "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
+
       const r = await fetch(endpoint + "?mode=write", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(statement),
+        body: JSON.stringify(stmt),
         keepalive: true
       });
 
-      console.log(r.ok ? `✅ xAPI sent via Lambda: ${verbDisplay}` : `⚠️ xAPI failed: ${r.status}`);
-    } catch (e) {
-      console.error("❌ sendXAPI error:", e);
+      if (r.ok)
+        console.log(`✅ xAPI sent via Lambda: ${verbDisplay}`);
+      else
+        console.warn(`⚠️ LRS returned status ${r.status}`);
+    } catch (err) {
+      console.error("❌ sendXAPI failed:", err);
     }
   };
 }
 
 }
 
-window.Script17 = function()
+window.Script13 = function()
 {
-  // --- Global xAPI Helper (runs once across all slides) ---
-if (!window.__XAPI_HELPER_LOADED__) {
-  window.__XAPI_HELPER_LOADED__ = true;
-
-  console.log("✅ xAPI helper initialized on Slide Master");
-
-  // --- Sync Storyline variables from localStorage ---
-  setTimeout(() => {
+  /* ============================================================
+   Results slide – clean xAPI + accurate missed[] detection
+   BULLETPROOF PATCHED VERSION
+============================================================ */
+(function () {
+  function run() {
     try {
-      const p = GetPlayer && GetPlayer();
-      if (!p) return;
-      const storedName = localStorage.getItem("learnerName");
-      const storedSid  = localStorage.getItem("sessionId");
-
-      if (storedName && !p.GetVar("learnerName")) {
-        p.SetVar("learnerName", storedName);
-        p.SetVar("actorName", storedName);
-        p.SetVar("actorMbox", "mailto:" + encodeURIComponent(storedName) + "@wirelxdfirm.com");
+      const p = (window.GetPlayer && window.GetPlayer());
+      if (!p) {
+        // Try again shortly if Storyline player is not ready yet
+        setTimeout(run, 200);
+        return;
       }
-      if (storedSid && !p.GetVar("sessionId")) {
-        p.SetVar("sessionId", storedSid);
-      }
-      console.log("🔁 Storyline variables synced from localStorage");
-    } catch (err) {
-      console.warn("⚠️ Variable sync failed:", err);
-    }
-  }, 300);
 
-  // --- Global sendXAPI() helper ---
-  window.sendXAPI = async function (verbId, verbDisplay, objectId, objectName, resultData = {}) {
-    try {
-      const p = GetPlayer();
-      if (!p) throw new Error("GetPlayer() not available");
+      /* ---------------------------------------------------------
+         1) Detect competency
+      --------------------------------------------------------- */
+      const url = window.location.href.toUpperCase();
+      const compMatch = url.match(/C[123]/);
+      const compId = compMatch ? compMatch[0] : "C1";
 
-      const learnerName = p.GetVar("learnerName") || localStorage.getItem("learnerName") || "Anonymous";
-      const sessionId   = p.GetVar("sessionId")   || localStorage.getItem("sessionId") || crypto.randomUUID();
-      const mbox        = "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com";
+      /* ---------------------------------------------------------
+         2) Sub-competency scoring (Ca / Cb / Cc)
+      --------------------------------------------------------- */
+      const sA = Number(p.GetVar(compId + "a_score") || 0);
+      const sB = Number(p.GetVar(compId + "b_score") || 0);
+      const sC = Number(p.GetVar(compId + "c_score") || 0);
 
-      const statement = {
-        actor: { name: learnerName, mbox },
-        verb: { id: verbId, display: { "en-US": verbDisplay } },
+      const correct = sA + sB + sC;
+
+      const missed = [];
+      if (sA !== 1) missed.push(compId + "a");
+      if (sB !== 1) missed.push(compId + "b");
+      if (sC !== 1) missed.push(compId + "c");
+
+      /* ---------------------------------------------------------
+         3) Mastery calculation
+      --------------------------------------------------------- */
+      let mastery = "Failing";
+      if (correct === 3) mastery = "Mastery";
+      else if (correct === 2) mastery = "Proficient";
+      else if (correct === 1) mastery = "Emerging";
+
+      const testedOut = correct === 3;
+      const finalized = false;
+
+      /* ---------------------------------------------------------
+         4) Identity + Session
+      --------------------------------------------------------- */
+      const name =
+        localStorage.getItem("learnerName") ||
+        p.GetVar("actorName") ||
+        "Anonymous";
+
+      let sid =
+        localStorage.getItem("sessionId") ||
+        p.GetVar("sessionId") ||
+        ((window.crypto && window.crypto.randomUUID)
+          ? window.crypto.randomUUID()
+          : String(Date.now()));
+
+      // Keep sessionId in localStorage for next.html + Lambda summary
+      localStorage.setItem("sessionId", sid);
+
+      const mbox = "mailto:" + encodeURIComponent(name) + "@wirelxdfirm.com";
+
+      /* ---------------------------------------------------------
+         5) Build xAPI summary statement
+      --------------------------------------------------------- */
+      const passed = correct >= 2;
+
+      const summaryStmt = {
+        actor: { name, mbox },
+        verb: {
+          id: passed
+            ? "http://adlnet.gov/expapi/verbs/passed"
+            : "http://adlnet.gov/expapi/verbs/failed",
+          display: { "en-US": passed ? "passed" : "failed" }
+        },
         object: {
-          id: objectId,
-          definition: { name: { "en-US": objectName } },
+          id: `https://acbl.wirelxdfirm.com/activities/${compId}/test`,
           objectType: "Activity"
         },
-        result: resultData,
-        context: { registration: sessionId },
+        result: {
+          score: { raw: correct, min: 0, max: 3 },
+          success: passed,
+          completion: true,
+          extensions: {
+            "https://acbl.wirelxdfirm.com/extensions/learnerName": name,
+            "https://acbl.wirelxdfirm.com/extensions/sessionId": sid,
+            "https://acbl.wirelxdfirm.com/extensions/competencyId": compId,
+            "https://acbl.wirelxdfirm.com/extensions/masteryLevel": mastery,
+            "https://acbl.wirelxdfirm.com/extensions/missed": missed,
+            "https://acbl.wirelxdfirm.com/extensions/testedOut": testedOut,
+            "https://acbl.wirelxdfirm.com/extensions/finalized": finalized
+          }
+        },
+        context: { registration: sid },
         timestamp: new Date().toISOString()
       };
 
-      const endpoint = "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
-      const response = await fetch(endpoint + "?mode=write", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(statement),
-        keepalive: true
+      /* ---------------------------------------------------------
+         6) Send xAPI via Lambda
+      --------------------------------------------------------- */
+      const endpoint =
+        "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
+
+      // Prefer the global helper if present, fall back to direct fetch
+      if (window.sendXAPI) {
+        window.sendXAPI(
+          summaryStmt.verb.id,
+          summaryStmt.verb.display["en-US"],
+          summaryStmt.object.id,
+          `${compId} Test`,
+          summaryStmt.result
+        );
+        console.log("✅ Summary routed through sendXAPI helper");
+      } else {
+        fetch(endpoint + "?mode=write", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(summaryStmt),
+          keepalive: true
+        })
+          .then(r => console.log("✅ Summary sent direct:", r.status))
+          .catch(e => console.warn("❌ Summary send failed:", e));
+      }
+
+      /* ---------------------------------------------------------
+         7) Adaptive storage (for next.html)
+      --------------------------------------------------------- */
+      localStorage.setItem(`${compId}.score`, correct);
+      localStorage.setItem(`${compId}.missed`, JSON.stringify(missed));
+      localStorage.setItem(`${compId}.mastery`, mastery);
+      localStorage.setItem(`${compId}.testedOut`, testedOut);
+      localStorage.setItem(`${compId}.finalized`, finalized);
+      localStorage.setItem("currentCompetency", compId);
+      localStorage.setItem("currentMasteryLevel", mastery);
+
+      console.log("✅ Results script completed for", compId, {
+        correct,
+        mastery,
+        missed
       });
-
-      if (response.ok) console.log(`✅ xAPI sent via Lambda: ${verbDisplay}`);
-      else console.warn(`⚠️ LRS returned status ${response.status}`);
-    } catch (err) {
-      console.error("❌ sendXAPI() failed:", err);
+    } catch (e) {
+      console.warn("❌ Results slide script failed:", e);
     }
-  };
-}
-
-}
-
-window.Script18 = function()
-{
-  /* ============================================================
-   Results slide – clean xAPI + accurate missed[] detection
-   FINAL PATCHED VERSION
-============================================================ */
-(function () {
-  try {
-    const p = GetPlayer();
-    if (!p) return;
-
-    /* ---------------------------------------------------------
-       1) Detect competency
-    --------------------------------------------------------- */
-    const url = window.location.href.toUpperCase();
-    const compMatch = url.match(/C[123]/);
-    const compId = compMatch ? compMatch[0] : "C1";
-
-    /* ---------------------------------------------------------
-       2) Sub-competency scoring (Ca / Cb / Cc)
-    --------------------------------------------------------- */
-    const sA = Number(p.GetVar(compId + "a_score") || 0);
-    const sB = Number(p.GetVar(compId + "b_score") || 0);
-    const sC = Number(p.GetVar(compId + "c_score") || 0);
-
-    const correct = sA + sB + sC;
-
-    /* REAL missed[] */
-    const missed = [];
-    if (sA !== 1) missed.push(compId + "a");
-    if (sB !== 1) missed.push(compId + "b");
-    if (sC !== 1) missed.push(compId + "c");
-
-    /* ---------------------------------------------------------
-       3) Mastery calculation
-    --------------------------------------------------------- */
-    let mastery = "Failing";
-    if (correct === 3) mastery = "Mastery";
-    else if (correct === 2) mastery = "Proficient";
-    else if (correct === 1) mastery = "Emerging";
-
-    const testedOut = correct === 3;
-    const finalized = false;
-
-    /* ---------------------------------------------------------
-       4) Identity + Session
-    --------------------------------------------------------- */
-    const name =
-      localStorage.getItem("learnerName") ||
-      p.GetVar("actorName") ||
-      "Anonymous";
-
-    let sid =
-      localStorage.getItem("sessionId") ||
-      p.GetVar("sessionId") ||
-      (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()));
-
-    // 🔧 REQUIRED FIX
-    localStorage.setItem("sessionId", sid);
-
-    const mbox = "mailto:" + encodeURIComponent(name) + "@wirelxdfirm.com";
-
-    /* ---------------------------------------------------------
-       5) Build xAPI summary statement
-    --------------------------------------------------------- */
-    const passed = correct >= 2;
-
-    const summaryStmt = {
-      actor: { name, mbox },
-      verb: {
-        id: passed
-          ? "http://adlnet.gov/expapi/verbs/passed"
-          : "http://adlnet.gov/expapi/verbs/failed",
-        display: { "en-US": passed ? "passed" : "failed" }
-      },
-      object: {
-        id: `https://acbl.wirelxdfirm.com/activities/${compId}/test`,
-        objectType: "Activity"
-      },
-      result: {
-        score: { raw: correct, min: 0, max: 3 },
-        success: passed,
-        completion: true,
-        extensions: {
-          "https://acbl.wirelxdfirm.com/extensions/learnerName": name,
-          "https://acbl.wirelxdfirm.com/extensions/sessionId": sid,
-          "https://acbl.wirelxdfirm.com/extensions/competencyId": compId,
-          "https://acbl.wirelxdfirm.com/extensions/masteryLevel": mastery,
-          "https://acbl.wirelxdfirm.com/extensions/missed": missed,
-          "https://acbl.wirelxdfirm.com/extensions/testedOut": testedOut,
-          "https://acbl.wirelxdfirm.com/extensions/finalized": finalized
-        }
-      },
-      context: { registration: sid },
-      timestamp: new Date().toISOString()
-    };
-
-    /* ---------------------------------------------------------
-       6) Send xAPI
-    --------------------------------------------------------- */
-    const endpoint =
-      "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
-
-    fetch(endpoint + "?mode=write", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(summaryStmt),
-      keepalive: true
-    })
-      .then(r => console.log(`✅ Summary sent:`, r.status))
-      .catch(e => console.warn("❌ Summary send failed:", e));
-
-    /* ---------------------------------------------------------
-       7) Adaptive storage
-    --------------------------------------------------------- */
-    localStorage.setItem(`${compId}.score`, correct);
-    localStorage.setItem(`${compId}.missed`, JSON.stringify(missed));
-    localStorage.setItem(`${compId}.mastery`, mastery);
-    localStorage.setItem(`${compId}.testedOut`, testedOut);
-    localStorage.setItem(`${compId}.finalized`, finalized);
-    localStorage.setItem("currentCompetency", compId);
-    localStorage.setItem("currentMasteryLevel", mastery);
-
-  } catch (e) {
-    console.warn("❌ Results slide script failed:", e);
   }
+
+  run();
 })();
 
 }
 
-window.Script19 = function()
-{
-  /* ============================================================
-   Results slide – clean xAPI + accurate missed[] detection
-   FINAL PATCHED VERSION (matches your Storyline variables)
-============================================================ */
-(function () {
-  try {
-    const p = GetPlayer();
-    if (!p) return;
-
-    /* 1) Detect competency */
-    const url = window.location.href.toUpperCase();
-    const compMatch = url.match(/C[123]/);
-    const compId = compMatch ? compMatch[0] : "C1";
-
-    /* 2) Sub-competency scoring – YOUR REAL VARIABLES */
-    const sA = Number(p.GetVar(compId + "a_score") || 0);
-    const sB = Number(p.GetVar(compId + "b_score") || 0);
-    const sC = Number(p.GetVar(compId + "c_score") || 0);
-
-    const correct = sA + sB + sC;
-
-    /* REAL missed[] */
-    const missed = [];
-    if (sA !== 1) missed.push(compId + "a");
-    if (sB !== 1) missed.push(compId + "b");
-    if (sC !== 1) missed.push(compId + "c");
-
-    /* 3) Mastery */
-    let mastery = "Failing";
-    if (correct === 3) mastery = "Mastery";
-    else if (correct === 2) mastery = "Proficient";
-    else if (correct === 1) mastery = "Emerging";
-
-    const testedOut = correct === 3;
-    const finalized = false;
-
-    /* 4) Identity + session */
-    const name =
-      localStorage.getItem("learnerName") ||
-      p.GetVar("learnerName") ||
-      "Anonymous";
-
-    let sid =
-      localStorage.getItem("sessionId") ||
-      p.GetVar("sessionId") ||
-      crypto.randomUUID();
-
-    localStorage.setItem("sessionId", sid);
-
-    const mbox = "mailto:" + encodeURIComponent(name) + "@wirelxdfirm.com";
-
-    /* 5) Summary statement */
-    const passed = correct >= 2;
-
-    const summaryStmt = {
-      actor: { name, mbox },
-      verb: {
-        id: passed
-          ? "http://adlnet.gov/expapi/verbs/passed"
-          : "http://adlnet.gov/expapi/verbs/failed",
-        display: { "en-US": passed ? "passed" : "failed" }
-      },
-      object: {
-        id: `https://acbl.wirelxdfirm.com/activities/${compId}/test`,
-        objectType: "Activity"
-      },
-      result: {
-        score: { raw: correct, min: 0, max: 3 },
-        success: passed,
-        completion: true,
-        extensions: {
-          "https://acbl.wirelxdfirm.com/extensions/learnerName": name,
-          "https://acbl.wirelxdfirm.com/extensions/sessionId": sid,
-          "https://acbl.wirelxdfirm.com/extensions/competencyId": compId,
-          "https://acbl.wirelxdfirm.com/extensions/masteryLevel": mastery,
-          "https://acbl.wirelxdfirm.com/extensions/missed": missed,
-          "https://acbl.wirelxdfirm.com/extensions/testedOut": testedOut,
-          "https://acbl.wirelxdfirm.com/extensions/finalized": finalized
-        }
-      },
-      context: { registration: sid },
-      timestamp: new Date().toISOString()
-    };
-
-    const endpoint =
-      "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
-
-    fetch(endpoint + "?mode=write", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(summaryStmt),
-      keepalive: true
-    });
-
-    /* 7) Adaptive storage */
-    localStorage.setItem(`${compId}.score`, correct);
-    localStorage.setItem(`${compId}.missed`, JSON.stringify(missed));
-    localStorage.setItem(`${compId}.mastery`, mastery);
-    localStorage.setItem(`${compId}.testedOut`, testedOut);
-    localStorage.setItem(`${compId}.finalized`, finalized);
-    localStorage.setItem("currentCompetency", compId);
-    localStorage.setItem("currentMasteryLevel", mastery);
-
-  } catch (e) {
-    console.warn("❌ Results slide script failed:", e);
-  }
-})();
-
-}
-
-window.Script20 = function()
+window.Script14 = function()
 {
   /* ============================================================
    FAILURE LAYER INITIALIZER (Bulletproof Final Version)
-   Marks attempt as completed & clears Storyline resume state
+   Marks test attempt as completed & clears Storyline resume
 ============================================================ */
 
 (function () {
   try {
 
     /* ----------------------------------------------------------
-       1. Detect the competency safely (C1 / C2 / C3)
+       1. Detect competency safely (C1 / C2 / C3)
     ---------------------------------------------------------- */
     let compId = "C1";
     try {
       const match = window.location.href.toUpperCase().match(/C[123]/);
       if (match && match[0]) compId = match[0];
-      else console.warn("⚠ No compId found, defaulting to C1");
+      else console.warn("⚠ No compId found in URL, defaulting to C1");
     } catch (e) {
-      console.warn("⚠ URL parse failure, defaulting compId = C1");
+      console.warn("⚠ URL parse failed; defaulting compId = C1");
     }
 
     /* ----------------------------------------------------------
-       2. Mark attempt as completed
-          (Results slide handles mastery, score, xAPI, missed[])
+       2. Mark attempt as completed (adaptive state written in base)
     ---------------------------------------------------------- */
     try {
       localStorage.setItem(`${compId}.completed`, "true");
-      console.log(`✔ Marked ${compId} attempt completed (FAIL outcome)`);
+      console.log(`✔ Marked ${compId} attempt completed (FAILURE outcome)`);
     } catch (e) {
       console.warn("⚠ Could not set completion flag:", e);
     }
 
     /* ----------------------------------------------------------
-       3. Optional SCORM LMS completion (ignored in HTML export)
+       3. Optional SCORM completion (ignored in HTML export)
+          Note: A failed test attempt is still a "completed" attempt.
     ---------------------------------------------------------- */
     try {
       const lms = window.lmsAPI || null;
       if (lms && typeof lms.SetStatus === "function") {
         lms.SetStatus("completed");
         lms.CommitData();
-        console.log("✔ SCORM completion sent (FAIL)");
+        console.log("✔ SCORM completion sent (FAILURE)");
       }
     } catch (e) {
       console.log("ℹ SCORM API unavailable (HTML export)");
     }
 
     /* ----------------------------------------------------------
-       4. Clear ONLY Storyline's resume keys
+       4. Clear Storyline *only* resume keys
           DO NOT clear:
             learnerName
             sessionId
-            mastery
-            missed
-            score
+            C?_mastery
+            C?_missed
+            C?_score
             testedOut
             finalized
-            ANY adaptive keys
     ---------------------------------------------------------- */
     try {
       const keys = Object.keys(localStorage);
@@ -1506,14 +1229,14 @@ window.Script20 = function()
         localStorage.removeItem(k);
       }
 
-      console.log("✔ Storyline resume keys cleared (FAIL)");
+      console.log("✔ Storyline resume keys cleared (FAILURE)");
 
     } catch (e) {
       console.warn("⚠ Could not clear resume keys:", e);
     }
 
     /* ----------------------------------------------------------
-       5. Prevent rare double-fire on failure layers
+       5. Prevent rare Storyline double-fire
     ---------------------------------------------------------- */
     window.__failureLayerInit = true;
 
@@ -1524,7 +1247,7 @@ window.Script20 = function()
 
 }
 
-window.Script21 = function()
+window.Script15 = function()
 {
   /* ============================================================
    RESULTS CONTINUE BUTTON (FINAL PATCHED VERSION)
@@ -1601,119 +1324,7 @@ window.Script21 = function()
 
 }
 
-window.Script22 = function()
-{
-  /* ============================================================
-   Results slide – clean xAPI + accurate missed[] detection
-   FINAL PATCHED VERSION
-============================================================ */
-(function () {
-  try {
-    const p = GetPlayer();
-    if (!p) return;
-
-    /* 1) Detect competency */
-    const url = window.location.href.toUpperCase();
-    const compMatch = url.match(/C[123]/);
-    const compId = compMatch ? compMatch[0] : "C1";
-
-    /* 2) Sub-competency scoring */
-    const sA = Number(p.GetVar(compId + "a_score") || 0);
-    const sB = Number(p.GetVar(compId + "b_score") || 0);
-    const sC = Number(p.GetVar(compId + "c_score") || 0);
-
-    const correct = sA + sB + sC;
-
-    /* REAL missed[] */
-    const missed = [];
-    if (sA !== 1) missed.push(compId + "a");
-    if (sB !== 1) missed.push(compId + "b");
-    if (sC !== 1) missed.push(compId + "c");
-
-    /* 3) Mastery */
-    let mastery = "Failing";
-    if (correct === 3) mastery = "Mastery";
-    else if (correct === 2) mastery = "Proficient";
-    else if (correct === 1) mastery = "Emerging";
-
-    const testedOut = correct === 3;
-    const finalized = false;
-
-    /* 4) Identity + session */
-    const name =
-      localStorage.getItem("learnerName") ||
-      p.GetVar("actorName") ||
-      "Anonymous";
-
-    let sid =
-      localStorage.getItem("sessionId") ||
-      p.GetVar("sessionId") ||
-      crypto.randomUUID();
-
-    localStorage.setItem("sessionId", sid);
-
-    const mbox = "mailto:" + encodeURIComponent(name) + "@wirelxdfirm.com";
-
-    /* 5) Build summary statement */
-    const passed = correct >= 2;
-
-    const summaryStmt = {
-      actor: { name, mbox },
-      verb: {
-        id: passed
-          ? "http://adlnet.gov/expapi/verbs/passed"
-          : "http://adlnet.gov/expapi/verbs/failed",
-        display: { "en-US": passed ? "passed" : "failed" }
-      },
-      object: {
-        id: `https://acbl.wirelxdfirm.com/activities/${compId}/test`,
-        objectType: "Activity"
-      },
-      result: {
-        score: { raw: correct, min: 0, max: 3 },
-        success: passed,
-        completion: true,
-        extensions: {
-          "https://acbl.wirelxdfirm.com/extensions/learnerName": name,
-          "https://acbl.wirelxdfirm.com/extensions/sessionId": sid,
-          "https://acbl.wirelxdfirm.com/extensions/competencyId": compId,
-          "https://acbl.wirelxdfirm.com/extensions/masteryLevel": mastery,
-          "https://acbl.wirelxdfirm.com/extensions/missed": missed,
-          "https://acbl.wirelxdfirm.com/extensions/testedOut": testedOut,
-          "https://acbl.wirelxdfirm.com/extensions/finalized": finalized
-        }
-      },
-      context: { registration: sid },
-      timestamp: new Date().toISOString()
-    };
-
-    const endpoint =
-      "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
-
-    fetch(endpoint + "?mode=write", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(summaryStmt),
-      keepalive: true
-    });
-
-    /* 7) Adaptive storage */
-    localStorage.setItem(`${compId}.score`, correct);
-    localStorage.setItem(`${compId}.missed`, JSON.stringify(missed));
-    localStorage.setItem(`${compId}.mastery`, mastery);
-    localStorage.setItem(`${compId}.testedOut`, testedOut);
-    localStorage.setItem(`${compId}.finalized`, finalized);
-    localStorage.setItem("currentCompetency", compId);
-    localStorage.setItem("currentMasteryLevel", mastery);
-
-  } catch (e) {
-    console.warn("❌ Results slide script failed:", e);
-  }
-})();
-
-}
-
-window.Script23 = function()
+window.Script16 = function()
 {
   /* ============================================================
    SUCCESS LAYER INITIALIZER (Bulletproof Final Version)
@@ -1800,7 +1411,7 @@ window.Script23 = function()
 
 }
 
-window.Script24 = function()
+window.Script17 = function()
 {
   /* ============================================================
    RESULTS CONTINUE BUTTON (FINAL PATCHED VERSION)
