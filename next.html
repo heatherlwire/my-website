@@ -15,69 +15,131 @@
     </script>
 
     <meta charset="UTF-8" />
-    <title>Analyzing your progress…</title>
+    <title>Your Adaptive Learning Dashboard</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
 
     <style>
         :root {
             --bg-0: #0a0f1a;
             --bg-1: #0e1526;
+            --bg-2: #101b33;
+            --card-bg: #141f38;
             --ink-0: #e8f1ff;
             --ink-1: #b9c8e8;
-            --err: #ef4444;
+            --good: #22c55e;
+            --warn: #f59e0b;
+            --fail: #ef4444;
+            --action: #0ea5e9;
         }
 
         body {
             margin: 0;
             font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
-            color: var(--ink-0);
             background: linear-gradient(180deg,#07101e 0%,#0b1628 100%);
-            min-height: 100vh;
-            padding: 40px 18px;
-            text-align: center;
+            color: var(--ink-0);
+            padding: 28px;
         }
 
         h1 {
-            font-size: 24px;
-            margin-bottom: 12px;
+            margin-top: 0;
+            text-align: center;
+            font-size: 30px;
         }
 
         .muted {
             color: var(--ink-1);
         }
 
-        #statusBox {
+        /* Dashboard layout */
+        .dash-container {
+            max-width: 850px;
+            margin: 0 auto;
             margin-top: 24px;
-            font-size: 15px;
-            color: var(--ink-1);
         }
 
-        .err {
-            color: var(--err);
+        .comp-card {
+            background: var(--card-bg);
+            padding: 18px;
+            border-radius: 10px;
+            margin-bottom: 18px;
+        }
+
+        .comp-title {
+            font-size: 18px;
+            margin-bottom: 4px;
+        }
+
+        .stat-row {
+            margin: 4px 0;
+        }
+
+        .next-box {
+            margin-top: 28px;
+            padding: 18px;
+            background: var(--card-bg);
+            border-radius: 10px;
+        }
+
+        .big-btn {
+            margin-top: 24px;
+            width: 100%;
+            background: var(--action);
+            border: none;
+            color: white;
+            padding: 14px;
+            border-radius: 10px;
+            font-size: 18px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+            .big-btn:hover {
+                background: #0c8dc8;
+            }
+
+        .small-btn {
+            margin-top: 12px;
+            background: #22304a;
+            border: none;
+            padding: 10px;
+            border-radius: 8px;
+            color: var(--ink-1);
+            cursor: pointer;
+        }
+
+        .status-good {
+            color: var(--good);
+        }
+
+        .status-warn {
+            color: var(--warn);
+        }
+
+        .status-fail {
+            color: var(--fail);
         }
     </style>
 </head>
 
 <body>
-    <h1>Analyzing your progress…</h1>
-    <p class="muted">Please wait while we retrieve your adaptive learning status.</p>
-    <p id="statusBox">Checking identity…</p>
+    <h1>Your Adaptive Learning Progress</h1>
+    <p class="muted" id="helloLine"></p>
+
+    <div class="dash-container" id="dash"></div>
 
     <script>
-        /* ============================================================
+        /* =========================================
            CONFIG
-        ============================================================ */
+        ========================================= */
         const PROXY_URL =
             "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
 
         const RULES_URL =
             "https://www.wirelearningsolutions.com/adaptive_rules.json";
 
-        const statusBox = document.getElementById("statusBox");
-
-        /* ============================================================
-           IDENTITY (QS + localStorage)
-        ============================================================ */
+        /* =========================================
+           IDENTITY
+        ========================================= */
         const qs = new URLSearchParams(location.search);
 
         let learnerName = qs.get("learnerName") || localStorage.getItem("learnerName") || "";
@@ -88,17 +150,9 @@
         if (email) localStorage.setItem("learnerEmail", email);
         if (sid) localStorage.setItem("sessionId", sid);
 
-        /* If identity is totally missing, treat as fresh C1 pretest */
-        if (!learnerName && !email) {
-            statusBox.textContent = "Starting at C1 pretest…";
-            setTimeout(() => {
-                window.location.href =
-                    "C1-test/story.html";
-            }, 600);
-            throw new Error("Missing identity");
-        }
+        document.getElementById("helloLine").textContent =
+            learnerName ? `Welcome back, ${learnerName}.` : `Welcome.`;
 
-        /* Helper: append identity when redirecting */
         function withIdentity(url) {
             const sep = url.includes("?") ? "&" : "?";
             return (
@@ -110,25 +164,15 @@
             );
         }
 
-        /* ============================================================
-           LOAD RULES
-        ============================================================ */
+        /* =========================================
+           LOAD RULES + SUMMARY
+        ========================================= */
         async function loadRules() {
-            statusBox.textContent = "Loading adaptive rules…";
             const res = await fetch(RULES_URL, { cache: "no-store" });
-            if (!res.ok) throw new Error("Failed to load adaptive rules");
             return res.json();
         }
 
-        /* ============================================================
-           LOAD SUMMARY (LRS → Lambda)
-        ============================================================ */
         async function loadSummary() {
-            statusBox.textContent = "Reading your progress from the LRS…";
-
-            // If somehow identity is missing here, treat as no history
-            if (!learnerName && !email) return {};
-
             const url =
                 PROXY_URL +
                 "?mode=summary" +
@@ -136,47 +180,34 @@
                 (email ? "&email=" + encodeURIComponent(email) : "");
 
             const res = await fetch(url);
-            if (!res.ok) {
-                // On any error, just treat as no history (fresh learner)
-                return {};
-            }
-
-            const data = await res.json();
-            if (!data || typeof data !== "object") return {};
-
-            // Always ensure keys exist
-            return {
-                C1: data.C1 || {},
-                C2: data.C2 || {},
-                C3: data.C3 || {}
-            };
+            if (!res.ok) return {};
+            return res.json();
         }
 
-        /* ============================================================
+        /* =========================================
            DETECT CURRENT COMPETENCY
-           (Based on JSON rules & summary)
-        ============================================================ */
+        ========================================= */
         function detectCurrent(summary) {
             const C1 = summary.C1 || {};
             const C2 = summary.C2 || {};
             const C3 = summary.C3 || {};
 
-            const m1 = C1.mastery || null;
-            const f1 = !!C1.finalized;
-            const m2 = C2.mastery || null;
-            const f2 = !!C2.finalized;
-            const m3 = C3.mastery || null;
-            const f3 = !!C3.finalized;
+            const m1 = C1.mastery;
+            const f1 = C1.finalized;
+            const m2 = C2.mastery;
+            const f2 = C2.finalized;
+            const m3 = C3.mastery;
+            const f3 = C3.finalized;
 
-            // If C1 is not mastered or finalized yet → stay in C1
+            // Still in C1
             if (!m1 && !f1) return "C1";
             if (m1 && m1 !== "Mastery" && !f1) return "C1";
 
-            // C1 mastered/finalized → move to C2 unless C2 fully done
+            // Move to C2
             if ((m1 === "Mastery" || f1) && (!m2 && !f2)) return "C2";
             if ((m1 === "Mastery" || f1) && (m2 && m2 !== "Mastery" && !f2)) return "C2";
 
-            // C1 + C2 done (Mastery/finalized), but C3 not done → C3
+            // Move to C3
             if ((m1 === "Mastery" || f1) &&
                 (m2 === "Mastery" || f2) &&
                 (!m3 && !f3)) return "C3";
@@ -184,14 +215,12 @@
                 (m2 === "Mastery" || f2) &&
                 (m3 && m3 !== "Mastery" && !f3)) return "C3";
 
-            // If everything has data, we still apply C3 rules (they route to program-complete)
             return "C3";
         }
 
-        /* ============================================================
-           APPLY RULES FOR ONE COMPETENCY
-           (Exactly respects your JSON)
-        ============================================================ */
+        /* =========================================
+           APPLY RULES
+        ========================================= */
         function buildRoutes(summary, rules) {
             const current = detectCurrent(summary);
             const compRules = rules[current];
@@ -209,168 +238,144 @@
                 result.pending.push({ type, target });
             }
 
-            if (!Array.isArray(compRules) || compRules.length === 0) {
-                return result;
-            }
-
             let matched = false;
 
             for (const rule of compRules) {
                 const cond = rule.if || {};
 
-                // 1) finalized
                 if (cond.finalized === true && finalized === true) {
-                    if (Array.isArray(rule.then)) {
-                        for (const step of rule.then) {
-                            if (step.route) pushRoute(step.route);
-                        }
-                    }
+                    (rule.then || []).forEach(step => {
+                        if (step.route) pushRoute(step.route);
+                    });
                     matched = true;
                     break;
                 }
 
-                // 2) mastery exact
                 if (cond.mastery && mastery === cond.mastery) {
-                    if (Array.isArray(rule.then)) {
-                        for (const step of rule.then) {
-                            // forEach = "missed" case (Proficient)
-                            if (step.forEach === "missed" && Array.isArray(missed) && missed.length > 0) {
-                                for (const item of missed) {
-                                    for (const d of step.do || []) {
-                                        const r = JSON.parse(JSON.stringify(d.route));
-                                        for (const k in r) {
-                                            r[k] = r[k].replace("{item}", item);
-                                        }
-                                        pushRoute(r);
-                                    }
-                                }
-                            }
-                            if (step.route) {
-                                pushRoute(step.route);
-                            }
+                    for (const step of rule.then || []) {
+                        if (step.forEach === "missed") {
+                            missed.forEach(item => {
+                                (step.do || []).forEach(d => {
+                                    const r = JSON.parse(JSON.stringify(d.route));
+                                    for (const k in r) r[k] = r[k].replace("{item}", item);
+                                    pushRoute(r);
+                                });
+                            });
                         }
+                        if (step.route) pushRoute(step.route);
                     }
                     matched = true;
                     break;
                 }
 
-                // 3) masteryIn array (Emerging / Failing)
                 if (Array.isArray(cond.masteryIn) && cond.masteryIn.includes(mastery)) {
-                    if (Array.isArray(rule.then)) {
-                        for (const step of rule.then) {
-                            // forEach = explicit array (e.g., ["C1a","C1b","C1c"])
-                            if (Array.isArray(step.forEach)) {
-                                for (const item of step.forEach) {
-                                    for (const d of step.do || []) {
-                                        const r = JSON.parse(JSON.stringify(d.route));
-                                        for (const k in r) {
-                                            r[k] = r[k].replace("{item}", item);
-                                        }
-                                        pushRoute(r);
-                                    }
-                                }
-                            }
-                            if (step.route) {
-                                pushRoute(step.route);
-                            }
+                    for (const step of rule.then || []) {
+                        if (Array.isArray(step.forEach)) {
+                            step.forEach.forEach(item => {
+                                (step.do || []).forEach(d => {
+                                    const r = JSON.parse(JSON.stringify(d.route));
+                                    for (const k in r) r[k] = r[k].replace("{item}", item);
+                                    pushRoute(r);
+                                });
+                            });
                         }
+                        if (step.route) pushRoute(step.route);
                     }
                     matched = true;
                     break;
                 }
             }
 
-            // If NO rule matched (no mastery/finalized yet) → treat as fresh pretest for that competency
             if (!matched) {
-                result.pending.push({
-                    type: "assessment",
-                    target: `${current}-test`
-                });
+                result.pending.push({ type: "assessment", target: `${current}-test` });
             }
 
             return result;
         }
 
-        /* ============================================================
-           RESOLVE ROUTE → REAL URL
-           (Follows your meta conventions)
-        ============================================================ */
+        /* =========================================
+           ROUTE → URL
+        ========================================= */
         function resolveRoute(route) {
             const { type, target } = route;
 
-            // 1) go → can be "C2-test", "C3-test", or "program-complete"
             if (type === "go") {
-                if (target === "program-complete") {
-                    return "program-complete.html";
-                }
-                // e.g., "C2-test" → Storyline folder
-                if (/-test$/.test(target)) {
-                    return `${target}/story.html`;
-                }
+                if (target === "program-complete") return "program-complete.html";
+                if (/-test$/.test(target)) return `${target}/story.html`;
                 return `${target}.html`;
             }
 
-            // 2) assessment → "C1-test", "C2-test", "C3-test"
-            if (type === "assessment") {
-                return `${target}/story.html`;
-            }
-
-            // 3) content → "{item}-content"
-            if (type === "content") {
-                // target like "C1a-content" → content/C1a-content.html
-                return `content/${target}.html`;
-            }
-
-            // 4) apply → "{item}-apply"
+            if (type === "assessment") return `${target}/story.html`;
+            if (type === "content") return `content/${target}-content.html`;
             if (type === "apply") {
-                // target like "C1a-apply" → apply/C1a/C1a-apply.html
-                const item = target.replace("-apply", "");
-                return `apply/${item}/${target}.html`;
+                const item = target;
+                return `apply/${item}/${item}-apply.html`;
             }
 
-            // Fallback: just return target.html to avoid hard breaks
             return `${target}.html`;
         }
 
-        /* ============================================================
-           MAIN FLOW
-        ============================================================ */
-        (async () => {
-            try {
-                const rules = await loadRules();
-                const summary = await loadSummary();
+        /* =========================================
+           BUILD DASHBOARD
+        ========================================= */
+        function renderDashboard(summary, routes) {
+            const dash = document.getElementById("dash");
 
-                const { current, pending } = buildRoutes(summary, rules);
-
-                if (!pending.length) {
-                    // Should not happen, but just in case
-                    statusBox.innerHTML =
-                        "<span class='err'>No route found. Starting at C1 pretest…</span>";
-                    setTimeout(() => {
-                        window.location.href = withIdentity("C1-test/story.html");
-                    }, 800);
-                    return;
-                }
-
-                const first = pending[0];
-                const url = resolveRoute(first);
-
-                statusBox.textContent = "Redirecting to your next step…";
-
-                setTimeout(() => {
-                    window.location.href = withIdentity(url);
-                }, 600);
-
-            } catch (err) {
-                console.error(err);
-                statusBox.innerHTML =
-                    "<span class='err'>We had trouble analyzing your progress. Starting at C1 pretest…</span>";
-                setTimeout(() => {
-                    window.location.href = withIdentity("C1-test/story.html");
-                }, 900);
+            function masteryColor(m) {
+                if (m === "Mastery") return "status-good";
+                if (m === "Proficient") return "status-warn";
+                return "status-fail";
             }
+
+            function cardHTML(id, data) {
+                return `
+                        <div class="comp-card">
+                            <div class="comp-title">${id}</div>
+                            <div class="stat-row">Status:
+                                <span class="${masteryColor(data.mastery)}">${data.mastery || "Not Started"}</span>
+                            </div>
+                            <div class="stat-row">Missed:
+                                ${data.missed && data.missed.length
+                        ? data.missed.join(", ")
+                        : "None"}
+                            </div>
+                        </div>
+                    `;
+            }
+
+            const next = routes.pending.length ? routes.pending[0] : null;
+            const nextUrl = next ? resolveRoute(next) : "C1-test/story.html";
+
+            dash.innerHTML = `
+                    ${cardHTML("C1", summary.C1 || {})}
+                    ${cardHTML("C2", summary.C2 || {})}
+                    ${cardHTML("C3", summary.C3 || {})}
+
+                    <div class="next-box">
+                        <div style="font-size: 20px; margin-bottom: 8px;">Next Step</div>
+                        <div class="muted">${next ? `${next.type.toUpperCase()}: ${next.target}` : "Start C1"}</div>
+                    </div>
+
+                    <button class="big-btn" onclick="window.location.href=withIdentity('${nextUrl}')">
+                        Continue
+                    </button>
+
+                    <button class="small-btn"
+                        onclick="localStorage.clear(); window.location.href='index.html';">
+                        Reset & Return to Start
+                    </button>
+                `;
+        }
+
+        /* =========================================
+           MAIN
+        ========================================= */
+        (async () => {
+            const rules = await loadRules();
+            const summary = await loadSummary();
+            const routes = buildRoutes(summary, rules);
+            renderDashboard(summary, routes);
         })();
     </script>
-
 </body>
 </html>
