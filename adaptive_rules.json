@@ -1,17 +1,21 @@
 {
   "meta": {
-    "version": "2.0.0",
-    "lastUpdated": "2025-11-16",
+    "version": "2.0.1",
+    "lastUpdated": "2025-11-17",
     "author": "Wire LXD Firm",
     "description": "Dynamic Adaptive Routing Rules for C1–C3 based on mastery level and missed sub-competencies",
     "namespace": "https://acbl.wirelxdfirm.com/extensions/",
     "conventions": {
       "masteryLevels": [ "Mastery", "Proficient", "Emerging", "Failing" ],
       "missed": "Array of missed sub-competencies (e.g., ['C1b'])",
+
       "contentPage": "content/{item}-content.html",
       "applyPage": "apply/{item}/{item}-apply.html",
+
+      "assessmentPage": "{item}/story.html",
       "tests": "C1-test, C2-test, C3-test",
-      "programComplete": "program-complete.html"
+
+      "programCompletePage": "program-complete.html"
     }
   },
 
@@ -38,8 +42,8 @@
         {
           "forEach": "missed",
           "do": [
-            { "route": { "content": "{item}-content" } },
-            { "route": { "apply": "{item}-apply" } }
+            { "route": { "content": "{item}" } },
+            { "route": { "apply": "{item}" } }
           ]
         },
         { "route": { "assessment": "C1-test" } }
@@ -52,8 +56,8 @@
         {
           "forEach": [ "C1a", "C1b", "C1c" ],
           "do": [
-            { "route": { "content": "{item}-content" } },
-            { "route": { "apply": "{item}-apply" } }
+            { "route": { "content": "{item}" } },
+            { "route": { "apply": "{item}" } }
           ]
         },
         { "route": { "assessment": "C1-test" } }
@@ -84,8 +88,8 @@
         {
           "forEach": "missed",
           "do": [
-            { "route": { "content": "{item}-content" } },
-            { "route": { "apply": "{item}-apply" } }
+            { "route": { "content": "{item}" } },
+            { "route": { "apply": "{item}" } }
           ]
         },
         { "route": { "assessment": "C2-test" } }
@@ -98,8 +102,8 @@
         {
           "forEach": [ "C2a", "C2b", "C2c" ],
           "do": [
-            { "route": { "content": "{item}-content" } },
-            { "route": { "apply": "{item}-apply" } }
+            { "route": { "content": "{item}" } },
+            { "route": { "apply": "{item}" } }
           ]
         },
         { "route": { "assessment": "C2-test" } }
@@ -130,8 +134,8 @@
         {
           "forEach": "missed",
           "do": [
-            { "route": { "content": "{item}-content" } },
-            { "route": { "apply": "{item}-apply" } }
+            { "route": { "content": "{item}" } },
+            { "route": { "apply": "{item}" } }
           ]
         },
         { "route": { "assessment": "C3-test" } }
@@ -144,8 +148,8 @@
         {
           "forEach": [ "C3a", "C3b", "C3c" ],
           "do": [
-            { "route": { "content": "{item}-content" } },
-            { "route": { "apply": "{item}-apply" } }
+            { "route": { "content": "{item}" } },
+            { "route": { "apply": "{item}" } }
           ]
         },
         { "route": { "assessment": "C3-test" } }
