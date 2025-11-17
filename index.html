@@ -243,6 +243,7 @@
             try {
                 const res = await fetch(PROXY_URL + "?mode=ping", { method: "GET", cache: "no-store" });
                 const body = await res.text();
+
                 let ok = false;
                 try { ok = JSON.parse(body).ok; } catch { }
 
@@ -320,7 +321,7 @@
                 encodeURIComponent(sid);
         }
 
-        /* ---------------- SANITIZE ONLY IF CORRUPT ---------------- */
+        /* ---------------- SANITIZE ---------------- */
         function sanitizeIdentity() {
             const storedName = localStorage.getItem("learnerName") || "";
             const storedEmail = localStorage.getItem("learnerEmail") || "";
@@ -328,7 +329,6 @@
             const nameBad = !isValidName(storedName);
             const emailBad = !emailRegex.test(storedEmail);
 
-            // Only erase if BOTH are invalid
             if (nameBad && emailBad) {
                 [
                     "learnerName", "learnerEmail", "sessionId",
@@ -340,22 +340,62 @@
         }
         sanitizeIdentity();
 
-        /* ---------------- SHOW SECTION ---------------- */
-        function showCorrectSection() {
-            const storedName = localStorage.getItem("learnerName");
-            const storedEmail = localStorage.getItem("learnerEmail");
+        /* ---------------- LRS LOOKUP (NEW RETURN DETECTION) ---------------- */
+        async function lrsLookupForReturn() {
+            let storedName = localStorage.getItem("learnerName");
+            let storedEmail = localStorage.getItem("learnerEmail");
 
-            if (!storedName || !storedEmail) {
+            if (!storedName && !storedEmail) return false;
+
+            const url =
+                PROXY_URL +
+                "?mode=summary" +
+                (storedName ? "&learnerName=" + encodeURIComponent(storedName) : "") +
+                (storedEmail ? "&email=" + encodeURIComponent(storedEmail) : "");
+
+            try {
+                const res = await fetch(url);
+                if (!res.ok) return false;
+
+                const data = await res.json();
+                // A valid learner has some kind of data
+                const hasHistory =
+                    data?.C1?.mastery ||
+                    data?.C1?.finalized ||
+                    data?.C2?.mastery ||
+                    data?.C3?.mastery;
+
+                return !!hasHistory;
+            } catch {
+                return false;
+            }
+        }
+
+        /* ---------------- SHOW SECTION ---------------- */
+        async function showCorrectSection() {
+            const name = localStorage.getItem("learnerName");
+            const email = localStorage.getItem("learnerEmail");
+
+            if (!name || !email) {
                 newUserSection.hidden = false;
                 returningSection.hidden = true;
                 return;
             }
 
-            welcomeText.textContent = `Learner detected: ${storedName} (${storedEmail})`;
+            // Check LRS to ensure this learner actually has history
+            const isReturning = await lrsLookupForReturn();
 
-            newUserSection.hidden = true;
-            returningSection.hidden = false;
+            if (isReturning) {
+                welcomeText.textContent = `Learner detected: ${name} (${email})`;
+                newUserSection.hidden = true;
+                returningSection.hidden = false;
+            } else {
+                // If LRS has no data, treat as new
+                newUserSection.hidden = false;
+                returningSection.hidden = true;
+            }
         }
+
         document.addEventListener("DOMContentLoaded", () => {
             validate();
             showCorrectSection();
