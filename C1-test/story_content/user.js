@@ -31,9 +31,18 @@ window.Script1 = function()
         return o;
     }
 
-    /* ---------- Force full activity URL for SCORM Cloud ---------- */
+    /* ---------- Activity URL helper (no double-encoding) ---------- */
     function activityUrl(id) {
-        return "https://acbl.wirelxdfirm.com/activities/" + encodeURIComponent(id);
+        if (!id) return "https://acbl.wirelxdfirm.com/activities/unknown";
+
+        // If it already looks like a full URL, leave it alone
+        if (/^https?:\/\//i.test(id)) {
+            return id.trim();
+        }
+
+        // Otherwise treat as relative path after /activities/
+        id = String(id).replace(/^\/+/, "");
+        return "https://acbl.wirelxdfirm.com/activities/" + id;
     }
 
     /* ---------- Actual send function ---------- */
@@ -90,10 +99,28 @@ window.Script1 = function()
             const mbox =
                 "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com";
 
-            /* ---------- SCORM Cloud REQUIRED score field ---------- */
+            /* ---------- AUTO-SCORING FIX (for question-level statements) ---------- */
             if (!resultData.score) {
-                resultData.score = { raw: 0, min: 0, max: 100, scaled: 0 };
+                const isCorrect =
+                    resultData.success === true ||
+                    p.GetVar("isCorrect") === true ||
+                    p.GetVar("Correct") === true ||
+                    false;
+
+                if (resultData.success == null) {
+                    resultData.success = isCorrect;
+                }
+
+                // Question-level: 100 for correct, 0 for incorrect
+                resultData.score = {
+                    raw: isCorrect ? 100 : 0,
+                    min: 0,
+                    max: 100,
+                    scaled: isCorrect ? 1 : 0
+                };
             }
+            // NOTE: summary/result slides already build a score object;
+            // we do NOT override it because resultData.score already exists.
 
             /* ---------- Build full statement ---------- */
             const stmt = {
@@ -290,9 +317,18 @@ window.Script3 = function()
         return o;
     }
 
-    /* ---------- Force full activity URL for SCORM Cloud ---------- */
+    /* ---------- Activity URL helper (no double-encoding) ---------- */
     function activityUrl(id) {
-        return "https://acbl.wirelxdfirm.com/activities/" + encodeURIComponent(id);
+        if (!id) return "https://acbl.wirelxdfirm.com/activities/unknown";
+
+        // If it already looks like a full URL, leave it alone
+        if (/^https?:\/\//i.test(id)) {
+            return id.trim();
+        }
+
+        // Otherwise treat as relative path after /activities/
+        id = String(id).replace(/^\/+/, "");
+        return "https://acbl.wirelxdfirm.com/activities/" + id;
     }
 
     /* ---------- Actual send function ---------- */
@@ -349,10 +385,28 @@ window.Script3 = function()
             const mbox =
                 "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com";
 
-            /* ---------- SCORM Cloud REQUIRED score field ---------- */
+            /* ---------- AUTO-SCORING FIX (for question-level statements) ---------- */
             if (!resultData.score) {
-                resultData.score = { raw: 0, min: 0, max: 100, scaled: 0 };
+                const isCorrect =
+                    resultData.success === true ||
+                    p.GetVar("isCorrect") === true ||
+                    p.GetVar("Correct") === true ||
+                    false;
+
+                if (resultData.success == null) {
+                    resultData.success = isCorrect;
+                }
+
+                // Question-level: 100 for correct, 0 for incorrect
+                resultData.score = {
+                    raw: isCorrect ? 100 : 0,
+                    min: 0,
+                    max: 100,
+                    scaled: isCorrect ? 1 : 0
+                };
             }
+            // NOTE: summary/result slides already build a score object;
+            // we do NOT override it because resultData.score already exists.
 
             /* ---------- Build full statement ---------- */
             const stmt = {
@@ -542,9 +596,18 @@ window.Script6 = function()
         return o;
     }
 
-    /* ---------- Force full activity URL for SCORM Cloud ---------- */
+    /* ---------- Activity URL helper (no double-encoding) ---------- */
     function activityUrl(id) {
-        return "https://acbl.wirelxdfirm.com/activities/" + encodeURIComponent(id);
+        if (!id) return "https://acbl.wirelxdfirm.com/activities/unknown";
+
+        // If it already looks like a full URL, leave it alone
+        if (/^https?:\/\//i.test(id)) {
+            return id.trim();
+        }
+
+        // Otherwise treat as relative path after /activities/
+        id = String(id).replace(/^\/+/, "");
+        return "https://acbl.wirelxdfirm.com/activities/" + id;
     }
 
     /* ---------- Actual send function ---------- */
@@ -601,10 +664,28 @@ window.Script6 = function()
             const mbox =
                 "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com";
 
-            /* ---------- SCORM Cloud REQUIRED score field ---------- */
+            /* ---------- AUTO-SCORING FIX (for question-level statements) ---------- */
             if (!resultData.score) {
-                resultData.score = { raw: 0, min: 0, max: 100, scaled: 0 };
+                const isCorrect =
+                    resultData.success === true ||
+                    p.GetVar("isCorrect") === true ||
+                    p.GetVar("Correct") === true ||
+                    false;
+
+                if (resultData.success == null) {
+                    resultData.success = isCorrect;
+                }
+
+                // Question-level: 100 for correct, 0 for incorrect
+                resultData.score = {
+                    raw: isCorrect ? 100 : 0,
+                    min: 0,
+                    max: 100,
+                    scaled: isCorrect ? 1 : 0
+                };
             }
+            // NOTE: summary/result slides already build a score object;
+            // we do NOT override it because resultData.score already exists.
 
             /* ---------- Build full statement ---------- */
             const stmt = {
@@ -794,9 +875,18 @@ window.Script9 = function()
         return o;
     }
 
-    /* ---------- Force full activity URL for SCORM Cloud ---------- */
+    /* ---------- Activity URL helper (no double-encoding) ---------- */
     function activityUrl(id) {
-        return "https://acbl.wirelxdfirm.com/activities/" + encodeURIComponent(id);
+        if (!id) return "https://acbl.wirelxdfirm.com/activities/unknown";
+
+        // If it already looks like a full URL, leave it alone
+        if (/^https?:\/\//i.test(id)) {
+            return id.trim();
+        }
+
+        // Otherwise treat as relative path after /activities/
+        id = String(id).replace(/^\/+/, "");
+        return "https://acbl.wirelxdfirm.com/activities/" + id;
     }
 
     /* ---------- Actual send function ---------- */
@@ -853,10 +943,28 @@ window.Script9 = function()
             const mbox =
                 "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com";
 
-            /* ---------- SCORM Cloud REQUIRED score field ---------- */
+            /* ---------- AUTO-SCORING FIX (for question-level statements) ---------- */
             if (!resultData.score) {
-                resultData.score = { raw: 0, min: 0, max: 100, scaled: 0 };
+                const isCorrect =
+                    resultData.success === true ||
+                    p.GetVar("isCorrect") === true ||
+                    p.GetVar("Correct") === true ||
+                    false;
+
+                if (resultData.success == null) {
+                    resultData.success = isCorrect;
+                }
+
+                // Question-level: 100 for correct, 0 for incorrect
+                resultData.score = {
+                    raw: isCorrect ? 100 : 0,
+                    min: 0,
+                    max: 100,
+                    scaled: isCorrect ? 1 : 0
+                };
             }
+            // NOTE: summary/result slides already build a score object;
+            // we do NOT override it because resultData.score already exists.
 
             /* ---------- Build full statement ---------- */
             const stmt = {
@@ -1048,9 +1156,18 @@ window.Script12 = function()
         return o;
     }
 
-    /* ---------- Force full activity URL for SCORM Cloud ---------- */
+    /* ---------- Activity URL helper (no double-encoding) ---------- */
     function activityUrl(id) {
-        return "https://acbl.wirelxdfirm.com/activities/" + encodeURIComponent(id);
+        if (!id) return "https://acbl.wirelxdfirm.com/activities/unknown";
+
+        // If it already looks like a full URL, leave it alone
+        if (/^https?:\/\//i.test(id)) {
+            return id.trim();
+        }
+
+        // Otherwise treat as relative path after /activities/
+        id = String(id).replace(/^\/+/, "");
+        return "https://acbl.wirelxdfirm.com/activities/" + id;
     }
 
     /* ---------- Actual send function ---------- */
@@ -1107,10 +1224,28 @@ window.Script12 = function()
             const mbox =
                 "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com";
 
-            /* ---------- SCORM Cloud REQUIRED score field ---------- */
+            /* ---------- AUTO-SCORING FIX (for question-level statements) ---------- */
             if (!resultData.score) {
-                resultData.score = { raw: 0, min: 0, max: 100, scaled: 0 };
+                const isCorrect =
+                    resultData.success === true ||
+                    p.GetVar("isCorrect") === true ||
+                    p.GetVar("Correct") === true ||
+                    false;
+
+                if (resultData.success == null) {
+                    resultData.success = isCorrect;
+                }
+
+                // Question-level: 100 for correct, 0 for incorrect
+                resultData.score = {
+                    raw: isCorrect ? 100 : 0,
+                    min: 0,
+                    max: 100,
+                    scaled: isCorrect ? 1 : 0
+                };
             }
+            // NOTE: summary/result slides already build a score object;
+            // we do NOT override it because resultData.score already exists.
 
             /* ---------- Build full statement ---------- */
             const stmt = {
@@ -1167,15 +1302,14 @@ window.Script12 = function()
 window.Script13 = function()
 {
   /* ============================================================
-   Results slide – clean xAPI + accurate missed[] detection
-   BULLETPROOF + SCORM-CLOUD-COMPLIANT VERSION
+   RESULTS SLIDE – FINAL BULLETPROOF VERSION
+   SCORM-CLOUD-COMPLIANT SUMMARY + CLEAN ADAPTIVE STORAGE
 ============================================================ */
 (function () {
   function run() {
     try {
-      const p = (window.GetPlayer && window.GetPlayer());
+      const p = window.GetPlayer && window.GetPlayer();
       if (!p) {
-        // Storyline player not ready yet
         setTimeout(run, 200);
         return;
       }
@@ -1188,7 +1322,7 @@ window.Script13 = function()
       const compId = compMatch ? compMatch[0] : "C1";
 
       /* ---------------------------------------------------------
-         2) Sub-competency scoring (Ca / Cb / Cc)
+         2) Subscores: C1a_score, C1b_score, C1c_score
       --------------------------------------------------------- */
       const sA = Number(p.GetVar(compId + "a_score") || 0);
       const sB = Number(p.GetVar(compId + "b_score") || 0);
@@ -1196,13 +1330,14 @@ window.Script13 = function()
 
       const correct = sA + sB + sC;
 
+      /* missed[] detection */
       const missed = [];
       if (sA !== 1) missed.push(compId + "a");
       if (sB !== 1) missed.push(compId + "b");
       if (sC !== 1) missed.push(compId + "c");
 
       /* ---------------------------------------------------------
-         3) Mastery calculation
+         3) Mastery level
       --------------------------------------------------------- */
       let mastery = "Failing";
       if (correct === 3) mastery = "Mastery";
@@ -1213,92 +1348,95 @@ window.Script13 = function()
       const finalized = false;
 
       /* ---------------------------------------------------------
-         4) Identity + session
+         4) Identity + Session
       --------------------------------------------------------- */
-      const name =
+      let learner =
         localStorage.getItem("learnerName") ||
         p.GetVar("actorName") ||
         "Anonymous";
 
+      learner = learner.trim() || "Anonymous";
+
       let sid =
         localStorage.getItem("sessionId") ||
         p.GetVar("sessionId") ||
-        (window.crypto && crypto.randomUUID
-          ? crypto.randomUUID()
-          : String(Date.now()));
+        (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()));
 
       localStorage.setItem("sessionId", sid);
-
-      const mbox = "mailto:" + encodeURIComponent(name) + "@wirelxdfirm.com";
+      const mbox = "mailto:" + encodeURIComponent(learner) + "@wirelxdfirm.com";
 
       /* ---------------------------------------------------------
-         5) Build SCORM-cloud-compliant xAPI statement
+         5) Build summary statement (COMPLETE + SCORE)
       --------------------------------------------------------- */
       const passed = correct >= 2;
 
-      const summaryStmt = {
-        actor: { name, mbox },
-        verb: {
-          id: passed
-            ? "http://adlnet.gov/expapi/verbs/passed"
-            : "http://adlnet.gov/expapi/verbs/failed",
-          display: { "en-US": passed ? "passed" : "failed" }
-        },
-        object: {
-          id: `https://acbl.wirelxdfirm.com/activities/${compId}/test`,
-          definition: {
-            name: { "en-US": `${compId} Test` },
-            description: { "en-US": `Assessment for competency ${compId}` },
-            type: "http://adlnet.gov/expapi/activities/assessment"
-          },
-          objectType: "Activity"
-        },
-        result: {
-          score: { raw: correct, min: 0, max: 3 },
-          success: passed,
-          completion: true,
-          extensions: {
-            "https://acbl.wirelxdfirm.com/extensions/learnerName": name,
-            "https://acbl.wirelxdfirm.com/extensions/sessionId": sid,
-            "https://acbl.wirelxdfirm.com/extensions/competencyId": compId,
-            "https://acbl.wirelxdfirm.com/extensions/masteryLevel": mastery,
-            "https://acbl.wirelxdfirm.com/extensions/missed": missed,
-            "https://acbl.wirelxdfirm.com/extensions/testedOut": testedOut,
-            "https://acbl.wirelxdfirm.com/extensions/finalized": finalized
-          }
-        },
-        context: { registration: sid },
-        timestamp: new Date().toISOString()
+      const resultObj = {
+        score: { raw: correct, min: 0, max: 3 },
+        success: passed,
+        completion: true,
+        extensions: {
+          "https://acbl.wirelxdfirm.com/extensions/learnerName": learner,
+          "https://acbl.wirelxdfirm.com/extensions/sessionId": sid,
+          "https://acbl.wirelxdfirm.com/extensions/competencyId": compId,
+          "https://acbl.wirelxdfirm.com/extensions/masteryLevel": mastery,
+          "https://acbl.wirelxdfirm.com/extensions/missed": missed,
+          "https://acbl.wirelxdfirm.com/extensions/testedOut": testedOut,
+          "https://acbl.wirelxdfirm.com/extensions/finalized": finalized
+        }
       };
 
-      /* ---------------------------------------------------------
-         6) Send via Lambda or fallback direct
-      --------------------------------------------------------- */
-      const endpoint =
-        "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
+      const verbId = passed
+        ? "http://adlnet.gov/expapi/verbs/passed"
+        : "http://adlnet.gov/expapi/verbs/failed";
 
+      const verbDisplay = passed ? "passed" : "failed";
+
+      const objectId = `https://acbl.wirelxdfirm.com/activities/${compId}/test`;
+      const objectName = `${compId} Test`;
+      const objectDesc = `Assessment for competency ${compId}`;
+
+      /* ---------------------------------------------------------
+         6) SEND VIA YOUR MASTER-SLIDE OVERRIDE (CORRECT SIGNATURE)
+      --------------------------------------------------------- */
       if (window.sendXAPI) {
         window.sendXAPI(
-          summaryStmt.verb.id,
-          summaryStmt.verb.display["en-US"],
-          summaryStmt.object.id,
-          `${compId} Test`,
-          summaryStmt.result
+          verbId,
+          verbDisplay,
+          objectId,
+          objectName,
+          resultObj,
+          objectDesc  // ← REQUIRED FOR SCORM CLOUD
         );
-        console.log("✅ Summary routed through sendXAPI helper");
+        console.log("✅ Summary sent through sendXAPI()");
       } else {
-        fetch(endpoint + "?mode=write", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(summaryStmt),
-          keepalive: true
-        })
-          .then(r => console.log("✅ Summary sent direct:", r.status))
-          .catch(e => console.warn("❌ Summary send failed:", e));
+        console.warn("⚠ sendXAPI() missing — fallback direct");
+        fetch(
+          "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws?mode=write",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              actor: { name: learner, mbox },
+              verb: { id: verbId, display: { "en-US": verbDisplay } },
+              object: {
+                id: objectId,
+                definition: {
+                  name: { "en-US": objectName },
+                  description: { "en-US": objectDesc },
+                  type: "http://adlnet.gov/expapi/activities/assessment"
+                },
+                objectType: "Activity"
+              },
+              result: resultObj,
+              context: { registration: sid },
+              timestamp: new Date().toISOString()
+            })
+          }
+        );
       }
 
       /* ---------------------------------------------------------
-         7) Store adaptive state for next.html
+         7) Save adaptive state for next.html
       --------------------------------------------------------- */
       localStorage.setItem(`${compId}.score`, correct);
       localStorage.setItem(`${compId}.missed`, JSON.stringify(missed));
@@ -1308,11 +1446,7 @@ window.Script13 = function()
       localStorage.setItem("currentCompetency", compId);
       localStorage.setItem("currentMasteryLevel", mastery);
 
-      console.log("✅ Results script completed for", compId, {
-        correct,
-        mastery,
-        missed
-      });
+      console.log(`🎉 FINAL SCORE: ${correct}/3 (${mastery})`, { missed });
 
     } catch (e) {
       console.warn("❌ Results slide script failed:", e);

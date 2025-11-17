@@ -138,29 +138,52 @@
         /* =========================================
            CONFIG
         ========================================= */
+
+        // Lambda is WRITE ONLY now (for e.g., Accept Mastery)
         const PROXY_URL =
             "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
 
+        // Adaptive rules JSON
         const RULES_URL =
             "https://www.wirelearningsolutions.com/adaptive_rules.json";
 
+        // Extension namespace
         const EXT_NS = "https://acbl.wirelxdfirm.com/extensions/";
+        const EX = (k) => EXT_NS + k;
+
+        // SCORM Cloud LRS (DIRECT READ)
+        const LRS_ENDPOINT =
+            "https://cloud.scorm.com/lrs/TENBKY6BZ6/sandbox/";
+        const LRS_KEY = "d_cPqAqYNvM3sMTyJ2M";
+        const LRS_SECRET = "rh70yfaxONPyu11z_vk";
+        const LRS_AUTH = "Basic " + btoa(`${LRS_KEY}:${LRS_SECRET}`);
 
         /* =========================================
            IDENTITY
         ========================================= */
         const qs = new URLSearchParams(location.search);
 
-        let learnerName = qs.get("learnerName") || localStorage.getItem("learnerName") || "";
-        let email = qs.get("email") || localStorage.getItem("learnerEmail") || "";
-        let sid = qs.get("sid") || localStorage.getItem("sessionId") || "";
+        let learnerName =
+            qs.get("learnerName") || localStorage.getItem("learnerName") || "";
+        let email =
+            qs.get("email") || localStorage.getItem("learnerEmail") || "";
+        let sid =
+            qs.get("sid") || localStorage.getItem("sessionId") || "";
+
+        if (!sid) {
+            sid = (window.crypto && crypto.randomUUID)
+                ? crypto.randomUUID()
+                : String(Date.now());
+        }
 
         if (learnerName) localStorage.setItem("learnerName", learnerName);
         if (email) localStorage.setItem("learnerEmail", email);
         if (sid) localStorage.setItem("sessionId", sid);
 
         document.getElementById("helloLine").textContent =
-            learnerName ? `Welcome back, ${learnerName}.` : `Welcome.`;
+            learnerName
+                ? `Welcome back, ${learnerName}.`
+                : `Welcome.`;
 
         function withIdentity(url) {
             const sep = url.includes("?") ? "&" : "?";
@@ -174,7 +197,7 @@
         }
 
         /* =========================================
-           LOAD RULES + SUMMARY
+           LOAD RULES
         ========================================= */
         async function loadRules() {
             const res = await fetch(RULES_URL, { cache: "no-store" });
@@ -182,21 +205,102 @@
             return res.json();
         }
 
-        async function loadSummary() {
-            const url =
-                PROXY_URL +
-                "?mode=summary" +
-                (learnerName ? "&learnerName=" + encodeURIComponent(learnerName) : "") +
-                (email ? "&email=" + encodeURIComponent(email) : "");
+        /* =========================================
+           LOAD SUMMARY FROM LRS (DIRECT, NO LAMBDA)
+        ========================================= */
 
-            const res = await fetch(url);
-            if (!res.ok) return {};
+        function toBool(v) {
+            return (
+                v === true ||
+                v === 1 ||
+                (typeof v === "string" && /^(true|1)$/i.test(v))
+            );
+        }
+
+        function compFromStatement(stmt) {
+            const ext = stmt?.result?.extensions || {};
+            const byExt = ext[EX("competencyId")];
+            if (byExt && /^C[1-3]$/i.test(byExt)) {
+                return byExt.toUpperCase();
+            }
+            const id = stmt?.object?.id || "";
+            const m = id.match(/C[1-3]/i);
+            return m ? m[0].toUpperCase() : null;
+        }
+
+        async function loadSummary() {
+            // Get latest statements for this learner (filter by extension or actor.name)
+            const url =
+                `${LRS_ENDPOINT}statements?limit=200&format=exact`;
+
+            const res = await fetch(url, {
+                headers: {
+                    "Authorization": LRS_AUTH,
+                    "X-Experience-API-Version": "1.0.3"
+                }
+            });
+
+            if (!res.ok) {
+                console.warn("LRS fetch failed, status:", res.status);
+                return { C1: {}, C2: {}, C3: {} };
+            }
+
             const data = await res.json();
-            return {
-                C1: data.C1 || {},
-                C2: data.C2 || {},
-                C3: data.C3 || {}
+            const stmts = Array.isArray(data.statements) ? data.statements : [];
+
+            // Filter for this learner
+            const filtered = stmts.filter((s) => {
+                const ex = s.result?.extensions || {};
+                const extName = ex[EX("learnerName")];
+                const actorName = s.actor?.name;
+                if (learnerName && extName === learnerName) return true;
+                if (learnerName && actorName === learnerName) return true;
+                return false;
+            });
+
+            const summary = {
+                C1: { mastery: null, finalized: false, testedOut: false, missed: [] },
+                C2: { mastery: null, finalized: false, testedOut: false, missed: [] },
+                C3: { mastery: null, finalized: false, testedOut: false, missed: [] }
             };
+
+            for (const s of filtered) {
+                const comp = compFromStatement(s);
+                if (!comp || !summary[comp]) continue;
+
+                const ext = s.result?.extensions || {};
+
+                const masteryVal = ext[EX("masteryLevel")];
+                if (masteryVal) {
+                    summary[comp].mastery = masteryVal;
+                }
+
+                if (ext.hasOwnProperty(EX("finalized"))) {
+                    summary[comp].finalized = toBool(ext[EX("finalized")]);
+                }
+
+                if (ext.hasOwnProperty(EX("testedOut"))) {
+                    summary[comp].testedOut = toBool(ext[EX("testedOut")]);
+                }
+
+                const missedVal = ext[EX("missed")];
+                if (Array.isArray(missedVal)) {
+                    summary[comp].missed = missedVal;
+                } else if (typeof missedVal === "string" && missedVal.trim()) {
+                    try {
+                        const arr = JSON.parse(missedVal);
+                        if (Array.isArray(arr)) summary[comp].missed = arr;
+                    } catch {
+                        const arr = missedVal
+                            .split(",")
+                            .map((s) => s.replace(/"/g, "").trim())
+                            .filter(Boolean);
+                        if (arr.length) summary[comp].missed = arr;
+                    }
+                }
+            }
+
+            return summary;
         }
 
         /* =========================================
@@ -281,7 +385,9 @@
                             missed.forEach(item => {
                                 (step.do || []).forEach(d => {
                                     const r = JSON.parse(JSON.stringify(d.route));
-                                    for (const k in r) r[k] = r[k].replace("{item}", item);
+                                    for (const k in r) {
+                                        r[k] = r[k].replace("{item}", item);
+                                    }
                                     pushRoute(r);
                                 });
                             });
@@ -299,7 +405,9 @@
                             step.forEach.forEach(item => {
                                 (step.do || []).forEach(d => {
                                     const r = JSON.parse(JSON.stringify(d.route));
-                                    for (const k in r) r[k] = r[k].replace("{item}", item);
+                                    for (const k in r) {
+                                        r[k] = r[k].replace("{item}", item);
+                                    }
                                     pushRoute(r);
                                 });
                             });
@@ -331,7 +439,10 @@
                 return `${target}.html`;
             }
 
-            if (type === "assessment") return `${target}/story.html`;
+            if (type === "assessment") {
+                // target is like "C1-test", "C2-test"
+                return `${target}/story.html`;
+            }
 
             if (type === "content") {
                 // target like "C1a"
@@ -348,7 +459,7 @@
         }
 
         /* =========================================
-           ACCEPT MASTERY OFF-RAMP
+           ACCEPT MASTERY OFF-RAMP (via Lambda WRITE)
         ========================================= */
         async function acceptMastery(compId) {
             try {
@@ -377,8 +488,9 @@
                     },
                     result: {
                         extensions: {
-                            [EXT_NS + "competencyId"]: compId,
-                            [EXT_NS + "finalized"]: true
+                            [EX("competencyId")]: compId,
+                            [EX("finalized")]: true,
+                            [EX("learnerName")]: actorName
                         }
                     },
                     context: {
@@ -387,7 +499,7 @@
                     timestamp: new Date().toISOString()
                 };
 
-                // Write statement via Lambda
+                // Write statement via Lambda (mode=write)
                 await fetch(PROXY_URL + "?mode=write", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -438,7 +550,8 @@
                             <div class="stat-row">Missed:
                                 ${data.missed && data.missed.length
                         ? data.missed.join(", ")
-                        : "None"}
+                        : "None"
+                    }
                             </div>
                         </div>
                     `;
@@ -472,7 +585,8 @@
                         <div class="muted" style="margin-bottom: 10px;">
                             ${next
                     ? `${next.type.toUpperCase()}: ${next.target}`
-                    : "Start with C1 pretest."}
+                    : "Start with C1 pretest."
+                }
                         </div>
 
                         <button class="big-btn" onclick="window.location.href=withIdentity('${nextUrl}')">
