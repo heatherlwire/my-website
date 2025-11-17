@@ -1008,20 +1008,20 @@ window.Script13 = function()
 {
   /* ============================================================
    Results slide – clean xAPI + accurate missed[] detection
-   BULLETPROOF PATCHED VERSION
+   BULLETPROOF + SCORM-CLOUD-COMPLIANT VERSION
 ============================================================ */
 (function () {
   function run() {
     try {
       const p = (window.GetPlayer && window.GetPlayer());
       if (!p) {
-        // Try again shortly if Storyline player is not ready yet
+        // Storyline player not ready yet
         setTimeout(run, 200);
         return;
       }
 
       /* ---------------------------------------------------------
-         1) Detect competency
+         1) Detect competency (C1 / C2 / C3)
       --------------------------------------------------------- */
       const url = window.location.href.toUpperCase();
       const compMatch = url.match(/C[123]/);
@@ -1053,7 +1053,7 @@ window.Script13 = function()
       const finalized = false;
 
       /* ---------------------------------------------------------
-         4) Identity + Session
+         4) Identity + session
       --------------------------------------------------------- */
       const name =
         localStorage.getItem("learnerName") ||
@@ -1063,17 +1063,16 @@ window.Script13 = function()
       let sid =
         localStorage.getItem("sessionId") ||
         p.GetVar("sessionId") ||
-        ((window.crypto && window.crypto.randomUUID)
-          ? window.crypto.randomUUID()
+        (window.crypto && crypto.randomUUID
+          ? crypto.randomUUID()
           : String(Date.now()));
 
-      // Keep sessionId in localStorage for next.html + Lambda summary
       localStorage.setItem("sessionId", sid);
 
       const mbox = "mailto:" + encodeURIComponent(name) + "@wirelxdfirm.com";
 
       /* ---------------------------------------------------------
-         5) Build xAPI summary statement
+         5) Build SCORM-cloud-compliant xAPI statement
       --------------------------------------------------------- */
       const passed = correct >= 2;
 
@@ -1087,6 +1086,11 @@ window.Script13 = function()
         },
         object: {
           id: `https://acbl.wirelxdfirm.com/activities/${compId}/test`,
+          definition: {
+            name: { "en-US": `${compId} Test` },
+            description: { "en-US": `Assessment for competency ${compId}` },
+            type: "http://adlnet.gov/expapi/activities/assessment"
+          },
           objectType: "Activity"
         },
         result: {
@@ -1108,12 +1112,11 @@ window.Script13 = function()
       };
 
       /* ---------------------------------------------------------
-         6) Send xAPI via Lambda
+         6) Send via Lambda or fallback direct
       --------------------------------------------------------- */
       const endpoint =
         "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
 
-      // Prefer the global helper if present, fall back to direct fetch
       if (window.sendXAPI) {
         window.sendXAPI(
           summaryStmt.verb.id,
@@ -1135,7 +1138,7 @@ window.Script13 = function()
       }
 
       /* ---------------------------------------------------------
-         7) Adaptive storage (for next.html)
+         7) Store adaptive state for next.html
       --------------------------------------------------------- */
       localStorage.setItem(`${compId}.score`, correct);
       localStorage.setItem(`${compId}.missed`, JSON.stringify(missed));
@@ -1150,6 +1153,7 @@ window.Script13 = function()
         mastery,
         missed
       });
+
     } catch (e) {
       console.warn("❌ Results slide script failed:", e);
     }
