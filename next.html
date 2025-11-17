@@ -1,8 +1,8 @@
 ﻿<!DOCTYPE html>
 <html lang="en">
 <head>
+    <!-- Canonical redirect (top-level only so iframes are safe) -->
     <script>
-        /* ---------- Canonical Redirect ---------- */
         if (window.top === window.self) {
             if (location.hostname === "wirelearningsolutions.com") {
                 location.replace(
@@ -15,7 +15,7 @@
     </script>
 
     <meta charset="UTF-8" />
-    <title>Analyzing your progress…</title>
+    <title>Analyzing your progress</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
 
     <style>
@@ -27,266 +27,1114 @@
             --ink-1: #b9c8e8;
             --sky-1: #0ea5e9;
             --sky-2: #22d3ee;
+            --ok: #22c55e;
+            --warn: #f59e0b;
             --err: #ef4444;
+            --focus: #93c5fd;
+            --shadow: 0 10px 24px rgba(0,0,0,.35);
         }
 
         body {
             margin: 0;
-            font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
             color: var(--ink-0);
-            background: linear-gradient(180deg, #07101e 0%, #0b1628 100%);
-            min-height: 100vh;
-            padding: 40px 18px;
-            text-align: center;
+            font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+            background: radial-gradient(1200px 800px at 70% -10%, rgba(34,211,238,.10), transparent 60%), radial-gradient(1000px 600px at -10% 20%, rgba(14,165,233,.15), transparent 55%), linear-gradient(180deg, #07101e 0%, #0a1322 50%, #0b1628 100%);
+            min-height: 100dvh;
+        }
+
+        header {
+            padding: 28px 24px 10px;
+        }
+
+        .title-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
         }
 
         h1 {
-            font-size: 26px;
-            margin-bottom: 14px;
-            color: var(--ink-0);
+            margin: 0;
+            font-size: clamp(22px, 2.4vw, 28px);
+            background: linear-gradient(90deg, var(--ink-0), #cfe8ff);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            padding: 8px 12px;
+            border-radius: 999px;
+            background: rgba(14,165,233,.10);
+            border: 1px solid rgba(34,211,238,.35);
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--warn);
+        }
+
+            .dot.ok {
+                background: var(--ok);
+                box-shadow: 0 0 0 0 rgba(34,197,94,.6);
+                animation: pulse 1.8s ease-out infinite;
+            }
+
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(34,197,94,.5);
+            }
+
+            70% {
+                box-shadow: 0 0 0 10px rgba(34,197,94,0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(34,197,94,0);
+            }
+        }
+
+        .wrap {
+            padding: 6px 24px 32px;
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.015)), var(--bg-1);
+            border: 1px solid rgba(148,163,184,.15);
+            border-radius: 14px;
+            padding: 16px;
+            margin: 16px 0;
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(6px);
         }
 
         .muted {
             color: var(--ink-1);
-            font-size: 16px;
         }
 
-        #statusBox {
+        .row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: center;
+        }
+
+        button {
+            padding: 10px 16px;
+            border-radius: 10px;
+            cursor: pointer;
             font-size: 15px;
-            margin-top: 30px;
-            color: var(--ink-1);
+            border: 1px solid rgba(148,163,184,.35);
+            background: #0f1a2e;
+            color: var(--ink-0);
+            transition: transform .05s ease, box-shadow .2s ease, border-color .2s ease;
         }
 
-        .err {
-            color: var(--err);
+            button.primary {
+                background: linear-gradient(180deg,#0e87c7,#0c6aa0);
+                border-color: rgba(34,211,238,.55);
+                box-shadow: 0 6px 24px rgba(14,165,233,.35);
+            }
+
+            button:hover:not(:disabled) {
+                transform: translateY(-1px);
+            }
+
+            button:disabled {
+                opacity: .6;
+                cursor: not-allowed;
+                filter: saturate(.6);
+            }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 8px;
+        }
+
+        thead th {
+            text-align: left;
+            padding: 12px 10px;
+            background: var(--bg-2);
+            border-bottom: 1px solid rgba(148,163,184,.25);
+        }
+
+        td {
+            padding: 12px 10px;
+            border-bottom: 1px solid rgba(148,163,184,.12);
+            color: var(--ink-0);
+        }
+
+        .status {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 13px;
+            color: #fff;
+            background: rgba(255,255,255,.06);
+            border: 1px solid rgba(148,163,184,.25);
+        }
+
+        .s-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .Completed .s-dot {
+            background: var(--ok);
+            animation: pulse 2s ease-out infinite;
+        }
+
+        .InProgress .s-dot {
+            background: var(--warn);
+        }
+
+        .NotStarted .s-dot {
+            background: var(--err);
+            animation: pulse 2s ease-out infinite;
+        }
+
+        pre {
+            white-space: pre-wrap;
+            word-break: break-word;
+            background: #0b1222;
+            color: #dbeafe;
+            padding: 12px;
+            border-radius: 12px;
+            border: 1px solid rgba(148,163,184,.2);
+            max-height: 420px;
+            overflow: auto;
+        }
+
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            border: 1px solid rgba(148,163,184,.25);
+            background: rgba(255,255,255,.04);
+            font-weight: 600;
+        }
+
+        .upnext {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px dashed rgba(34,211,238,.35);
+            background: rgba(14,165,233,.10);
+            margin-top: 10px;
+            margin-bottom: 10px;
         }
     </style>
 </head>
-
 <body>
-    <h1>Analyzing your progress…</h1>
-    <p class="muted">Please wait while we retrieve your adaptive learning status.</p>
-    <p id="statusBox">Checking identity…</p>
+    <header>
+        <div class="title-row">
+            <h1>Analyzing your progress</h1>
+            <span class="badge">
+                <span class="dot" id="connDot"></span>
+                <span id="connText">Checking connection…</span>
+            </span>
+        </div>
+    </header>
+
+    <main class="wrap">
+        <section class="card" id="info">
+            <div><b>Learner:</b> <span id="learnerNameLabel">—</span></div>
+            <div class="muted">Session: <span id="sessionLabel">—</span></div>
+            <div id="anonWarn" class="muted" style="color:var(--err);display:none;">
+                Actions are disabled until a learner name is provided.
+            </div>
+        </section>
+
+        <section class="card" id="summaryCard">
+            <div class="summary" id="summaryLine">
+                Ready to continue your adaptive journey.
+            </div>
+            <div class="upnext">
+                <strong>Up Next:</strong>
+                <span id="upNextComp" class="chip"><strong>—</strong></span>
+                <span id="upNextSub" class="chip"><strong>—</strong></span>
+                <span id="upNextType" class="chip"><strong>—</strong></span>
+            </div>
+            <div id="launchInfo">
+                Use the <b>Continue</b> button when you're ready.
+                Or use the <b>Accept Mastery Level and Move On</b> button to proceed to the next competency.
+            </div>
+        </section>
+
+        <section class="card" id="actions">
+            <div class="row">
+                <button id="continueBtn" class="primary" disabled>
+                    Continue
+                </button>
+                <button id="acceptBtn" class="primary" disabled>
+                    Accept Mastery Level and Move On
+                </button>
+
+                <button id="toggleDebug" aria-pressed="false">
+                    Show Debug Info
+                </button>
+                <button id="resetBtn"
+                        style="background: linear-gradient(180deg,#5b6470,#3e4650);
+                               border-color: rgba(148,163,184,.55);">
+                    Reset Learner
+                </button>
+            </div>
+        </section>
+
+        <section class="card" id="progress">
+            <h3>Your Progress</h3>
+            <p class="muted">Real-time data from your learning record.</p>
+            <table>
+                <thead>
+                    <tr><th>Competency</th><th>Mastery Level</th><th>Status</th></tr>
+                </thead>
+                <tbody id="progressTable">
+                    <tr><td colspan="3" class="muted">Loading…</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section class="card" id="debug" style="display:none;"></section>
+    </main>
 
     <script>
         /* ============================================================
            CONFIG
         ============================================================ */
+        const BASE = "https://www.wirelearningsolutions.com/";
         const PROXY_URL =
             "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
 
-        const RULES_URL = "https://www.wirelearningsolutions.com/adaptive_rules.json";
+        // Namespace for extensions
+        const NS = "https://acbl.wirelxdfirm.com/extensions/";
+        const EX = k => NS + k;
+
+        const REFRESH_MS = 15000;
 
         /* ============================================================
-           1. GET QUERY PARAMETERS
+           SANITIZERS
+        ============================================================ */
+
+        function sanitizeItem(item) {
+            if (!item) return "";
+            const s = String(item).trim();
+            const m = s.match(/^(C[1-3][a-c])$/i);
+            return m ? m[1] : "";
+        }
+
+        function sanitizeTarget(target) {
+            if (!target) return null;
+            let t = String(target).trim();
+
+            if (
+                (t.startsWith('"') && t.endsWith('"')) ||
+                (t.startsWith("'") && t.endsWith("'"))
+            ) {
+                t = t.slice(1, -1).trim();
+            }
+
+            return t || null;
+        }
+
+        /* ============================================================
+           IDENTITY
         ============================================================ */
         const qs = new URLSearchParams(location.search);
-        const learner = qs.get("learnerName") || "";
-        const email = qs.get("email") || "";
-        const sid = qs.get("sid") || "";
+        let learnerName = qs.get("learnerName") || localStorage.getItem("learnerName");
+        let learnerEmail = (qs.get("email") || localStorage.getItem("learnerEmail") || "").toLowerCase();
+        let sid = qs.get("sid") || localStorage.getItem("sessionId");
 
-        /* Save identity for downstream pages */
-        if (learner) localStorage.setItem("learnerName", learner);
-        if (email) localStorage.setItem("learnerEmail", email);
-        if (sid) localStorage.setItem("sessionId", sid);
-
-        const statusBox = document.getElementById("statusBox");
-
-        if (!learner && !email) {
-            statusBox.innerHTML = `<span class="err">Missing learner identity.</span>`;
-            throw new Error("Missing learner identity");
+        // No name → back to index
+        if (!learnerName) {
+            window.location.href = "index.html";
         }
 
-        /* ============================================================
-           2. FETCH ADAPTIVE RULES
-        ============================================================ */
-        async function loadRules() {
-            statusBox.textContent = "Loading adaptive rules…";
-            const res = await fetch(RULES_URL, { cache: "no-store" });
-            if (!res.ok) throw new Error("Failed to load adaptive rules");
-            return res.json();
+        learnerName = learnerName.trim();
+        localStorage.setItem("learnerName", learnerName);
+        if (learnerEmail) {
+            localStorage.setItem("learnerEmail", learnerEmail);
         }
 
-        /* ============================================================
-           3. GET LRS SUMMARY FROM LAMBDA
-        ============================================================ */
-        async function loadSummary() {
-            statusBox.textContent = "Reading your learning progress…";
+        if (!sid) {
+            sid = (window.crypto && crypto.randomUUID)
+                ? crypto.randomUUID()
+                : String(Date.now());
+        }
+        localStorage.setItem("sessionId", sid);
 
-            const url =
-                PROXY_URL +
-                "?mode=summary" +
-                (learner ? "&learnerName=" + encodeURIComponent(learner) : "") +
-                (email ? "&email=" + encodeURIComponent(email) : "");
-
-            const res = await fetch(url);
-            if (!res.ok) {
-                statusBox.innerHTML = `<span class="err">Unable to read LRS summary.</span>`;
-                throw new Error("LRS summary failed");
-            }
-            return res.json();
+        // "current" hint from the test → C1 / C2 / C3
+        const hintedComp = (qs.get("current") || "").toUpperCase();
+        if (hintedComp) {
+            localStorage.setItem("currentCompetency", hintedComp);
         }
 
-        /* ============================================================
-           4. BUILD ROUTE LIST BASED ON RULES
-        ============================================================ */
-        function buildRoutes(summary, rules) {
-            statusBox.textContent = "Calculating the next step…";
-
-            // Determine current competency
-            const compOrder = ["C1", "C2", "C3"];
-            let current = "C1";
-
-            for (const c of compOrder) {
-                if (!summary[c]) continue;
-                const { mastery, finalized } = summary[c];
-                if (!mastery && !finalized) {
-                    current = c;
-                    break;
-                }
-                // If finalized or mastered, move forward
-                if (c === "C1" && (summary.C1.mastery || summary.C1.finalized)) current = "C2";
-                if (c === "C2" && (summary.C2.mastery || summary.C2.finalized)) current = "C3";
-            }
-
-            const compRules = rules[current];
-            if (!compRules) throw new Error("No rules for " + current);
-
-            const mastery = summary[current]?.mastery || null;
-            const finalized = summary[current]?.finalized || false;
-            const missed = summary[current]?.missed || [];
-
-            let pending = [];
-
-            function applyRoute(r) {
-                if (r.go) {
-                    pending.push({ type: "go", target: r.go });
-                }
-                if (r.assessment) {
-                    pending.push({ type: "assessment", target: r.assessment });
-                }
-                if (r.content) {
-                    pending.push({ type: "content", target: r.content });
-                }
-                if (r.apply) {
-                    pending.push({ type: "apply", target: r.apply });
-                }
-            }
-
-            for (const rule of compRules) {
-                const cond = rule.if;
-
-                // finalized
-                if (cond.finalized === true && finalized === true) {
-                    rule.then.forEach(step => {
-                        if (step.route) applyRoute(step.route);
-                    });
-                    return { current, pending };
-                }
-
-                // mastery exact
-                if (cond.mastery && mastery === cond.mastery) {
-                    rule.then.forEach(step => {
-                        if (step.route) applyRoute(step.route);
-                        if (step.forEach && Array.isArray(missed)) {
-                            missed.forEach(item => {
-                                step.do.forEach(d => {
-                                    const routeCopy = JSON.parse(JSON.stringify(d.route));
-                                    for (const k in routeCopy) {
-                                        routeCopy[k] = routeCopy[k].replace("{item}", item);
-                                    }
-                                    applyRoute(routeCopy);
-                                });
-                            });
-                        }
-                    });
-                    return { current, pending };
-                }
-
-                // masteryIn array
-                if (cond.masteryIn && cond.masteryIn.includes(mastery)) {
-                    rule.then.forEach(step => {
-                        if (step.forEach && Array.isArray(step.forEach)) {
-                            step.forEach.forEach(item => {
-                                step.do.forEach(d => {
-                                    const routeCopy = JSON.parse(JSON.stringify(d.route));
-                                    for (const k in routeCopy) {
-                                        routeCopy[k] = routeCopy[k].replace("{item}", item);
-                                    }
-                                    applyRoute(routeCopy);
-                                });
-                            });
-                        }
-                        if (step.route) applyRoute(step.route);
-                    });
-                    return { current, pending };
-                }
-            }
-
-            return { current, pending };
-        }
+        let currentComp =
+            (localStorage.getItem("currentCompetency") || "C1").toUpperCase();
 
         /* ============================================================
-           5. RESOLVE FIRST ROUTE TO A REAL URL
+           CONNECTION CHECK
         ============================================================ */
-        function resolveRoute(route) {
-            const type = route.type;
-            const target = route.target;
+        async function checkConnection() {
+            const dot = document.getElementById("connDot");
+            const txt = document.getElementById("connText");
 
-            if (type === "go") {
-                return target + ".html";
-            }
-
-            if (type === "assessment") {
-                return target + "/story.html";
-            }
-
-            if (type === "content") {
-                return "content/" + target + ".html";
-            }
-
-            if (type === "apply") {
-                const item = target.replace("-apply", "");
-                return "apply/" + item + "/" + target + ".html";
-            }
-
-            throw new Error("Unknown route type: " + type);
-        }
-
-        /* ============================================================
-           6. MAIN FLOW
-        ============================================================ */
-        (async () => {
             try {
-                const rules = await loadRules();
-                const summary = await loadSummary();
+                const r = await fetch(PROXY_URL + "?mode=ping", {
+                    method: "GET",
+                    cache: "no-store",
+                    headers: { "Accept": "application/json" }
+                });
 
-                const { pending } = buildRoutes(summary, rules);
+                const bodyText = await r.text();
+                let data = null;
+                try { data = JSON.parse(bodyText); } catch { }
 
-                if (!pending.length) {
-                    statusBox.innerHTML =
-                        `<span class="err">No route generated.</span>`;
+                const ok = r.ok && (
+                    bodyText.includes("Lambda OK") ||
+                    (data && data.ok === true)
+                );
+
+                if (ok) {
+                    dot.classList.add("ok");
+                    txt.textContent = "Connected to LRS";
+                } else {
+                    dot.style.background = "var(--warn)";
+                    txt.textContent = "Unstable connection";
+                }
+            } catch (err) {
+                dot.style.background = "var(--err)";
+                txt.textContent = "Offline";
+            }
+        }
+
+        /* ============================================================
+           FETCH SUMMARY (uses learner + email for Lambda)
+        ============================================================ */
+        async function fetchSummary() {
+            try {
+                const url =
+                    PROXY_URL +
+                    "?mode=summary" +
+                    "&learner=" + encodeURIComponent(learnerName) +
+                    "&email=" + encodeURIComponent(learnerEmail || "");
+                const r = await fetch(url, { method: "GET", cache: "no-store" });
+                return await r.json();
+            } catch (e) {
+                console.warn("Summary fetch failed:", e);
+                return {};
+            }
+        }
+
+        /* ============================================================
+           LOAD ADAPTIVE RULES (adaptive_rules.json)
+        ============================================================ */
+        let rulesCache = null;
+        async function loadRules() {
+            if (rulesCache) return rulesCache;
+            const r = await fetch("adaptive_rules.json", { cache: "no-store" });
+            rulesCache = await r.json();
+            return rulesCache;
+        }
+
+        /* ============================================================
+           EVALUATE ROUTING (supports route, forEach "missed" or array)
+        ============================================================ */
+        function evaluateRouting(compId, compState, rules) {
+            const list = rules[compId];
+            if (!list) return null;
+
+            const routes = [];
+
+            for (let i = 0; i < list.length; i++) {
+                const rule = list[i];
+                let match = true;
+                const cond = rule.if || {};
+
+                // ---------- Condition match ----------
+                for (const key in cond) {
+                    if (!Object.prototype.hasOwnProperty.call(cond, key)) continue;
+
+                    if (key === "masteryIn") {
+                        const allowed = cond[key] || [];
+                        if (!allowed || allowed.indexOf(compState.mastery) === -1) {
+                            match = false;
+                            break;
+                        }
+                    } else {
+                        if (compState[key] !== cond[key]) {
+                            match = false;
+                            break;
+                        }
+                    }
+                }
+
+                if (!match) continue;
+
+                // ---------- Actions ----------
+                const thenArr = rule.then || [];
+                for (let j = 0; j < thenArr.length; j++) {
+                    const a = thenArr[j];
+
+                    // Simple route: { "route": { "go": "C2-test" } }
+                    if (a.route) {
+                        const keys = Object.keys(a.route);
+                        if (keys.length > 0) {
+                            const routeKey = keys[0];
+                            let r = a.route[routeKey];
+
+                            // Support { "route": { "content": "{item}-content" } } with first missed
+                            if (typeof r === "string" && r.indexOf("{item}") !== -1) {
+                                const firstMissedRaw =
+                                    compState.missed && compState.missed.length > 0
+                                        ? compState.missed[0]
+                                        : "";
+                                const firstMissed = sanitizeItem(firstMissedRaw);
+                                if (!firstMissed) {
+                                    r = null;
+                                } else {
+                                    r = r.replace("{item}", firstMissed);
+                                }
+                            }
+
+                            r = sanitizeTarget(r);
+                            if (r) routes.push(r);
+                        }
+                    }
+
+                    // forEach:
+                    // 1) Proficient case: "forEach": "missed"
+                    // 2) Emerging/Failing case: "forEach": ["C1a","C1b","C1c"]
+                    if (a.forEach && a.do) {
+                        let items = [];
+
+                        if (Array.isArray(a.forEach)) {
+                            items = a.forEach;
+                        } else if (typeof a.forEach === "string") {
+                            const arr = compState[a.forEach];
+                            if (Array.isArray(arr)) items = arr;
+                        }
+
+                        if (items.length > 0) {
+                            for (let k = 0; k < items.length; k++) {
+                                const itemRaw = items[k];
+                                const cleanItem = sanitizeItem(itemRaw);
+                                if (!cleanItem) continue;
+
+                                const innerArr = a.do;
+                                for (let m = 0; m < innerArr.length; m++) {
+                                    const inner = innerArr[m];
+                                    if (inner.route) {
+                                        const ikeys = Object.keys(inner.route);
+                                        if (ikeys.length > 0) {
+                                            const routeKey2 = ikeys[0];
+                                            let r2 = inner.route[routeKey2];
+                                            if (typeof r2 === "string") {
+                                                r2 = r2.replace("{item}", cleanItem);
+                                            }
+                                            r2 = sanitizeTarget(r2);
+                                            if (r2) routes.push(r2);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Stop after first matching rule
+                break;
+            }
+
+            if (routes.length === 0) return null;
+            if (routes.length === 1) return routes[0];
+            return routes;
+        }
+
+        /* ============================================================
+           FINAL URL RESOLVER (Option A folder structure)
+           /C1-test/story.html
+           /content/C1a-content.html
+           /apply/C1a/C1a-apply.html
+           /program-complete.html
+        ============================================================ */
+        function resolveTargetUrl(target) {
+            target = sanitizeTarget(target);
+            if (!target) return null;
+
+            // Program completion
+            if (/program-complete/i.test(target)) {
+                return BASE + "program-complete.html";
+            }
+
+            // Tests: C1-test, C2-test, C3-test
+            if (/^C[1-3]-test$/i.test(target)) {
+                return BASE + target + "/story.html";
+            }
+
+            // Content: C1a-content → /content/C1a-content.html
+            if (/^C[1-3][a-c]-content$/i.test(target)) {
+                return BASE + "content/" + target + ".html";
+            }
+
+            // Apply: C1a-apply → /apply/C1a/C1a-apply.html
+            if (/^C[1-3][a-c]-apply$/i.test(target)) {
+                const sub = target.replace("-apply", ""); // C1a
+                return BASE + "apply/" + sub + "/" + target + ".html";
+            }
+
+            // Fallback: treat as a simple page
+            return BASE + target + ".html";
+        }
+
+        /* ============================================================
+           UI HELPERS
+        ============================================================ */
+        function displayMastery(m) {
+            if (m === "Mastery") return "Mastered";
+            return m || "—";
+        }
+
+        function labelStatus(s) {
+            if (s === "Completed") return "Completed";
+            if (s === "InProgress") return "In Progress";
+            return "Not Started";
+        }
+
+        function renderProgress(summary) {
+            const tbody = document.getElementById("progressTable");
+            tbody.innerHTML = "";
+
+            ["C1", "C2", "C3"].forEach(function (comp) {
+                const s = summary[comp] || {};
+                let state = "NotStarted";
+
+                if (s.mastery === "Mastery" || s.finalized || s.testedOut) {
+                    state = "Completed";
+                } else if (s.mastery) {
+                    state = "InProgress";
+                }
+
+                tbody.innerHTML +=
+                    "<tr>" +
+                    "<td>" + comp + "</td>" +
+                    "<td>" + displayMastery(s.mastery) + "</td>" +
+                    "<td>" +
+                    '<span class="status ' + state + '">' +
+                    '<span class="s-dot"></span>' + labelStatus(state) +
+                    "</span>" +
+                    "</td>" +
+                    "</tr>";
+            });
+        }
+
+        function writeSummary(current, state, next) {
+            const line = document.getElementById("summaryLine");
+            line.innerHTML =
+                "Current: <b>" + current + "</b> — <b>" + displayMastery(state.mastery) + "</b>";
+
+            let comp = "—";
+            let sub = "—";
+            let type = "—";
+
+            const isNewLearner =
+                !state.mastery &&
+                !state.finalized &&
+                !state.testedOut &&
+                (!state.missed || state.missed.length === 0);
+
+            // For brand new learners, always start with C1 test
+            if (isNewLearner) {
+                comp = "C1";
+                type = "Test";
+                document.getElementById("upNextComp").textContent = comp;
+                document.getElementById("upNextSub").textContent = sub;
+                document.getElementById("upNextType").textContent = type;
+                return;
+            }
+
+            if (typeof next === "string" && next.length > 0) {
+                const cleanNext = sanitizeTarget(next) || "";
+
+                const compMatch = cleanNext.match(/(C[1-3])/i);
+                if (compMatch) comp = compMatch[1].toUpperCase();
+
+                const subMatch = cleanNext.match(/(C[1-3][a-c])/i);
+                if (subMatch) sub = subMatch[1];
+
+                if (/program-complete/i.test(cleanNext)) {
+                    type = "Finish";
+                } else if (/-test$/i.test(cleanNext)) {
+                    type = "Test";
+                } else if (/-content$/i.test(cleanNext)) {
+                    type = "Content";
+                } else if (/-apply$/i.test(cleanNext)) {
+                    type = "Application";
+                }
+            }
+
+            document.getElementById("upNextComp").textContent = comp;
+            document.getElementById("upNextSub").textContent = sub;
+            document.getElementById("upNextType").textContent = type;
+        }
+
+        /* ============================================================
+           MERGE LRS SUMMARY WITH LOCALSTORAGE
+        ============================================================ */
+        function mergeWithLocal(current, state) {
+            const comp = current.toUpperCase();
+
+            const merged = {
+                mastery: null,
+                finalized: false,
+                testedOut: false,
+                missed: [],
+                subCompetencies:
+                    state && state.subCompetencies ? state.subCompetencies : [],
+                progressPercent:
+                    state && typeof state.progressPercent === "number"
+                        ? state.progressPercent
+                        : 0
+            };
+
+            if (state && typeof state.mastery !== "undefined") merged.mastery = state.mastery;
+            if (state && typeof state.finalized !== "undefined") merged.finalized = state.finalized;
+            if (state && typeof state.testedOut !== "undefined") merged.testedOut = state.testedOut;
+            if (state && state.missed) merged.missed = state.missed;
+
+            const lsMastery = localStorage.getItem(comp + ".mastery");
+            const lsMissed = localStorage.getItem(comp + ".missed");
+            const lsFinalized = localStorage.getItem(comp + ".finalized");
+            const lsTestedOut = localStorage.getItem(comp + ".testedOut");
+
+            if (!merged.mastery && lsMastery) {
+                merged.mastery = lsMastery;
+            }
+
+            if ((!merged.missed || merged.missed.length === 0) && lsMissed) {
+                try {
+                    merged.missed = JSON.parse(lsMissed) || [];
+                } catch (e) {
+                    merged.missed = [];
+                }
+            }
+
+            if (!merged.finalized && lsFinalized !== null) {
+                merged.finalized = (lsFinalized === "true");
+            }
+
+            if (!merged.testedOut && lsTestedOut !== null) {
+                merged.testedOut = (lsTestedOut === "true");
+            }
+
+            return merged;
+        }
+
+        /* ============================================================
+           FINALIZE (OFF-RAMP BUTTON)
+           Sends an explicit "completed" xAPI with finalized=true
+        ============================================================ */
+        async function finalize(current, mastery) {
+            const stmt = {
+                actor: {
+                    name: learnerName,
+                    mbox: "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com"
+                },
+                verb: { id: "http://id.tincanapi.com/verb/completed" },
+                object: {
+                    id: "https://acbl.wirelxdfirm.com/activities/" + current + "/offramp"
+                },
+                result: {
+                    completion: true,
+                    extensions: {}
+                },
+                timestamp: new Date().toISOString()
+            };
+
+            stmt.result.extensions[EX("learnerName")] = learnerName;
+            stmt.result.extensions[EX("finalized")] = true;
+            stmt.result.extensions[EX("competencyId")] = current;
+            stmt.result.extensions[EX("masteryLevel")] = mastery;
+
+            try {
+                await fetch(PROXY_URL + "?mode=write", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(stmt)
+                });
+            } catch (e) {
+                // ignore; localStorage still keeps finalized
+            }
+
+            localStorage.setItem(current + ".finalized", "true");
+        }
+
+        /* ============================================================
+           MAIN LOOP
+        ============================================================ */
+        async function refreshAll() {
+            await checkConnection();
+
+            document.getElementById("learnerNameLabel").textContent = learnerName;
+            document.getElementById("sessionLabel").textContent = sid;
+
+            if (learnerName === "Anonymous") {
+                document.getElementById("anonWarn").style.display = "block";
+                return;
+            }
+
+            const summary = await fetchSummary();
+            const rules = await loadRules();
+
+            const rawState = summary[currentComp] || {
+                mastery: null,
+                finalized: false,
+                testedOut: false,
+                missed: [],
+                subCompetencies: [],
+                progressPercent: 0
+            };
+
+            const state = mergeWithLocal(currentComp, rawState);
+
+            const isNewLearner =
+                !state.mastery &&
+                !state.finalized &&
+                !state.testedOut &&
+                (!state.missed || state.missed.length === 0);
+
+            // Normalize summary used for the table
+            summary[currentComp] = {
+                mastery: state.mastery,
+                finalized: state.finalized,
+                testedOut: state.testedOut,
+                subCompetencies: state.subCompetencies,
+                progressPercent: state.progressPercent
+            };
+
+            renderProgress(summary);
+
+            // ---------- Normalize helper ----------
+            function normalize(r) {
+                r = sanitizeTarget(r);
+                if (!r) return null;
+                // If rule ever returns just "C1" etc, turn into C1-test
+                if (/^C[1-3]$/i.test(r)) return r.toUpperCase() + "-test";
+                return r;
+            }
+
+            // ---------- Restore / hydrate pending routes ----------
+            let pendingRoutes = [];
+            try {
+                const stored = localStorage.getItem("pendingRoutes") || "[]";
+                const parsed = JSON.parse(stored);
+                if (Array.isArray(parsed)) {
+                    pendingRoutes = parsed
+                        .filter(Boolean)
+                        .map(normalize)
+                        .filter(Boolean);
+                }
+            } catch {
+                pendingRoutes = [];
+            }
+
+            let next = null;
+
+            // ---------- If there is a queue, honor it ----------
+            if (pendingRoutes.length > 0) {
+                next = pendingRoutes[0];
+            } else {
+                // Brand new learner or no state → always start at C1-test
+                const noState =
+                    !state.mastery &&
+                    !state.finalized &&
+                    !state.testedOut &&
+                    (
+                        !state.subCompetencies ||
+                        !Array.isArray(state.subCompetencies) ||
+                        state.subCompetencies.length === 0
+                    );
+
+                if (noState) {
+                    currentComp = "C1";
+                    next = currentComp + "-test";
+                    pendingRoutes = [];
+                    localStorage.removeItem("pendingRoutes");
+                    localStorage.setItem("currentCompetency", currentComp);
+                } else {
+                    // Use rules + state to get route(s)
+                    let route =
+                        evaluateRouting(currentComp, state, rules) ||
+                        (currentComp + "-test");
+
+                    if (Array.isArray(route)) {
+                        const normalized = route
+                            .map(normalize)
+                            .filter(Boolean);
+                        next = normalized.length > 0
+                            ? normalized[0]
+                            : currentComp + "-test";
+                        pendingRoutes = normalized.length > 1
+                            ? normalized.slice(1)
+                            : [];
+                    } else {
+                        next = normalize(route || (currentComp + "-test"));
+                        pendingRoutes = [];
+                    }
+
+                    if (pendingRoutes.length > 0) {
+                        localStorage.setItem(
+                            "pendingRoutes",
+                            JSON.stringify(pendingRoutes)
+                        );
+                    } else {
+                        localStorage.removeItem("pendingRoutes");
+                    }
+                }
+            }
+
+            // ---------- Update summary UI ----------
+            writeSummary(currentComp, state, next);
+
+            const continueBtn = document.getElementById("continueBtn");
+            const acceptBtn = document.getElementById("acceptBtn");
+
+            continueBtn.disabled = false;
+            acceptBtn.disabled = isNewLearner;
+
+            // ---------- Continue handler ----------
+            continueBtn.onclick = function () {
+                let q = [];
+                try {
+                    const stored = localStorage.getItem("pendingRoutes") || "[]";
+                    const parsed = JSON.parse(stored);
+                    if (Array.isArray(parsed)) {
+                        q = parsed
+                            .filter(Boolean)
+                            .map(normalize)
+                            .filter(Boolean);
+                    }
+                } catch {
+                    q = [];
+                }
+
+                let target = sanitizeTarget(next);
+                if (!target) {
+                    alert("No valid next step could be determined.");
                     return;
                 }
 
-                const first = pending[0];
-                const url = resolveRoute(first);
+                // Pop from queue if this is the first route
+                if (q.length > 0 && q[0] === target) {
+                    q.shift();
+                    if (q.length > 0) {
+                        localStorage.setItem("pendingRoutes", JSON.stringify(q));
+                    } else {
+                        localStorage.removeItem("pendingRoutes");
+                    }
+                }
 
-                statusBox.textContent = "Redirecting…";
+                const compMatch = target.match(/(C[1-3])/i);
+                if (compMatch && compMatch[1]) {
+                    const newComp = compMatch[1].toUpperCase();
+                    localStorage.setItem("currentCompetency", newComp);
+                }
 
-                setTimeout(() => {
-                    window.location.href = url +
-                        "?learnerName=" + encodeURIComponent(learner) +
-                        "&email=" + encodeURIComponent(email) +
-                        "&sid=" + encodeURIComponent(sid);
-                }, 600);
+                const urlBase = resolveTargetUrl(target);
+                if (!urlBase) {
+                    alert("Could not resolve the next activity URL.");
+                    return;
+                }
 
-            } catch (err) {
-                statusBox.innerHTML =
-                    `<span class="err">Error: ${err.message}</span>`;
+                const url =
+                    urlBase +
+                    "?learnerName=" + encodeURIComponent(learnerName) +
+                    "&email=" + encodeURIComponent(learnerEmail || "") +
+                    "&sid=" + encodeURIComponent(sid);
+
+                window.location.href = url;
+            };
+
+            // ---------- Accept mastery handler ----------
+            acceptBtn.onclick = async function () {
+                const mastery = state.mastery || "Unknown";
+                if (
+                    !window.confirm(
+                        'Accept mastery level "' +
+                        mastery +
+                        '" for ' +
+                        currentComp +
+                        "?"
+                    )
+                ) {
+                    return;
+                }
+
+                await finalize(currentComp, mastery);
+
+                // Clear any queued remediation since user is off-ramping
+                localStorage.removeItem("pendingRoutes");
+
+                const finalizeState = {
+                    mastery: state.mastery,
+                    finalized: true,
+                    testedOut: state.testedOut,
+                    missed: state.missed,
+                    subCompetencies: state.subCompetencies,
+                    progressPercent: state.progressPercent
+                };
+
+                let routed =
+                    evaluateRouting(currentComp, finalizeState, rules) ||
+                    "program-complete";
+
+                function normalizeFinal(r) {
+                    r = sanitizeTarget(r);
+                    if (!r) return null;
+                    if (/^C[1-3]$/i.test(r)) return r.toUpperCase() + "-test";
+                    return r;
+                }
+
+                if (Array.isArray(routed)) {
+                    const normalized = routed
+                        .map(normalizeFinal)
+                        .filter(Boolean);
+                    const first =
+                        normalized.length > 0
+                            ? normalized[0]
+                            : "program-complete";
+                    const rest = normalized.slice(1);
+                    if (rest.length > 0) {
+                        localStorage.setItem(
+                            "pendingRoutes",
+                            JSON.stringify(rest)
+                        );
+                    } else {
+                        localStorage.removeItem("pendingRoutes");
+                    }
+                    routed = first;
+                } else {
+                    routed = normalizeFinal(routed || "program-complete");
+                }
+
+                const compMatch2 = routed && routed.match(/(C[1-3])/i);
+                if (compMatch2 && compMatch2[1]) {
+                    const newComp = compMatch2[1].toUpperCase();
+                    localStorage.setItem("currentCompetency", newComp);
+                }
+
+                const urlBase = resolveTargetUrl(routed);
+                if (!urlBase) {
+                    alert("Could not resolve the next activity URL after finalizing.");
+                    return;
+                }
+
+                const url =
+                    urlBase +
+                    "?learnerName=" + encodeURIComponent(learnerName) +
+                    "&email=" + encodeURIComponent(learnerEmail || "") +
+                    "&sid=" + encodeURIComponent(sid);
+                window.location.href = url;
+            };
+
+            // ---------- Debug + reset ----------
+            const debug = document.getElementById("debug");
+            const toggleDbg = document.getElementById("toggleDebug");
+
+            debug.innerHTML =
+                "<pre>" +
+                JSON.stringify(
+                    {
+                        learnerName: learnerName,
+                        sid: sid,
+                        currentComp: currentComp,
+                        state: state,
+                        next: next,
+                        pendingRoutes: pendingRoutes
+                    },
+                    null,
+                    2
+                ) +
+                "</pre>";
+
+            toggleDbg.onclick = function () {
+                const show = debug.style.display === "none";
+                debug.style.display = show ? "block" : "none";
+                toggleDbg.textContent = show
+                    ? "Hide Debug Info"
+                    : "Show Debug Info";
+            };
+
+            document.getElementById("resetBtn").onclick = function () {
+                if (!window.confirm("Clear ALL learner progress and restart?")) {
+                    return;
+                }
+
+                // Clear Storyline resume stuff
+                Object.keys(localStorage).forEach(k => {
+                    if (
+                        k.includes("story") ||
+                        k.includes("story_html5") ||
+                        k.includes("suspend") ||
+                        k.startsWith("story_content")
+                    ) {
+                        localStorage.removeItem(k);
+                    }
+                });
+
+                // Clear identity + adaptive
+                [
+                    "learnerName",
+                    "learnerEmail",
+                    "sessionId",
+                    "actorName",
+                    "actorMbox",
+                    "currentCompetency",
+                    "pendingRoutes",
+                    "lastPath",
+                    "lastApplyLaunched"
+                ].forEach(k => localStorage.removeItem(k));
+
+                ["C1", "C2", "C3"].forEach(c => {
+                    localStorage.removeItem(c + ".mastery");
+                    localStorage.removeItem(c + ".score");
+                    localStorage.removeItem(c + ".missed");
+                    localStorage.removeItem(c + ".finalized");
+                    localStorage.removeItem(c + ".testedOut");
+                    localStorage.removeItem(c + ".completed");
+                    localStorage.removeItem(c + ".startedAt");
+                });
+
+                sessionStorage.clear();
+
+                window.location.href = "index.html";
+            };
+        }
+
+        // Initial load + periodic refresh
+        refreshAll();
+        setInterval(function () {
+            if (document.visibilityState === "visible") {
+                refreshAll();
             }
-        })();
+        }, REFRESH_MS);
     </script>
-
 </body>
 </html>
