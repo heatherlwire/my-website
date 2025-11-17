@@ -1,16 +1,17 @@
 {
   "meta": {
-    "version": "1.0.3",
-    "lastUpdated": "2025-11-15",
+    "version": "1.1.0",
+    "lastUpdated": "2025-11-16",
     "author": "Wire LXD Firm",
-    "description": "Adaptive Routing Rules for Competency-Based Learning (C1–C3) – normalized for next.html",
+    "description": "Adaptive Routing Rules for Competency-Based Learning (C1–C3) – deterministic ordering, completed flag, normalized structure",
     "namespace": "https://acbl.wirelxdfirm.com/extensions/",
     "conventions": {
       "masteryLevels": [ "Mastery", "Proficient", "Emerging", "Failing" ],
       "testedOut": "3/3 on first attempt",
       "finalized": "set by off-ramp button on next.html",
-      "missed": "array of missed sub-competencies like ['C1b']",
-      "targets": "strings such as C1-test, C1a-content, C1a-apply, program-complete"
+      "missed": "array like ['C1b']",
+      "deterministicOrder": "C1a → C1b → C1c",
+      "targets": "strings such as C1-test, C1a-content, program-complete"
     }
   },
 
@@ -18,18 +19,21 @@
     {
       "if": { "finalized": true },
       "then": [
+        { "set": { "completed": true } },
         { "route": { "go": "C2-test" } }
       ]
     },
     {
       "if": { "testedOut": true },
       "then": [
+        { "set": { "completed": true } },
         { "route": { "go": "C2-test" } }
       ]
     },
     {
       "if": { "mastery": "Mastery" },
       "then": [
+        { "set": { "completed": true } },
         { "route": { "go": "C2-test" } }
       ]
     },
@@ -37,11 +41,9 @@
       "if": { "mastery": "Proficient" },
       "then": [
         {
-          "forEach": "missed",
-          "do": [
-            { "route": { "go": "{item}-content" } },
-            { "route": { "go": "{item}-apply" } }
-          ]
+          "routeMissed": {
+            "ordered": [ "C1a", "C1b", "C1c" ]
+          }
         },
         { "route": { "go": "C1-test" } }
       ]
@@ -49,12 +51,7 @@
     {
       "if": { "masteryIn": [ "Emerging", "Failing" ] },
       "then": [
-        { "route": { "go": "C1a-content" } },
-        { "route": { "go": "C1a-apply" } },
-        { "route": { "go": "C1b-content" } },
-        { "route": { "go": "C1b-apply" } },
-        { "route": { "go": "C1c-content" } },
-        { "route": { "go": "C1c-apply" } },
+        { "routeAll": { "ordered": [ "C1a", "C1b", "C1c" ] } },
         { "route": { "go": "C1-test" } }
       ]
     },
@@ -76,18 +73,21 @@
     {
       "if": { "finalized": true },
       "then": [
+        { "set": { "completed": true } },
         { "route": { "go": "C3-test" } }
       ]
     },
     {
       "if": { "testedOut": true },
       "then": [
+        { "set": { "completed": true } },
         { "route": { "go": "C3-test" } }
       ]
     },
     {
       "if": { "mastery": "Mastery" },
       "then": [
+        { "set": { "completed": true } },
         { "route": { "go": "C3-test" } }
       ]
     },
@@ -95,11 +95,9 @@
       "if": { "mastery": "Proficient" },
       "then": [
         {
-          "forEach": "missed",
-          "do": [
-            { "route": { "go": "{item}-content" } },
-            { "route": { "go": "{item}-apply" } }
-          ]
+          "routeMissed": {
+            "ordered": [ "C2a", "C2b", "C2c" ]
+          }
         },
         { "route": { "go": "C2-test" } }
       ]
@@ -107,12 +105,7 @@
     {
       "if": { "masteryIn": [ "Emerging", "Failing" ] },
       "then": [
-        { "route": { "go": "C2a-content" } },
-        { "route": { "go": "C2a-apply" } },
-        { "route": { "go": "C2b-content" } },
-        { "route": { "go": "C2b-apply" } },
-        { "route": { "go": "C2c-content" } },
-        { "route": { "go": "C2c-apply" } },
+        { "routeAll": { "ordered": [ "C2a", "C2b", "C2c" ] } },
         { "route": { "go": "C2-test" } }
       ]
     },
@@ -134,18 +127,21 @@
     {
       "if": { "finalized": true },
       "then": [
+        { "set": { "completed": true } },
         { "route": { "go": "program-complete" } }
       ]
     },
     {
       "if": { "testedOut": true },
       "then": [
+        { "set": { "completed": true } },
         { "route": { "go": "program-complete" } }
       ]
     },
     {
       "if": { "mastery": "Mastery" },
       "then": [
+        { "set": { "completed": true } },
         { "route": { "go": "program-complete" } }
       ]
     },
@@ -153,11 +149,9 @@
       "if": { "mastery": "Proficient" },
       "then": [
         {
-          "forEach": "missed",
-          "do": [
-            { "route": { "go": "{item}-content" } },
-            { "route": { "go": "{item}-apply" } }
-          ]
+          "routeMissed": {
+            "ordered": [ "C3a", "C3b", "C3c" ]
+          }
         },
         { "route": { "go": "C3-test" } }
       ]
@@ -165,12 +159,7 @@
     {
       "if": { "masteryIn": [ "Emerging", "Failing" ] },
       "then": [
-        { "route": { "go": "C3a-content" } },
-        { "route": { "go": "C3a-apply" } },
-        { "route": { "go": "C3b-content" } },
-        { "route": { "go": "C3b-apply" } },
-        { "route": { "go": "C3c-content" } },
-        { "route": { "go": "C3c-apply" } },
+        { "routeAll": { "ordered": [ "C3a", "C3b", "C3c" ] } },
         { "route": { "go": "C3-test" } }
       ]
     },

@@ -323,9 +323,9 @@
         const PROXY_URL =
             "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
 
-        // Match your rules meta.namespace (wirelxdfirm)
+        // Namespace for extensions
         const NS = "https://acbl.wirelxdfirm.com/extensions/";
-        function EX(k) { return NS + k; }
+        const EX = k => NS + k;
 
         const REFRESH_MS = 15000;
 
@@ -333,7 +333,6 @@
            SANITIZERS
         ============================================================ */
 
-        // Only allow proper sub-competency IDs like C1a, C2b, C3c
         function sanitizeItem(item) {
             if (!item) return "";
             const s = String(item).trim();
@@ -341,12 +340,10 @@
             return m ? m[1] : "";
         }
 
-        // Strip stray quotes / whitespace from route targets
         function sanitizeTarget(target) {
             if (!target) return null;
             let t = String(target).trim();
 
-            // Remove wrapping single or double quotes if present
             if (
                 (t.startsWith('"') && t.endsWith('"')) ||
                 (t.startsWith("'") && t.endsWith("'"))
@@ -354,30 +351,26 @@
                 t = t.slice(1, -1).trim();
             }
 
-            if (!t) return null;
-            return t;
+            return t || null;
         }
 
         /* ============================================================
-           IDENTITY (FIXED)
-           Priority:
-           1. If reset occurred: no URL params → treat as new learner
-           2. If URL params exist: they override everything
-           3. Otherwise use stored values
+           IDENTITY
         ============================================================ */
         const qs = new URLSearchParams(location.search);
         let learnerName = qs.get("learnerName") || localStorage.getItem("learnerName");
         let learnerEmail = (qs.get("email") || localStorage.getItem("learnerEmail") || "").toLowerCase();
         let sid = qs.get("sid") || localStorage.getItem("sessionId");
 
-        if (!learnerName || !learnerEmail) {
-            // No identity → return to index
+        if (!learnerName) {
             window.location.href = "index.html";
         }
 
         learnerName = learnerName.trim();
         localStorage.setItem("learnerName", learnerName);
-        localStorage.setItem("learnerEmail", learnerEmail);
+        if (learnerEmail) {
+            localStorage.setItem("learnerEmail", learnerEmail);
+        }
 
         if (!sid) sid = crypto.randomUUID();
         localStorage.setItem("sessionId", sid);
@@ -387,7 +380,6 @@
             localStorage.setItem("currentCompetency", hintedComp);
         }
 
-        // Default entry competency is C1
         let currentComp =
             (localStorage.getItem("currentCompetency") || "C1").toUpperCase();
 
@@ -407,12 +399,10 @@
 
                 const bodyText = await r.text();
                 let data = null;
-                try {
-                    data = JSON.parse(bodyText);
-                } catch (e) { }
+                try { data = JSON.parse(bodyText); } catch { }
 
                 const ok = r.ok && (
-                    bodyText.indexOf("Lambda OK") !== -1 ||
+                    bodyText.includes("Lambda OK") ||
                     (data && data.ok === true)
                 );
 
@@ -430,17 +420,16 @@
         }
 
         /* ============================================================
-           FETCH SUMMARY FROM LRS VIA LAMBDA
+           FETCH SUMMARY (uses learner + email for Lambda)
         ============================================================ */
         async function fetchSummary() {
             try {
-                const r = await fetch(
+                const url =
                     PROXY_URL +
-                    "?learner=" +
-                    encodeURIComponent(learnerName) +
-                    "&mode=summary",
-                    { method: "GET", cache: "no-store" }
-                );
+                    "?mode=summary" +
+                    "&learner=" + encodeURIComponent(learnerName) +
+                    "&email=" + encodeURIComponent(learnerEmail || "");
+                const r = await fetch(url, { method: "GET", cache: "no-store" });
                 return await r.json();
             } catch (e) {
                 console.warn("Summary fetch failed:", e);
@@ -449,7 +438,7 @@
         }
 
         /* ============================================================
-           LOAD ADAPTIVE RULES
+           LOAD ADAPTIVE RULES (adaptive_rules.json)
         ============================================================ */
         let rulesCache = null;
         async function loadRules() {
@@ -460,8 +449,7 @@
         }
 
         /* ============================================================
-           EVALUATE ROUTING FROM RULES
-           Uses your rules JSON exactly (route.go)
+           EVALUATE ROUTING (supports route, forEach)
         ============================================================ */
         function evaluateRouting(compId, compState, rules) {
             const list = rules[compId];
@@ -497,7 +485,7 @@
                 for (let j = 0; j < thenArr.length; j++) {
                     const a = thenArr[j];
 
-                    // Direct route: { "route": { "go": "C2-test" } }
+                    // Simple route: { "route": { "go": "C2-test" } }
                     if (a.route) {
                         const keys = Object.keys(a.route);
                         if (keys.length > 0) {
@@ -522,7 +510,7 @@
                         }
                     }
 
-                    // forEach route, usually for "missed"
+                    // forEach: usually for "missed"
                     if (a.forEach && Array.isArray(compState[a.forEach]) && a.do) {
                         const items = compState[a.forEach];
                         for (let k = 0; k < items.length; k++) {
@@ -560,8 +548,10 @@
         }
 
         /* ============================================================
-           FINAL URL RESOLVER
-           Translates targets like "C1a-apply" into full URLs
+           FINAL URL RESOLVER (Option A folder structure)
+           /C1-test/story.html
+           /content/C1a-content.html
+           /apply/C1a/C1a-apply.html
         ============================================================ */
         function resolveTargetUrl(target) {
             target = sanitizeTarget(target);
@@ -572,23 +562,23 @@
                 return BASE + "program-complete.html";
             }
 
-            // Tests
+            // Tests: C1-test, C2-test, C3-test
             if (/^C[1-3]-test$/i.test(target)) {
                 return BASE + target + "/story.html";
             }
 
-            // Content
+            // Content: C1a-content → /content/C1a-content.html
             if (/^C[1-3][a-c]-content$/i.test(target)) {
                 return BASE + "content/" + target + ".html";
             }
 
-            // Apply
+            // Apply: C1a-apply → /apply/C1a/C1a-apply.html
             if (/^C[1-3][a-c]-apply$/i.test(target)) {
                 const sub = target.replace("-apply", ""); // C1a
                 return BASE + "apply/" + sub + "/" + target + ".html";
             }
 
-            // Fallback
+            // Fallback: treat as a simple page
             return BASE + target + ".html";
         }
 
@@ -736,12 +726,13 @@
         }
 
         /* ============================================================
-           FINALIZE (OFF-RAMP BUTTON)
+           FINALIZE (OFF-RAMP BUTTON) – matches Storyline mbox pattern
         ============================================================ */
         async function finalize(current, mastery) {
             const stmt = {
                 actor: {
                     name: learnerName,
+                    // Match Storyline: mailto:encodeURIComponent(learnerName)@wirelxdfirm.com
                     mbox: "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com"
                 },
                 verb: { id: "http://id.tincanapi.com/verb/completed" },
@@ -948,6 +939,8 @@
                     urlBase +
                     "?learnerName=" +
                     encodeURIComponent(learnerName) +
+                    "&email=" +
+                    encodeURIComponent(learnerEmail || "") +
                     "&sid=" +
                     encodeURIComponent(sid);
 
@@ -1030,6 +1023,8 @@
                     urlBase +
                     "?learnerName=" +
                     encodeURIComponent(learnerName) +
+                    "&email=" +
+                    encodeURIComponent(learnerEmail || "") +
                     "&sid=" +
                     encodeURIComponent(sid);
                 window.location.href = url;

@@ -119,19 +119,6 @@
             color: var(--ink-1);
         }
 
-        .row {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 12px;
-            align-items: center;
-            margin-top: 16px;
-        }
-
-        .field-label {
-            font-size: 14px;
-            margin-bottom: 4px;
-        }
-
         input {
             width: 100%;
             max-width: 360px;
@@ -142,7 +129,6 @@
             color: var(--ink-0);
             font-size: 15px;
             outline: none;
-            box-sizing: border-box;
             margin-bottom: 8px;
         }
 
@@ -187,6 +173,14 @@
             background: transparent;
             border-color: rgba(148,163,184,.5);
         }
+
+        .row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: center;
+            margin-top: 16px;
+        }
     </style>
 </head>
 
@@ -202,16 +196,17 @@
     </header>
 
     <main class="wrap">
-        <!-- New learner section -->
+
+        <!-- NEW LEARNER -->
         <section class="card" id="newUserSection">
-            <h2 style="margin-top:0;margin-bottom:8px;">Welcome</h2>
+            <h2 style="margin:0 0 8px 0;">Welcome</h2>
             <p class="muted">
-                Enter your name and email to begin. The next page will analyze your progress and decide what comes next.
+                Enter your name and email to begin. The next page will analyze your progress.
             </p>
 
             <div style="margin-top:14px;">
                 <div class="field-label">Learner name</div>
-                <input id="nameInput" type="text" placeholder="Type your name…" autocomplete="name" />
+                <input id="nameInput" type="text" placeholder="First Last" autocomplete="name" />
 
                 <div class="field-label">Email</div>
                 <input id="emailInput" type="email" placeholder="you@example.com" autocomplete="email" />
@@ -223,9 +218,9 @@
             </div>
         </section>
 
-        <!-- Returning learner section -->
+        <!-- RETURNING LEARNER -->
         <section class="card" id="returningSection" hidden>
-            <h2 style="margin-top:0;margin-bottom:8px;">Welcome back</h2>
+            <h2 style="margin:0 0 8px 0;">Welcome back</h2>
             <p class="muted" id="welcomeText"></p>
 
             <div class="row">
@@ -233,29 +228,25 @@
                 <button class="btn-outline" id="resetBtn">Reset learner</button>
             </div>
         </section>
+
     </main>
 
     <script>
         /* ---------------- CONNECTION CHECK ---------------- */
-        const PROXY_URL = "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
+        const PROXY_URL =
+            "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
 
         async function checkConnection() {
             const dot = document.getElementById("connDot");
             const txt = document.getElementById("connText");
 
             try {
-                const res = await fetch(PROXY_URL + "?mode=ping", {
-                    method: "GET",
-                    cache: "no-store",
-                    headers: { "Accept": "application/json" }
-                });
-
+                const res = await fetch(PROXY_URL + "?mode=ping", { method: "GET", cache: "no-store" });
                 const body = await res.text();
-                let data = null;
-                try { data = JSON.parse(body); } catch { }
+                let ok = false;
+                try { ok = JSON.parse(body).ok; } catch { }
 
-                const ok = res.ok && (body.includes("Lambda OK") || (data && data.ok));
-                if (ok) {
+                if (res.ok && (ok || body.includes("Lambda OK"))) {
                     dot.classList.add("ok");
                     txt.textContent = "Connected to LRS";
                 } else {
@@ -267,7 +258,6 @@
                 txt.textContent = "Offline";
             }
         }
-
         checkConnection();
 
         /* ---------------- ELEMENTS ---------------- */
@@ -282,27 +272,35 @@
         const welcomeText = document.getElementById("welcomeText");
 
         /* ---------------- VALIDATION ---------------- */
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+        function isValidName(name) {
+            const clean = (name || "").trim();
+            if (clean.length < 2) return false;
+            const parts = clean.split(/\s+/).filter(p => p.length > 1);
+            return parts.length >= 2;
+        }
 
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
         function isEmailValid(v) {
             return emailRegex.test((v || "").trim());
         }
 
         function validate() {
-            const nameOk = nameInput.value.trim().length > 0;
+            const nameVal = nameInput.value.trim();
             const emailVal = emailInput.value.trim();
+
+            const nameOk = isValidName(nameVal);
             const emailOk = isEmailValid(emailVal);
 
             emailError.hidden = (emailVal === "" || emailOk);
             launchBtn.disabled = !(nameOk && emailOk);
         }
 
-        ["input", "change", "blur"].forEach(ev => {
+        ["input", "blur", "change"].forEach(ev => {
             nameInput.addEventListener(ev, validate);
             emailInput.addEventListener(ev, validate);
         });
 
-        /* ---------------- SESSION HELPERS ---------------- */
+        /* ---------------- SID ---------------- */
         function ensureSid() {
             let sid = localStorage.getItem("sessionId");
             if (!sid) {
@@ -313,84 +311,68 @@
         }
 
         function goToNext(name, email, sid) {
-            const url = "next.html" +
-                "?learnerName=" + encodeURIComponent(name) +
-                "&email=" + encodeURIComponent(email) +
-                "&sid=" + encodeURIComponent(sid);
-
-            window.location.href = url;
+            window.location.href =
+                "next.html?learnerName=" +
+                encodeURIComponent(name) +
+                "&email=" +
+                encodeURIComponent(email) +
+                "&sid=" +
+                encodeURIComponent(sid);
         }
 
-        /* ---------------- IDENTITY SANITIZATION ---------------- */
+        /* ---------------- SANITIZE ONLY IF CORRUPT ---------------- */
         function sanitizeIdentity() {
-            const storedName = localStorage.getItem("learnerName");
-            const storedEmail = localStorage.getItem("learnerEmail");
+            const storedName = localStorage.getItem("learnerName") || "";
+            const storedEmail = localStorage.getItem("learnerEmail") || "";
 
-            const emailValid =
-                storedEmail &&
-                /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(storedEmail);
+            const nameBad = !isValidName(storedName);
+            const emailBad = !emailRegex.test(storedEmail);
 
-            const invalid =
-                !storedName ||
-                !storedEmail ||
-                !emailValid;
-
-            if (invalid) {
+            // Only erase if BOTH are invalid
+            if (nameBad && emailBad) {
                 [
-                    "learnerName",
-                    "learnerEmail",
-                    "sessionId",
-                    "actorName",
-                    "actorMbox",
-                    "currentCompetency",
-                    "pendingRoutes",
-                    "lastPath",
-                    "lastApplyLaunched"
+                    "learnerName", "learnerEmail", "sessionId",
+                    "actorName", "actorMbox",
+                    "currentCompetency", "pendingRoutes",
+                    "lastPath", "lastApplyLaunched"
                 ].forEach(k => localStorage.removeItem(k));
             }
         }
-
-        // Run BEFORE we decide which section to show
         sanitizeIdentity();
 
-        /* ---------------- SECTION CONTROL ---------------- */
+        /* ---------------- SHOW SECTION ---------------- */
         function showCorrectSection() {
             const storedName = localStorage.getItem("learnerName");
             const storedEmail = localStorage.getItem("learnerEmail");
 
-            const emailValid = storedEmail && emailRegex.test(storedEmail);
-
-            if (!storedName || !emailValid) {
+            if (!storedName || !storedEmail) {
                 newUserSection.hidden = false;
                 returningSection.hidden = true;
                 return;
             }
 
             welcomeText.textContent = `Learner detected: ${storedName} (${storedEmail})`;
+
             newUserSection.hidden = true;
             returningSection.hidden = false;
         }
-
         document.addEventListener("DOMContentLoaded", () => {
             validate();
             showCorrectSection();
         });
 
-        /* ---------------- NEW LEARNER LAUNCH ---------------- */
+        /* ---------------- NEW LEARNER ---------------- */
         launchBtn.addEventListener("click", () => {
             const name = nameInput.value.trim();
             const email = emailInput.value.trim().toLowerCase();
 
-            if (!name || !isEmailValid(email)) {
-                validate();
-                if (!isEmailValid(email)) emailInput.focus();
-                return;
-            }
+            if (!isValidName(name) || !isEmailValid(email)) return;
 
             localStorage.setItem("learnerName", name);
             localStorage.setItem("learnerEmail", email);
 
             const sid = ensureSid();
+
             launchBtn.disabled = true;
             launchBtn.textContent = "Launching…";
 
@@ -402,47 +384,32 @@
             const name = localStorage.getItem("learnerName");
             const email = localStorage.getItem("learnerEmail");
 
-            if (!name || !email) {
-                alert("No previous learner found. Please enter your details and Launch.");
-                newUserSection.hidden = false;
-                returningSection.hidden = true;
-                return;
-            }
-
             const sid = ensureSid();
+
             continueBtn.disabled = true;
             continueBtn.textContent = "Continuing…";
 
             goToNext(name, email, sid);
         });
 
-        /* ---------------- RESET LEARNER ---------------- */
+        /* ---------------- RESET ---------------- */
         resetBtn.addEventListener("click", () => {
             if (!confirm("Clear ALL learner progress and restart?")) return;
 
+            // Clear Storyline suspend_data
             Object.keys(localStorage).forEach(k => {
-                if (
-                    k.includes("story") ||
-                    k.includes("story_html5") ||
-                    k.includes("suspend") ||
-                    k.startsWith("story_content")
-                ) {
+                if (k.includes("story") || k.includes("suspend") || k.startsWith("story_content")) {
                     localStorage.removeItem(k);
                 }
             });
 
+            // Clear identity + logic
             [
-                "learnerName",
-                "learnerEmail",
-                "sessionId",
-                "actorName",
-                "actorMbox",
-                "currentCompetency",
-                "pendingRoutes",
-                "lastPath",
-                "lastApplyLaunched"
+                "learnerName", "learnerEmail", "sessionId", "actorName", "actorMbox",
+                "currentCompetency", "pendingRoutes", "lastPath", "lastApplyLaunched"
             ].forEach(k => localStorage.removeItem(k));
 
+            // Clear competency cache
             ["C1", "C2", "C3"].forEach(c => {
                 localStorage.removeItem(c + ".mastery");
                 localStorage.removeItem(c + ".score");
@@ -458,7 +425,7 @@
         });
 
         /* ---------------- ENTER KEY ---------------- */
-        document.addEventListener("keydown", e => {
+        document.addEventListener("keydown", (e) => {
             if (e.key === "Enter" && !launchBtn.disabled && !newUserSection.hidden) {
                 launchBtn.click();
             }
