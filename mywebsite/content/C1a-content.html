@@ -1,0 +1,525 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script>
+        // Only redirect when this page is the top-level window (not inside an iframe)
+        if (window.top === window.self) {
+            if (location.hostname === "wirelearningsolutions.com") {
+                location.replace(
+                    "https://www.wirelearningsolutions.com" +
+                    location.pathname +
+                    location.search
+                );
+            }
+        }
+    </script>
+
+    <meta charset="UTF-8" />
+    <title>Content Lesson</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <style>
+        :root {
+            --bg-0: #0a0f1a;
+            --bg-1: #0e1526;
+            --bg-2: #0f1b33;
+            --ink-0: #e8f1ff;
+            --ink-1: #b9c8e8;
+            --sky-1: #0ea5e9;
+            --sky-2: #22d3ee;
+            --ok: #22c55e;
+            --warn: #f59e0b;
+            --err: #ef4444;
+            --shadow: 0 10px 24px rgba(0,0,0,.35);
+        }
+
+        body {
+            margin: 0;
+            min-height: 100dvh;
+            color: var(--ink-0);
+            font-family: ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;
+            background: radial-gradient(1200px 800px at 70% -10%, rgba(34,211,238,.10), transparent 60%), radial-gradient(1000px 600px at -10% 20%, rgba(14,165,233,.15), transparent 55%), linear-gradient(180deg,#07101e 0%,#0a1322 50%,#0b1628 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+
+        .card {
+            width: min(1200px,98vw); /* wider card */
+            background: linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.015)),var(--bg-1);
+            border: 1px solid rgba(148,163,184,.15);
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(6px);
+            margin: 0 auto;
+        }
+
+        h1 {
+            margin: 0 0 6px;
+            font-size: clamp(20px,2.2vw,26px);
+            background: linear-gradient(90deg,var(--ink-0),#cfe8ff);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        /* YouTube title below as h2 */
+        h2#subtitle {
+            margin: 0 0 8px;
+            font-weight: 600;
+            font-size: clamp(16px,1.8vw,20px);
+            color: var(--ink-0);
+            opacity: .95;
+        }
+
+        .muted {
+            color: var(--ink-1);
+        }
+
+        #playerWrap {
+            margin-top: 12px;
+            border: 1px solid rgba(148,163,184,.2);
+            border-radius: 12px;
+            overflow: hidden;
+            background: #0b1222;
+            aspect-ratio: 16/9;
+            width: 100%;
+            max-height: calc(98vh - 260px);
+            margin-left: auto;
+            margin-right: auto;
+        }
+        /* ensure iframe fills wrapper */
+        #player, #player iframe {
+            width: 100% !important;
+            height: 100% !important;
+            display: block;
+        }
+
+        .row {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 14px;
+            align-items: center;
+        }
+
+        button {
+            padding: 10px 16px;
+            border-radius: 10px;
+            font-size: 15px;
+            cursor: pointer;
+            border: 1px solid rgba(148,163,184,.35);
+            background: #0f1a2e;
+            color: var(--ink-0);
+            transition: transform .05s ease, box-shadow .2s ease, border-color .2s ease, filter .2s ease, opacity .2s ease;
+        }
+
+            button:disabled {
+                opacity: .55;
+                cursor: not-allowed;
+                filter: saturate(.6);
+            }
+
+        /* existing ready style + pulse */
+        #nextBtn.ready {
+            background: linear-gradient(180deg,#0e87c7,#0c6aa0);
+            border-color: rgba(34,211,238,.55);
+            box-shadow: 0 6px 24px rgba(14,165,233,.35);
+            animation: pulse-blue 1.2s ease-in-out 3;
+        }
+
+        @keyframes pulse-blue {
+            0% {
+                box-shadow: 0 6px 24px rgba(14,165,233,.35);
+                transform: scale(1);
+            }
+
+            50% {
+                box-shadow: 0 10px 36px rgba(14,165,233,.55);
+                transform: scale(1.02);
+            }
+
+            100% {
+                box-shadow: 0 6px 24px rgba(14,165,233,.35);
+                transform: scale(1);
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            #nextBtn.ready {
+                animation: none;
+            }
+        }
+
+        pre {
+            white-space: pre-wrap;
+            word-break: break-word;
+            background: #0b1222;
+            color: #b9c8e8;
+            border: 1px solid rgba(148,163,184,.2);
+            border-radius: 12px;
+            padding: 12px;
+            margin-top: 10px;
+            max-height: 250px;
+            overflow: auto;
+        }
+
+        /* a11y live region */
+        .sr-only {
+            position: absolute !important;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0,0,1px,1px);
+            white-space: nowrap;
+            border: 0;
+        }
+    </style>
+</head>
+<body>
+    <section class="card">
+        <h1 id="title">Content Lesson</h1>
+        <h2 id="subtitle" class="muted"></h2>
+        <p class="muted">Tip: Watch the entire video to unlock the next button. For the best view, click the YouTube fullscreen icon in the player.</p>
+
+        <div id="playerWrap"><div id="player"></div></div>
+
+        <div class="row">
+            <button id="nextBtn" disabled>Next: Application</button>
+            <button id="captionBtn" style="display:none;">Show Captions</button>
+            <button id="debugBtn" aria-pressed="false">Show debug</button>
+            <div id="live" class="sr-only" aria-live="polite"></div>
+        </div>
+
+        <div id="debugPanel" style="display:none;">
+            <pre id="dbg">Loading…</pre>
+        </div>
+    </section>
+
+    <script>
+        (function () {
+            try {
+                // --- Record current path (e.g., "content/C1a-content.html") ---
+                var path = (location && location.pathname ? location.pathname : "").replace(/^\/+/, "");
+                if (path) localStorage.setItem("lastPath", path);
+
+                // --- Infer current competency (C1/C2/C3) from URL ---
+                var m = path.match(/C([123])/i) || (document.referrer && document.referrer.match(/C([123])/i));
+                if (m && m[1]) {
+                    localStorage.setItem("currentCompetency", "C" + String(m[1]).toUpperCase());
+                }
+            } catch (e) {
+                try { console.warn("Progress save failed:", e); } catch (_) { }
+            }
+        })();
+
+        // ===== LRS config =====
+        const endpoint = "https://cloud.scorm.com/lrs/TENBKY6BZ6/sandbox/";
+        const key = "d_cPqAqYNvM3sMTyJ2M";
+        const secret = "rh70yfaxONPyu11z_vk";
+        const auth = "Basic " + btoa(`${key}:${secret}`);
+        const NS = "https://acbl.wirelxdfirm.com/extensions/";
+        const EX = k => NS + k;
+
+        // ===== Query + storage =====
+        const qs = new URLSearchParams(location.search);
+        const fileKeyRaw = location.pathname.split("/").pop().replace(/\.html$/, "").trim();
+        const keyRaw = (qs.get("key") || fileKeyRaw).trim();                 // e.g., "C1a-content"
+        const videoIdIn = (qs.get("video") || "").trim();
+        const applyLinkIn = (qs.get("apply") || "").trim();
+        const unlockDbg = qs.get("unlock") === "1";
+
+        const comp = (keyRaw.match(/(C\d)/i)?.[1] || "C1").toUpperCase();
+        const rawBase = keyRaw.replace(/-content$/i, "");
+        const m = rawBase.match(/^c(\d)([abc])$/i);
+        const prettyKey = m ? `C${m[1]}${m[2].toLowerCase()}` : rawBase;
+        document.getElementById("title").textContent = `${prettyKey} Content`;
+
+        const learnerName = qs.get("learnerName") || localStorage.getItem("learnerName") || "Anonymous";
+        const sid = qs.get("sid") || localStorage.getItem("sessionId") || (crypto.randomUUID?.() || Date.now().toString());
+        localStorage.setItem("learnerName", learnerName);
+        localStorage.setItem("sessionId", sid);
+
+        // ===== Content config map (exact-case keys) =====
+        const FALLBACK_MAP = {
+            // C1
+            "C1a-content": { video: "olOSOl0YPL4", apply: "../apply/C1a/C1a-apply.html" },
+            "C1b-content": { video: "VnXdj0yqpzI", apply: "../apply/C1b/C1b-apply.html" },
+            "C1c-content": { video: "QXGOjzcQdhQ", apply: "../apply/C1c/C1c-apply.html" },
+
+            // C2
+            "C2a-content": { video: "S6Y1QrQ-Wuw", apply: "../apply/C2a/C2a-apply.html" },
+            "C2b-content": { video: "VnXdj0yqpzI", apply: "../apply/C2b/C2b-apply.html" },
+            "C2c-content": { video: "XscUZ8dIa-8", apply: "../apply/C2c/C2c-apply.html" },
+
+            // C3
+            "C3a-content": { video: "VnXdj0yqpzI", apply: "../apply/C3a/C3a-apply.html" },
+            "C3b-content": { video: "6Pl3hPRwO-o", apply: "../apply/C3b/C3b-apply.html" },
+            "C3c-content": { video: "vswvFKIeMfg", apply: "../apply/C3c/C3c-apply.html" }
+        };
+
+
+        // Resolve config: URL overrides -> fallback map (exact) -> CI fallback
+        let cfg = (videoIdIn && applyLinkIn)
+            ? { video: videoIdIn, apply: applyLinkIn }
+            : (FALLBACK_MAP[keyRaw] || null);
+
+        if (!cfg) {
+            const ciKey = Object.keys(FALLBACK_MAP).find(k => k.toLowerCase() === keyRaw.toLowerCase());
+            if (ciKey) cfg = FALLBACK_MAP[ciKey];
+        }
+
+        // ===== Debug panel =====
+        const dbgEl = document.getElementById("dbg");
+        const debugBtn = document.getElementById("debugBtn");
+        const debugPanel = document.getElementById("debugPanel");
+        debugBtn.addEventListener("click", () => {
+            const open = debugPanel.style.display !== "block";
+            debugPanel.style.display = open ? "block" : "none";
+            debugBtn.setAttribute("aria-pressed", open ? "true" : "false");
+            debugBtn.textContent = open ? "Hide debug" : "Show debug";
+        });
+        function logDebug(obj) { try { dbgEl.textContent = JSON.stringify(obj, null, 2); } catch { } }
+
+        // ===== xAPI helper =====
+        function sendXAPI(verbId, verb, ext = {}) {
+            return fetch(endpoint + "statements", {
+                method: "POST",
+                headers: {
+                    "Authorization": auth,
+                    "Content-Type": "application/json",
+                    "X-Experience-API-Version": "1.0.3"
+                },
+                body: JSON.stringify({
+                    actor: { name: learnerName, mbox: `mailto:${encodeURIComponent(learnerName)}@wirelxdfirm.com` },
+                    verb: { id: verbId, display: { "en-US": verb } },
+                    object: { id: `https://acbl.wirelxdfirm.com/activities/${keyRaw || "content"}` },
+                    result: { extensions: { [EX("learnerName")]: learnerName, [EX("sessionId")]: sid, [EX("target")]: keyRaw, ...ext } },
+                    timestamp: new Date().toISOString()
+                })
+            }).catch(() => { });
+        }
+
+        // ===== Buttons & a11y live region =====
+        const nextBtn = document.getElementById("nextBtn");
+        const captionBtn = document.getElementById("captionBtn");
+        const liveEl = document.getElementById("live");
+
+        function enableNext() {
+            if (!nextBtn.disabled) return;           // avoid re-announcing
+            nextBtn.disabled = false;
+            nextBtn.classList.add("ready");
+            if (liveEl) liveEl.textContent = "Next step unlocked";
+        }
+        if (unlockDbg) enableNext();
+
+        // ===== Replace your existing nextBtn click section with this =====
+        nextBtn.addEventListener("click", () => {
+            try {
+                const route = JSON.parse(localStorage.getItem("adaptivePath") || "[]");
+                const current = location.pathname.split("/").pop();
+                const idx = route.findIndex(x => x.endsWith(current));
+                const next = idx >= 0 && idx < route.length - 1 ? route[idx + 1] : null;
+
+                const base = "https://wirelearningsolutions.com/";
+                const name = localStorage.getItem("learnerName") || learnerName || "";
+                const sid = localStorage.getItem("sessionId") || sid || "";
+
+                if (next) {
+                    const url = new URL(base + next);
+                    url.searchParams.set("learnerName", name);
+                    url.searchParams.set("sid", sid);
+                    url.searchParams.set("source", keyRaw || "");
+                    location.href = url.toString();
+                    return;
+                }
+
+                // --- fallback to per-page apply mapping ---
+                if (!cfg?.apply) {
+                    alert("Apply URL missing for this key.");
+                    return;
+                }
+
+                const url = new URL(cfg.apply, location.href);
+                url.searchParams.set("learnerName", name);
+                url.searchParams.set("sid", sid);
+                url.searchParams.set("source", keyRaw || "");
+                localStorage.setItem("lastApplyLaunched", (keyRaw || "").replace("-content", "-apply"));
+                location.href = url.toString();
+            } catch (e) {
+                console.error("Continue navigation failed:", e);
+                location.href = "https://wirelearningsolutions.com/next.html";
+            }
+        });
+
+        // ===== Captions loader (toggleable) =====
+        async function loadCaptions(videoId) {
+            try {
+                const response = await fetch(`https://video.google.com/timedtext?lang=en&v=${videoId}`);
+                const xml = await response.text();
+                if (!xml.includes("<text")) return;
+
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(xml, "text/xml");
+                const texts = [...doc.querySelectorAll("text")].map(node => node.textContent.replace(/&amp;/g, "&"));
+                const captions = texts.join(" ").replace(/\s+/g, " ").trim();
+
+                const capBox = document.createElement("pre");
+                capBox.id = "captionsBox";
+                capBox.textContent = captions;
+                capBox.style.display = "none";
+                document.querySelector(".card").appendChild(capBox);
+
+                captionBtn.style.display = "inline-block";
+                captionBtn.addEventListener("click", () => {
+                    const visible = capBox.style.display === "block";
+                    capBox.style.display = visible ? "none" : "block";
+                    captionBtn.textContent = visible ? "Show Captions" : "Hide Captions";
+                });
+            } catch (err) {
+                console.error("Error fetching captions:", err);
+            }
+        }
+
+        // ===== Pull YouTube title for subtitle (no API key) =====
+        async function loadYouTubeTitle(videoId) {
+            try {
+                const o = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`);
+                if (!o.ok) return;
+                const data = await o.json();
+                const h2 = document.getElementById("subtitle");
+                if (h2 && data?.title) h2.textContent = data.title;
+            } catch { }
+        }
+
+        // ===== YouTube integration (unlock <=10s remaining) =====
+        let player, started = false, totalWatch = 0, lastTick = null, duration = 0;
+        let pollTimer = null;
+        let unlockedEarly = false;
+
+        function startPolling() {
+            stopPolling();
+            pollTimer = setInterval(() => {
+                if (!player || typeof player.getCurrentTime !== "function") return;
+                const current = player.getCurrentTime() || 0;
+                const remaining = Math.max(0, (duration || 0) - current);
+                if (!unlockedEarly && remaining <= 10) {
+                    unlockedEarly = true;
+                    enableNext();
+                }
+            }, 500);
+        }
+        function stopPolling() {
+            if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+        }
+
+        function onPlayerReady(e) {
+            duration = e?.target?.getDuration?.() || 0;
+            logDebug({ ready: true, keyRaw, comp, learnerName, sid, duration, video: cfg?.video, apply: cfg?.apply });
+            loadCaptions(cfg.video);
+            loadYouTubeTitle(cfg.video);
+        }
+
+        async function onPlayerStateChange(e) {
+            const s = e.data, now = Date.now();
+            if (s === YT.PlayerState.PLAYING) {
+                if (!started) {
+                    started = true;
+                    sendXAPI("http://adlnet.gov/expapi/verbs/experienced", "experienced", { [EX("duration")]: duration });
+                }
+                lastTick = now;
+                startPolling();
+            }
+            if (s === YT.PlayerState.PAUSED) {
+                if (lastTick) { totalWatch += (now - lastTick) / 1000; lastTick = null; }
+                stopPolling();
+                sendXAPI("http://id.tincanapi.com/verb/paused", "paused", { [EX("watchedSeconds")]: Math.round(totalWatch) });
+            }
+            if (s === YT.PlayerState.ENDED) {
+                if (lastTick) { totalWatch += (now - lastTick) / 1000; lastTick = null; }
+                stopPolling();
+                await sendXAPI("http://adlnet.gov/expapi/verbs/completed", "completed", {
+                    [EX("watchedSeconds")]: Math.round(totalWatch),
+                    [EX("duration")]: duration
+                });
+                enableNext(); // still unlock on natural end
+            }
+        }
+
+        function initYouTube() {
+            console.log("Key requested:", keyRaw, "| Exact hit:", !!FALLBACK_MAP[keyRaw], "| URL overrides:", !!videoIdIn, !!applyLinkIn);
+            if (!cfg) {
+                alert(`Missing video/apply config for key "${keyRaw}". Ensure the filename (or ?key=) matches FALLBACK_MAP, or pass ?video= and ?apply= in the URL.`);
+                return;
+            }
+            if (!window.YT || !window.YT.Player) {
+                const tag = document.createElement("script");
+                tag.src = "https://www.youtube.com/iframe_api";
+                document.head.appendChild(tag);
+                window.onYouTubeIframeAPIReady = () => {
+                    player = new YT.Player("player", {
+                        videoId: cfg.video,
+                        playerVars: { rel: 0, modestbranding: 1, playsinline: 1 },
+                        events: { onReady: onPlayerReady, onStateChange: onPlayerStateChange }
+                    });
+                };
+            } else {
+                player = new YT.Player("player", {
+                    videoId: cfg.video,
+                    playerVars: { rel: 0, modestbranding: 1, playsinline: 1 },
+                    events: { onReady: onPlayerReady, onStateChange: onPlayerStateChange }
+                });
+            }
+        }
+
+        // Kick off
+        initYouTube();
+    </script>
+    <script>
+        /* -------------------------------------------------------
+           Adaptive Engine: send learner back to next.html
+           for routing after content
+        ------------------------------------------------------- */
+        (function () {
+            try {
+                const qs = new URLSearchParams(location.search);
+
+                const learnerName =
+                    qs.get("learnerName") ||
+                    localStorage.getItem("learnerName") ||
+                    "Anonymous";
+
+                let sid =
+                    qs.get("sid") ||
+                    localStorage.getItem("sessionId") ||
+                    (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString());
+
+                // Persist identity
+                localStorage.setItem("learnerName", learnerName);
+                localStorage.setItem("sessionId", sid);
+
+                // Unified next-step function
+                window.goAdaptiveNext = function () {
+                    try {
+                        const u = new URL("https://www.wirelearningsolutions.com/next.html");
+                        u.searchParams.set("learnerName", learnerName);
+                        u.searchParams.set("sid", sid);
+                        u.searchParams.set("source", (location.pathname.split("/").pop() || ""));
+
+                        window.location.href = u.toString();
+                    } catch (err) {
+                        console.error("Adaptive redirect failed:", err);
+                        window.location.href = "https://www.wirelearningsolutions.com/next.html";
+                    }
+                };
+
+            } catch (err) {
+                console.error("Adaptive content next initializer failed:", err);
+            }
+        })();
+    </script>
+
+</body>
+</html>

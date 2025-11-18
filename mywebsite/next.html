@@ -1,0 +1,958 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- Canonical redirect (top-level only) -->
+    <script>
+        if (window.top === window.self) {
+            if (location.hostname === "wirelearningsolutions.com") {
+                location.replace(
+                    "https://www.wirelearningsolutions.com" +
+                    location.pathname +
+                    location.search
+                );
+            }
+        }
+    </script>
+
+    <meta charset="UTF-8" />
+    <title>Analyzing your progress</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+
+    <style>
+        :root {
+            --bg-0: #0a0f1a;
+            --bg-1: #0e1526;
+            --bg-2: #0f1b33;
+            --ink-0: #e8f1ff;
+            --ink-1: #b9c8e8;
+            --sky-1: #0ea5e9;
+            --sky-2: #22d3ee;
+            --ok: #22c55e;
+            --warn: #f59e0b;
+            --err: #ef4444;
+            --focus: #93c5fd;
+            --shadow: 0 10px 24px rgba(0,0,0,.35);
+        }
+
+        body {
+            margin: 0;
+            color: var(--ink-0);
+            font-family: ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;
+            background: radial-gradient(1200px 800px at 70% -10%, rgba(34,211,238,.10), transparent 60%), radial-gradient(1000px 600px at -10% 20%, rgba(14,165,233,.15), transparent 55%), linear-gradient(180deg, #07101e 0%, #0a1322 50%, #0b1628 100%);
+            min-height: 100dvh;
+        }
+
+        header {
+            padding: 28px 24px 10px;
+        }
+
+        .title-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: clamp(22px,2.4vw,28px);
+            background: linear-gradient(90deg,var(--ink-0),#cfe8ff);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            padding: 8px 12px;
+            border-radius: 999px;
+            background: rgba(14,165,233,.10);
+            border: 1px solid rgba(34,211,238,.35);
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--warn);
+        }
+
+            .dot.ok {
+                background: var(--ok);
+                box-shadow: 0 0 0 0 rgba(34,197,94,.6);
+                animation: pulse 1.8s ease-out infinite;
+            }
+
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(34,197,94,.5);
+            }
+
+            70% {
+                box-shadow: 0 0 0 10px rgba(34,197,94,0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(34,197,94,0);
+            }
+        }
+
+        .wrap {
+            padding: 6px 24px 32px;
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.015)),var(--bg-1);
+            border: 1px solid rgba(148,163,184,.15);
+            border-radius: 14px;
+            padding: 16px;
+            margin: 16px 0;
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(6px);
+        }
+
+        .muted {
+            color: var(--ink-1);
+        }
+
+        .row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: center;
+        }
+
+        button {
+            padding: 10px 16px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 15px;
+            border: 1px solid rgba(148,163,184,.35);
+            background: #0f1a2e;
+            color: var(--ink-0);
+            transition: transform .05s ease, box-shadow .2s ease, border-color .2s ease;
+        }
+
+            button.primary {
+                background: linear-gradient(180deg,#0e87c7,#0c6aa0);
+                border-color: rgba(34,211,238,.55);
+                box-shadow: 0 6px 24px rgba(14,165,233,.35);
+            }
+
+            button:hover {
+                transform: translateY(-1px);
+            }
+
+            button:disabled {
+                opacity: .6;
+                cursor: not-allowed;
+                filter: saturate(.6);
+            }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 8px;
+        }
+
+        thead th {
+            text-align: left;
+            padding: 12px 10px;
+            background: var(--bg-2);
+            color: var(--ink-0);
+            border-bottom: 1px solid rgba(148,163,184,.25);
+        }
+
+        td {
+            padding: 12px 10px;
+            border-bottom: 1px solid rgba(148,163,184,.12);
+            color: var(--ink-0);
+        }
+
+        .status {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 13px;
+            color: #fff;
+            background: rgba(255,255,255,.06);
+            border: 1px solid rgba(148,163,184,.25);
+        }
+
+        .s-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .Completed .s-dot {
+            background: var(--ok);
+            animation: pulse 2s ease-out infinite;
+        }
+
+        .InProgress .s-dot {
+            background: var(--warn);
+        }
+
+        .NotStarted .s-dot {
+            background: var(--err);
+            animation: pulse 2s ease-out infinite;
+        }
+
+        pre {
+            white-space: pre-wrap;
+            word-break: break-word;
+            background: #0b1222;
+            color: #dbeafe;
+            padding: 12px;
+            border-radius: 12px;
+            border: 1px solid rgba(148,163,184,.2);
+            max-height: 420px;
+            overflow: auto;
+        }
+
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            border: 1px solid rgba(148,163,184,.25);
+            background: rgba(255,255,255,.04);
+            font-weight: 600;
+        }
+
+        .upnext {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px dashed rgba(34,211,238,.35);
+            background: rgba(14,165,233,.10);
+            margin-top: 10px;
+        }
+
+        .count {
+            font-weight: 800;
+            color: #cfe8ff;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="title-row">
+            <h1>Analyzing your progress</h1>
+            <span class="badge">
+                <span class="dot" id="connDot"></span>
+                <span id="connText">Checking connection…</span>
+            </span>
+        </div>
+    </header>
+
+    <main class="wrap">
+        <!-- Learner details -->
+        <section class="card" id="info">
+            <div><b>Learner:</b> <span id="learnerNameLabel">—</span></div>
+            <div class="muted">Session: <span id="sessionLabel">—</span></div>
+            <div id="anonWarn" class="muted" style="color:var(--err);display:none;">
+                Progress actions are disabled until a learner name is provided.
+            </div>
+        </section>
+
+        <!-- Summary + Up Next -->
+        <section class="card" id="summaryCard">
+            <div class="summary" id="summaryLine"></div>
+            <div class="upnext">
+                <strong>Up Next:</strong>
+                <span id="upNextComp" class="chip"><strong>—</strong></span>
+                <span id="upNextSub" class="chip"><strong>—</strong></span>
+                <span id="upNextType" class="chip"><strong>—</strong></span>
+            </div>
+            <div id="launchInfo" class="muted" style="margin-top:10px;">
+                Press <b>Continue</b> to launch your next activity.
+            </div>
+        </section>
+
+        <!-- Actions -->
+        <section class="card" id="actions">
+            <div class="row">
+                <button id="continueBtn" class="primary">Continue</button>
+                <button id="acceptBtn">Accept Mastery Level and Move On</button>
+                <button id="toggleDebug" aria-pressed="false">Show Debug Info</button>
+                <button id="resetBtn" style="background:linear-gradient(180deg,#5b6470,#3e4650); border-color:rgba(148,163,184,.55);">
+                    Reset Learner
+                </button>
+            </div>
+        </section>
+
+        <!-- Progress table -->
+        <section class="card" id="progress">
+            <h3 style="margin:0 0 6px;">Your Progress</h3>
+            <p class="muted" style="margin:0 0 8px;">Real time data from your learning record.</p>
+            <table>
+                <thead>
+                    <tr><th>Competency</th><th>Mastery Level</th><th>Status</th></tr>
+                </thead>
+                <tbody id="progressTable">
+                    <tr><td colspan="3" class="muted">Loading…</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!-- Debug -->
+        <section class="card" id="debug" style="display:none;"></section>
+    </main>
+
+    <script>
+        /* ============================================================
+           CONFIG
+        ============================================================ */
+        const PROXY_URL =
+            "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
+
+        const RULES_URL =
+            "https://www.wirelearningsolutions.com/adaptive_rules.json";
+
+        const EXT_NS = "https://acbl.wirelxdfirm.com/extensions/";
+        const ALT_NS = "https://acbl.wirelearningsolutions.com/extensions/";
+        const EX = k => EXT_NS + k;
+
+        const LRS_ENDPOINT = "https://cloud.scorm.com/lrs/TENBKY6BZ6/sandbox/";
+        const LRS_KEY = "d_cPqAqYNvM3sMTyJ2M";
+        const LRS_SECRET = "rh70yfaxONPyu11z_vk";
+        const LRS_AUTH = "Basic " + btoa(`${LRS_KEY}:${LRS_SECRET}`);
+
+        const REFRESH_MS = 15000;
+
+        /* ============================================================
+           IDENTITY
+        ============================================================ */
+        const qs = new URLSearchParams(location.search);
+
+        let learnerName =
+            qs.get("learnerName") || localStorage.getItem("learnerName") || "";
+        let email =
+            qs.get("email") || localStorage.getItem("learnerEmail") || "";
+        let sid =
+            qs.get("sid") || localStorage.getItem("sessionId") || "";
+
+        if (!sid) {
+            sid = (window.crypto && crypto.randomUUID)
+                ? crypto.randomUUID()
+                : String(Date.now());
+        }
+
+        if (learnerName) localStorage.setItem("learnerName", learnerName);
+        if (email) localStorage.setItem("learnerEmail", email);
+        if (sid) localStorage.setItem("sessionId", sid);
+
+        function withIdentity(url) {
+            const sep = url.includes("?") ? "&" : "?";
+            return url + sep +
+                "learnerName=" + encodeURIComponent(learnerName || "") +
+                "&email=" + encodeURIComponent(email || "") +
+                "&sid=" + encodeURIComponent(sid || "");
+        }
+
+        function writeIdentity() {
+            document.getElementById("learnerNameLabel").textContent =
+                learnerName || "Anonymous";
+            document.getElementById("sessionLabel").textContent = sid;
+            document.getElementById("anonWarn").style.display =
+                learnerName ? "none" : "block";
+        }
+
+        /* ============================================================
+           CONNECTION BADGE
+        ============================================================ */
+        async function checkConnection() {
+            const dot = document.getElementById("connDot");
+            const txt = document.getElementById("connText");
+            try {
+                const r = await fetch(LRS_ENDPOINT + "about", {
+                    headers: { "Authorization": LRS_AUTH }
+                });
+                if (r.ok) {
+                    dot.classList.add("ok");
+                    txt.textContent = "Connected to LRS";
+                } else {
+                    txt.textContent = "Connection unstable";
+                }
+            } catch (e) {
+                txt.textContent = "Offline";
+                dot.style.background = "var(--err)";
+            }
+        }
+
+        /* ============================================================
+           LOAD RULES
+        ============================================================ */
+        async function loadRules() {
+            const res = await fetch(RULES_URL, { cache: "no-store" });
+            if (!res.ok) throw new Error("Failed to load adaptive rules");
+            const data = await res.json();
+            const { meta, ...rules } = data || {};
+            return rules || {};
+        }
+
+        /* ============================================================
+           LOAD SUMMARY FROM LRS
+        ============================================================ */
+        function toBool(v) {
+            return (
+                v === true ||
+                v === 1 ||
+                (typeof v === "string" && /^(true|1)$/i.test(v))
+            );
+        }
+
+        function compFromStatement(stmt) {
+            const ext = stmt?.result?.extensions || {};
+            const byExt =
+                ext[EX("competencyId")] ||
+                ext[ALT_NS + "competencyId"];
+
+            if (byExt && /^C[1-3]$/i.test(byExt))
+                return byExt.toUpperCase();
+
+            const id = stmt?.object?.id || "";
+            const m = id.match(/C[1-3]/i);
+            return m ? m[0].toUpperCase() : null;
+        }
+
+        function subFromStatement(stmt) {
+            const ext = stmt?.result?.extensions || {};
+            const sub =
+                ext[EX("subCompetency")] ||
+                ext[ALT_NS + "subCompetency"];
+
+            if (sub && /^C[1-3][a-c]$/i.test(sub))
+                return sub.toUpperCase();
+
+            return null;
+        }
+
+        async function loadSummary() {
+            const url = `${LRS_ENDPOINT}statements?limit=200&format=exact`;
+
+            const res = await fetch(url, {
+                headers: {
+                    "Authorization": LRS_AUTH,
+                    "X-Experience-API-Version": "1.0.3"
+                }
+            });
+
+            if (!res.ok) {
+                console.warn("LRS fetch failed:", res.status);
+                return { C1: {}, C2: {}, C3: {} };
+            }
+
+            const data = await res.json();
+            const stmts = Array.isArray(data.statements) ? data.statements : [];
+
+            const filtered = stmts.filter((s) => {
+                const ex = s.result?.extensions || {};
+                const extName =
+                    ex[EX("learnerName")] ||
+                    ex[ALT_NS + "learnerName"];
+                const actorName = s.actor?.name;
+                if (learnerName && extName === learnerName) return true;
+                if (learnerName && actorName === learnerName) return true;
+                return false;
+            });
+
+            const summary = {
+                C1: { mastery: null, finalized: false, testedOut: false, missed: [] },
+                C2: { mastery: null, finalized: false, testedOut: false, missed: [] },
+                C3: { mastery: null, finalized: false, testedOut: false, missed: [] }
+            };
+
+            for (const s of filtered) {
+                const comp = compFromStatement(s);
+                if (!comp || !summary[comp]) continue;
+
+                const ext = s.result?.extensions || {};
+
+                // track sub-competency completions from apply or content
+                const sub = subFromStatement(s);
+                if (sub) {
+                    if (!summary[comp].subsCompleted)
+                        summary[comp].subsCompleted = [];
+                    if (!summary[comp].subsCompleted.includes(sub))
+                        summary[comp].subsCompleted.push(sub);
+                }
+
+                const masteryVal =
+                    ext[EX("masteryLevel")] ||
+                    ext[ALT_NS + "masteryLevel"];
+                if (masteryVal) summary[comp].mastery = masteryVal;
+
+                if (ext.hasOwnProperty(EX("finalized")) || ext.hasOwnProperty(ALT_NS + "finalized")) {
+                    const v = ext[EX("finalized")] ?? ext[ALT_NS + "finalized"];
+                    summary[comp].finalized = toBool(v);
+                }
+
+                if (ext.hasOwnProperty(EX("testedOut")) || ext.hasOwnProperty(ALT_NS + "testedOut")) {
+                    const v = ext[EX("testedOut")] ?? ext[ALT_NS + "testedOut"];
+                    summary[comp].testedOut = toBool(v);
+                }
+
+                const missedVal =
+                    ext[EX("missed")] ??
+                    ext[ALT_NS + "missed"];
+
+                if (Array.isArray(missedVal)) {
+                    summary[comp].missed = missedVal.slice();
+                } else if (typeof missedVal === "string" && missedVal.trim()) {
+                    try {
+                        const arr = JSON.parse(missedVal);
+                        if (Array.isArray(arr)) summary[comp].missed = arr;
+                    } catch {
+                        const arr = missedVal
+                            .split(",")
+                            .map((s2) => s2.replace(/"/g, "").trim())
+                            .filter(Boolean);
+                        if (arr.length) summary[comp].missed = arr;
+                    }
+                }
+            }
+
+            // reconcile missed vs subsCompleted, case insensitive
+            ["C1", "C2", "C3"].forEach((compKey) => {
+                const s = summary[compKey];
+                if (!s) return;
+
+                const missed = Array.isArray(s.missed) ? s.missed : [];
+                const done = Array.isArray(s.subsCompleted) ? s.subsCompleted : [];
+
+                if (!missed.length || !done.length) {
+                    s.missed = missed;
+                    return;
+                }
+
+                const doneLower = done.map(x => String(x).toLowerCase());
+                s.missed = missed.filter(m => !doneLower.includes(String(m).toLowerCase()));
+            });
+
+            return summary;
+        }
+
+        /* ============================================================
+           DETECT CURRENT COMPETENCY
+        ============================================================ */
+        function detectCurrent(summary) {
+            const C1 = summary.C1 || {};
+            const C2 = summary.C2 || {};
+            const C3 = summary.C3 || {};
+
+            const m1 = C1.mastery;
+            const f1 = C1.finalized;
+            const m2 = C2.mastery;
+            const f2 = C2.finalized;
+            const m3 = C3.mastery;
+            const f3 = C3.finalized;
+
+            if (!m1 && !f1) return "C1";
+            if (m1 && m1 !== "Mastery" && !f1) return "C1";
+
+            if ((m1 === "Mastery" || f1) && (!m2 && !f2)) return "C2";
+            if ((m1 === "Mastery" || f1) && (m2 && m2 !== "Mastery" && !f2)) return "C2";
+
+            if ((m1 === "Mastery" || f1) &&
+                (m2 === "Mastery" || f2) &&
+                (!m3 && !f3)) return "C3";
+            if ((m1 === "Mastery" || f1) &&
+                (m2 === "Mastery" || f2) &&
+                (m3 && m3 !== "Mastery" && !f3)) return "C3";
+
+            return "C3";
+        }
+
+        /* ============================================================
+           APPLY RULES
+        ============================================================ */
+        function buildRoutes(summary, rules) {
+            const current = detectCurrent(summary);
+            const compRules = rules[current];
+
+            const result = { current, pending: [] };
+
+            const state = summary[current] || {};
+            const mastery = state.mastery || null;
+
+            function pushRoute(routeObj) {
+                const type = Object.keys(routeObj)[0];
+                const target = routeObj[type];
+                result.pending.push({ type, target });
+            }
+
+            if (!Array.isArray(compRules) || compRules.length === 0) {
+                result.pending.push({ type: "assessment", target: `${current}-test` });
+                return result;
+            }
+
+            let matched = false;
+
+            for (const rule of compRules) {
+                const cond = rule.if || {};
+                let ok = true;
+
+                for (const k in cond) {
+                    if (k === "masteryIn") {
+                        const arr = Array.isArray(cond[k]) ? cond[k] : [];
+                        if (!arr.includes(mastery)) { ok = false; break; }
+                    } else {
+                        if (state[k] !== cond[k]) { ok = false; break; }
+                    }
+                }
+
+                if (!ok) continue;
+
+                matched = true;
+
+                for (const step of rule.then || []) {
+
+                    if (step.forEach) {
+                        const src = step.forEach;
+                        let items = [];
+                        if (Array.isArray(src)) {
+                            items = src;
+                        } else if (typeof src === "string" && src in state) {
+                            items = Array.isArray(state[src]) ? state[src] : [];
+                        }
+
+                        items.forEach(item => {
+                            (step.do || []).forEach(d => {
+                                if (!d.route) return;
+                                const r = JSON.parse(JSON.stringify(d.route));
+                                for (const key in r) {
+                                    if (typeof r[key] === "string") {
+                                        r[key] = r[key].replace("{item}", item);
+                                    }
+                                }
+                                pushRoute(r);
+                            });
+                        });
+                    }
+
+                    if (step.route) {
+                        pushRoute(step.route);
+                    }
+                }
+
+                // stop after the first matching rule
+                break;
+            }
+
+            if (!matched) {
+                result.pending.push({ type: "assessment", target: `${current}-test` });
+            }
+
+            return result;
+        }
+
+        /* ============================================================
+           ROUTE -> URL
+        ============================================================ */
+        function resolveRoute(route) {
+            const { type, target } = route;
+
+            if (!target) return "C1-test/story.html";
+
+            if (type === "go" || type === "finish") {
+                if (target === "program-complete") return "program-complete.html";
+                if (/-test$/i.test(target)) return `${target}/story.html`;
+                return `${target}.html`;
+            }
+
+            if (type === "assessment") {
+                return `${target}/story.html`;
+            }
+
+            if (type === "content") {
+                if (/-content$/i.test(target)) {
+                    return `content/${target}.html`;
+                }
+                return `content/${target}-content.html`;
+            }
+
+            if (type === "apply") {
+                let item = target;
+                if (/-apply$/i.test(item)) {
+                    item = item.replace(/-apply$/i, "");
+                }
+                return `apply/${item}/${item}-apply.html`;
+            }
+
+            return `${target}.html`;
+        }
+
+        /* ============================================================
+           ACCEPT MASTERY
+        ============================================================ */
+        async function acceptMastery(compId) {
+            try {
+                const actorName = learnerName || email || "Anonymous";
+                const mbox = "mailto:" + encodeURIComponent(actorName) + "@wirelxdfirm.com";
+
+                const stmt = {
+                    actor: {
+                        name: actorName,
+                        mbox: mbox
+                    },
+                    verb: {
+                        id: "http://adlnet.gov/expapi/verbs/experienced",
+                        display: { "en-US": "experienced" }
+                    },
+                    object: {
+                        id: `https://acbl.wirelxdfirm.com/activities/${compId}/finalize`,
+                        definition: {
+                            name: { "en-US": "Accepted Mastery Level" },
+                            description: {
+                                "en-US": "Learner chose to accept current mastery level and skip remaining remediation."
+                            },
+                            type: "http://adlnet.gov/expapi/activities/assessment"
+                        },
+                        objectType: "Activity"
+                    },
+                    result: {
+                        extensions: {
+                            [EX("competencyId")]: compId,
+                            [EX("finalized")]: true,
+                            [EX("learnerName")]: actorName
+                        }
+                    },
+                    context: {
+                        registration: sid || undefined
+                    },
+                    timestamp: new Date().toISOString()
+                };
+
+                await fetch(PROXY_URL + "?mode=write", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(stmt)
+                });
+
+                localStorage.setItem(compId + ".finalized", "true");
+
+                let nextUrl;
+                if (compId === "C1") {
+                    nextUrl = "C2-test/story.html";
+                } else if (compId === "C2") {
+                    nextUrl = "C3-test/story.html";
+                } else {
+                    nextUrl = "program-complete.html";
+                }
+
+                window.location.href = withIdentity(nextUrl);
+
+            } catch (err) {
+                console.error("Accept mastery failed:", err);
+                alert("We could not finalize your mastery level. Please try again.");
+            }
+        }
+
+        /* ============================================================
+           UI HELPERS
+        ============================================================ */
+        const displayMastery = m =>
+            m === "Mastery" ? "Mastered" : (m || "—");
+
+        function labelStatus(key) {
+            if (key === "NotStarted") return "Not Started";
+            if (key === "InProgress") return "In Progress";
+            if (key === "Completed") return "Completed";
+            return key || "—";
+        }
+
+        function renderProgress(summary) {
+            const tbody = document.getElementById("progressTable");
+            tbody.innerHTML = "";
+
+            ["C1", "C2", "C3"].forEach(comp => {
+                const s = summary[comp] || {};
+                const mastery = displayMastery(s.mastery);
+
+                let statusKey = "NotStarted";
+                if (s.finalized || s.mastery === "Mastery" || s.testedOut) {
+                    statusKey = "Completed";
+                } else if (s.mastery) {
+                    statusKey = "InProgress";
+                }
+
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                        <td>${comp}</td>
+                        <td>${mastery}</td>
+                        <td>
+                            <span class="status ${statusKey}">
+                                <span class="s-dot"></span>${labelStatus(statusKey)}
+                            </span>
+                        </td>`;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function writeSummary(current, state, nextRoute) {
+            const line = document.getElementById("summaryLine");
+            const currentLabel =
+                current === "C1" ? "Competency 1" :
+                    current === "C2" ? "Competency 2" :
+                        "Competency 3";
+
+            const masteryTxt = displayMastery(state.mastery);
+            const statusTxt = state.finalized
+                ? "Completed"
+                : (state.mastery ? "In Progress" : "Not Started");
+
+            line.innerHTML =
+                `Current: <b>${currentLabel}</b> - <b>${masteryTxt}</b> (${statusTxt})`;
+
+            let nextTarget = nextRoute ? nextRoute.target : "";
+            let comp = (nextTarget.match(/C[1-3]/i)?.[0] || current).toUpperCase();
+            const subMatch = nextTarget.match(/C([1-3][a-c])/i);
+            const sub = subMatch ? subMatch[1].toUpperCase() : "—";
+
+            let typeLabel = "—";
+            if (nextRoute) {
+                if (nextRoute.type === "assessment" || /-test$/i.test(nextTarget)) {
+                    typeLabel = "Test";
+                } else if (nextRoute.type === "content") {
+                    typeLabel = "Content";
+                } else if (nextRoute.type === "apply") {
+                    typeLabel = "Application";
+                } else if (nextRoute.type === "go" || nextRoute.type === "finish") {
+                    typeLabel = /program-complete/i.test(nextTarget) ? "Finish Program" : "Go";
+                }
+            }
+
+            document.getElementById("upNextComp").innerHTML =
+                `<strong>${comp}</strong>`;
+            document.getElementById("upNextSub").innerHTML =
+                `<strong>${sub}</strong>`;
+            document.getElementById("upNextType").innerHTML =
+                `<strong>${typeLabel}</strong>`;
+        }
+
+        /* ============================================================
+           MAIN DASHBOARD LOGIC
+        ============================================================ */
+        let rulesCache = null;
+
+        async function refreshAll() {
+            writeIdentity();
+            await checkConnection();
+
+            if (!rulesCache) {
+                rulesCache = await loadRules();
+            }
+
+            const summary = await loadSummary();
+            renderProgress(summary);
+
+            const routes = buildRoutes(summary, rulesCache);
+            const current = routes.current;
+            const currentState = summary[current] || {};
+            const nextRoute = routes.pending[0] || { type: "assessment", target: `${current}-test` };
+
+            writeSummary(current, currentState, nextRoute);
+
+            const dashDebug = {
+                learnerName,
+                sid,
+                current,
+                currentState,
+                nextRoute,
+                allRoutes: routes.pending,
+                summary
+            };
+
+            const debugElem = document.getElementById("debug");
+            debugElem.innerHTML = `<pre>${JSON.stringify(dashDebug, null, 2)}</pre>`;
+
+            const continueBtn = document.getElementById("continueBtn");
+            const acceptBtn = document.getElementById("acceptBtn");
+
+            const canAct = !!learnerName;
+            continueBtn.disabled = !canAct;
+            acceptBtn.disabled = !canAct || !currentState.mastery || currentState.finalized;
+
+            continueBtn.onclick = () => {
+                const url = resolveRoute(nextRoute);
+                window.location.href = withIdentity(url);
+            };
+
+            acceptBtn.onclick = () => {
+                if (!currentState.mastery || currentState.finalized) return;
+                const disp = displayMastery(currentState.mastery);
+                if (!confirm(`You are accepting a "${disp}" level for ${current}. Continue?`)) return;
+                acceptMastery(current);
+            };
+        }
+
+        /* ============================================================
+           WIRE BUTTONS
+        ============================================================ */
+        function wireChrome() {
+            const debugBtn = document.getElementById("toggleDebug");
+            const debug = document.getElementById("debug");
+            const resetBtn = document.getElementById("resetBtn");
+
+            function syncDbg() {
+                const hidden = debug.style.display === "none" || !debug.style.display;
+                debugBtn.textContent = hidden ? "Show Debug Info" : "Hide Debug Info";
+                debugBtn.setAttribute("aria-pressed", (!hidden).toString());
+            }
+
+            debugBtn.addEventListener("click", () => {
+                const hidden = debug.style.display === "none" || !debug.style.display;
+                debug.style.display = hidden ? "block" : "none";
+                syncDbg();
+            });
+            syncDbg();
+
+            resetBtn.addEventListener("click", () => {
+                if (confirm("This will clear your local learner identity and session. Continue?")) {
+                    localStorage.clear();
+                    sessionStorage.clear();
+                    window.location.href = "index.html";
+                }
+            });
+        }
+
+        /* ============================================================
+           STARTUP
+        ============================================================ */
+        (async () => {
+            try {
+                wireChrome();
+                await refreshAll();
+                setInterval(() => {
+                    if (document.visibilityState === "visible") {
+                        refreshAll().catch(console.error);
+                    }
+                }, REFRESH_MS);
+            } catch (err) {
+                console.error(err);
+                const tbody = document.getElementById("progressTable");
+                tbody.innerHTML =
+                    '<tr><td colspan="3" class="muted">We had trouble loading your progress. Please start with C1 pretest.</td></tr>';
+                document.getElementById("continueBtn").onclick = () => {
+                    window.location.href = withIdentity("C1-test/story.html");
+                };
+            }
+        })();
+    </script>
+</body>
+</html>

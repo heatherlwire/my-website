@@ -177,41 +177,49 @@ window.Script1 = function()
 window.Script2 = function()
 {
   /* ============================================================
-   Adaptive Learning – Test Start + Resume Gate (Dynamic)
-   Works for C1-test, C2-test, C3-test with NO edits
-   ============================================================ */
+   TEST INITIALIZER – Bulletproof & Fully Aligned
+   Handles:
+   - Identity
+   - Session ID
+   - Competency detection
+   - Sub-competency detection
+   - FULL attempt reset
+   - Test-start xAPI
+   - Resume gate
+============================================================ */
+
 (function () {
   try {
     const p = GetPlayer();
     if (!p) return;
 
-    /* ---------------------------------------
-       1. Resolve learner identity (QS > storage)
-       --------------------------------------- */
+    /* -------------------------------
+       1) Identity Resolution
+    ------------------------------- */
     function getQS(name) {
       const m = new RegExp("[?&]" + name + "=([^&#]*)").exec(location.search);
       return m ? decodeURIComponent(m[1].replace(/\+/g, " ")) : null;
     }
 
     const qsName = getQS("learnerName") || getQS("name");
-    const stored  = localStorage.getItem("learnerName");
-    let learner   = (qsName || stored || "").trim();
-
+    const stored = localStorage.getItem("learnerName");
+    let learner = (qsName || stored || "").trim();
     if (!learner) learner = "Anonymous";
+
     const mbox = "mailto:" + encodeURIComponent(learner) + "@wirelxdfirm.com";
 
-    /* ---------------------------------------
-       2. Create or restore session ID
-       --------------------------------------- */
+    /* -------------------------------
+       2) Session ID
+    ------------------------------- */
     let sid = localStorage.getItem("sessionId");
     if (!sid) {
       sid = crypto.randomUUID();
       localStorage.setItem("sessionId", sid);
     }
 
-    /* ---------------------------------------
-       3. Push identity into Storyline variables
-       --------------------------------------- */
+    /* -------------------------------
+       3) Push Identity into Storyline
+    ------------------------------- */
     p.SetVar("learnerName", learner);
     p.SetVar("actorName", learner);
     p.SetVar("actorMbox", mbox);
@@ -221,42 +229,57 @@ window.Script2 = function()
     localStorage.setItem("actorName", learner);
     localStorage.setItem("actorMbox", mbox);
 
-    /* ---------------------------------------
-       4. Detect competency from URL & push to Storyline
-       --------------------------------------- */
-    const url  = location.href.toUpperCase();
-    const comp = (url.match(/C[123]/) || ["C1"])[0];
+    /* -------------------------------
+       4) Detect Competency
+    ------------------------------- */
+    const comp = (location.href.toUpperCase().match(/C[123]/) || ["C1"])[0];
 
     localStorage.setItem("currentCompetency", comp);
-    p.SetVar("currentComp", comp);   // <-- REQUIRED FOR xAPI
+    p.SetVar("currentComp", comp);
 
-    /* ---------------------------------------
-       5. Detect Sub-Competency from document title
-          Auto-detects patterns like C1a, C1b, C1c
-       --------------------------------------- */
-    const title = document.title || "";
-    const subMatch = title.match(/C[123][ABC]/i);
+    /* -------------------------------
+       5) Sub-Competency Auto-detect
+    ------------------------------- */
+    const subMatch = (document.title || "").match(/C[123][ABC]/i);
 
     if (subMatch) {
       const sub = subMatch[0];
-      p.SetVar("CurrentSub", sub);            // used by xAPI
-      p.SetVar("C1_SubCompetency", sub);      // backward compatible
+      p.SetVar("CurrentSub", sub);
+      p.SetVar("C1_SubCompetency", sub);
       localStorage.setItem("currentSub", sub);
-    } else {
-      console.log("🟡 No sub-competency found in title");
     }
 
-    /* ---------------------------------------
-       6. Test-start tracking (runs only once)
-       --------------------------------------- */
-    const startKey = `${comp}.started`;
-    if (!localStorage.getItem(startKey)) {
+    /* ============================================================
+       6) FULL ATTEMPT RESET – correct localStorage keys
+    ============================================================ */
+    (function resetAttempt() {
 
+      localStorage.removeItem(`${comp}_mastery`);
+      localStorage.removeItem(`${comp}_score`);
+      localStorage.removeItem(`${comp}_missed`);
+
+      localStorage.removeItem(`${comp}_testedOut`);
+      localStorage.removeItem(`${comp}_finalized`);
+
+      localStorage.removeItem(`${comp}.completed`);
+      localStorage.removeItem(`${comp}.started`);
+      localStorage.removeItem(`${comp}.startedAt`);
+
+      console.log(`🔄 RESET: Attempt state cleared for ${comp}`);
+
+    })();
+
+    /* -------------------------------
+       7) Test-start XAPI (launched)
+    ------------------------------- */
+    const startKey = `${comp}.started`;
+
+    if (!localStorage.getItem(startKey)) {
       localStorage.setItem(startKey, "true");
       localStorage.setItem(`${comp}.startedAt`, new Date().toISOString());
 
       if (window.sendXAPI) {
-        sendXAPI(
+        window.sendXAPI(
           "http://adlnet.gov/expapi/verbs/launched",
           "launched",
           `https://acbl.wirelxdfirm.com/activities/${comp}/test`,
@@ -272,49 +295,24 @@ window.Script2 = function()
       }
     }
 
-    /* ============================================================
-       7. Reset Mastery Level for New Test Attempt
-       Ensures previous mastery state is cleared
-    ============================================================ */
-    function resetMasteryLevel() {
-        const comp = localStorage.getItem("currentCompetency") || "C1"; // Get the current competency
+    /* -------------------------------
+       8) Resume Gate
+    ------------------------------- */
+    const scoreKey = `${comp}_score`;
+    const completedKey = `${comp}.completed`;
 
-        // Clear mastery and related data for the current competency
-        localStorage.removeItem(`${comp}.mastery`);
-        localStorage.removeItem(`${comp}.score`);
-        localStorage.removeItem(`${comp}.missed`);
-        localStorage.removeItem(`${comp}.finalized`);
-        localStorage.removeItem(`${comp}.testedOut`);
-        localStorage.removeItem(`${comp}.completed`);
+    const storedScore = localStorage.getItem(scoreKey);
+    const storedCompleted = localStorage.getItem(completedKey) === "true";
 
-        console.log(`🔄 Mastery level for ${comp} has been reset.`);
-    }
-
-    // Call the function when starting a new test attempt
-    resetMasteryLevel();
-
-    /* ---------------------------------------
-       8. Resume Gate
-       --------------------------------------- */
-    const scoreKey     = `${comp}.score`;
-    const completeKey  = `${comp}.completed`;
-
-    const storedScore     = localStorage.getItem(scoreKey);
-    const storedCompleted = localStorage.getItem(completeKey) === "true";
-
-    // New attempt → nothing stored
     if (!storedScore) return;
-
-    // Completed attempt → force new attempt
     if (storedCompleted) return;
 
-    // Otherwise resume
     if (confirm("Do you want to resume your previous test attempt?")) {
       console.log("▶ Resuming previous attempt");
     }
 
   } catch (err) {
-    console.warn("❌ Init Error:", err);
+    console.warn("❌ Test initializer failed:", err);
   }
 })();
 
@@ -483,13 +481,13 @@ window.Script3 = function()
 
 window.Script4 = function()
 {
-  /* C2 Q1 – Incorrect */
+  /* C1 Q1 – Incorrect */
 (function () {
     const p = GetPlayer();
     if (!p) return;
 
-    const comp = "C2";
-    const sub = p.GetVar("C2_Q1_Sub") || p.GetVar("C2_SubCompetency") || "";
+    const comp = "C1";
+    const sub = p.GetVar("C1_Q1_Sub") || p.GetVar("C1_SubCompetency") || "";
     const fullSub = `${comp}${sub}`;
     const qid = `${fullSub}-Q1`;
 
@@ -503,7 +501,7 @@ window.Script4 = function()
         crypto.randomUUID();
     localStorage.setItem("sessionId", sid);
 
-    const answer = p.GetVar("C2_Q1_Answer") || "";
+    const answer = p.GetVar("C1_Q1_Answer") || "";
 
     sendXAPI(
         "http://adlnet.gov/expapi/verbs/answered",
@@ -527,13 +525,13 @@ window.Script4 = function()
 
 window.Script5 = function()
 {
-  /* C2 Q1 – Correct */
+  /* C1 Q1 – Correct */
 (function () {
     const p = GetPlayer();
     if (!p) return;
 
-    const comp = "C2";
-    const sub = p.GetVar("C2_Q1_Sub") || p.GetVar("C2_SubCompetency") || "";
+    const comp = "C1";
+    const sub = p.GetVar("C1_Q1_Sub") || p.GetVar("C1_SubCompetency") || "";
     const fullSub = `${comp}${sub}`;
     const qid = `${fullSub}-Q1`;
 
@@ -547,7 +545,7 @@ window.Script5 = function()
         crypto.randomUUID();
     localStorage.setItem("sessionId", sid);
 
-    const answer = p.GetVar("C2_Q1_Answer") || "";
+    const answer = p.GetVar("C1_Q1_Answer") || "";
 
     sendXAPI(
         "http://adlnet.gov/expapi/verbs/answered",
@@ -732,13 +730,13 @@ window.Script6 = function()
 
 window.Script7 = function()
 {
-  /* C2 Q2 – Incorrect */
+  /* C1 Q2 – Incorrect */
 (function () {
     const p = GetPlayer();
     if (!p) return;
 
-    const comp = "C2";
-    const sub = p.GetVar("C2_Q2_Sub") || p.GetVar("C2_SubCompetency") || "";
+    const comp = "C1";
+    const sub = p.GetVar("C1_Q2_Sub") || p.GetVar("C1_SubCompetency") || "";
     const fullSub = `${comp}${sub}`;
     const qid = `${fullSub}-Q2`;
 
@@ -752,7 +750,7 @@ window.Script7 = function()
         crypto.randomUUID();
     localStorage.setItem("sessionId", sid);
 
-    const answer = p.GetVar("C2_Q2_Answer") || "";
+    const answer = p.GetVar("C1_Q2_Answer") || "";
 
     sendXAPI(
         "http://adlnet.gov/expapi/verbs/answered",
@@ -776,13 +774,13 @@ window.Script7 = function()
 
 window.Script8 = function()
 {
-  /* C2 Q2 – Correct */
+  /* C1 Q2 – Correct */
 (function () {
     const p = GetPlayer();
     if (!p) return;
 
-    const comp = "C2";
-    const sub = p.GetVar("C2_Q2_Sub") || p.GetVar("C2_SubCompetency") || "";
+    const comp = "C1";
+    const sub = p.GetVar("C1_Q2_Sub") || p.GetVar("C1_SubCompetency") || "";
     const fullSub = `${comp}${sub}`;
     const qid = `${fullSub}-Q2`;
 
@@ -796,7 +794,7 @@ window.Script8 = function()
         crypto.randomUUID();
     localStorage.setItem("sessionId", sid);
 
-    const answer = p.GetVar("C2_Q2_Answer") || "";
+    const answer = p.GetVar("C1_Q2_Answer") || "";
 
     sendXAPI(
         "http://adlnet.gov/expapi/verbs/answered",
@@ -981,13 +979,13 @@ window.Script9 = function()
 
 window.Script10 = function()
 {
-  /* C2 Q3 – Incorrect */
+  /* C1 Q3 – Incorrect */
 (function () {
     const p = GetPlayer();
     if (!p) return;
 
-    const comp = "C2";
-    const sub = p.GetVar("C2_Q3_Sub") || p.GetVar("C2_SubCompetency") || "";
+    const comp = "C1";
+    const sub = p.GetVar("C1_Q3_Sub") || p.GetVar("C1_SubCompetency") || "";
     const fullSub = `${comp}${sub}`;
     const qid = `${fullSub}-Q3`;
 
@@ -1001,7 +999,7 @@ window.Script10 = function()
         crypto.randomUUID();
     localStorage.setItem("sessionId", sid);
 
-    const answer = p.GetVar("C2_Q3_Answer") || "";
+    const answer = p.GetVar("C1_Q3_Answer") || "";
 
     sendXAPI(
         "http://adlnet.gov/expapi/verbs/answered",
@@ -1025,13 +1023,13 @@ window.Script10 = function()
 
 window.Script11 = function()
 {
-  /* C2 Q3 – Correct */
+  /* C1 Q3 – Correct */
 (function () {
     const p = GetPlayer();
     if (!p) return;
 
-    const comp = "C2";
-    const sub = p.GetVar("C2_Q3_Sub") || p.GetVar("C2_SubCompetency") || "";
+    const comp = "C1";
+    const sub = p.GetVar("C1_Q3_Sub") || p.GetVar("C1_SubCompetency") || "";
     const fullSub = `${comp}${sub}`;
     const qid = `${fullSub}-Q3`;
 
@@ -1045,7 +1043,7 @@ window.Script11 = function()
         crypto.randomUUID();
     localStorage.setItem("sessionId", sid);
 
-    const answer = p.GetVar("C2_Q3_Answer") || "";
+    const answer = p.GetVar("C1_Q3_Answer") || "";
 
     sendXAPI(
         "http://adlnet.gov/expapi/verbs/answered",
@@ -1231,9 +1229,17 @@ window.Script12 = function()
 window.Script13 = function()
 {
   /* ============================================================
-   RESULTS SLIDE - FINAL PATCHED VERSION
-   SCORM CLOUD COMPLIANT + CORRECT SCORE COLLECTION
+   FINAL RESULTS SLIDE – FULLY ALIGNED
+   Correctly sends:
+   - Score
+   - Mastery level
+   - Missed[]
+   - TestedOut
+   - Finalized
+   - Competency ID
+   - Session ID
 ============================================================ */
+
 (function () {
   function run() {
     try {
@@ -1243,39 +1249,35 @@ window.Script13 = function()
         return;
       }
 
-      // Delay so Storyline finishes scoring
-      if (window.__delayResultsRun !== true) {
-        window.__delayResultsRun = true;
-        setTimeout(run, 350); // helps avoid 0-score issue
+      /* 1) Delay to allow Storyline to finish scoring */
+      if (!window.__delayResults) {
+        window.__delayResults = true;
+        setTimeout(run, 350);
         return;
       }
 
-      /* ---------------------------------------------------------
-         1) Detect competency (C1 / C2 / C3)
-      --------------------------------------------------------- */
-      const url = window.location.href.toUpperCase();
-      const compMatch = url.match(/C[123]/);
-      const compId = compMatch ? compMatch[0] : "C1";
+      /* ---------------------------------------
+         2) Competency detection
+      --------------------------------------- */
+      const compId = (location.href.toUpperCase().match(/C[123]/) || ["C1"])[0];
 
-      /* ---------------------------------------------------------
-         2) Subscores: C1a_score, C1b_score, C1c_score
-            These should be 0 or 1
-      --------------------------------------------------------- */
+      /* ---------------------------------------
+         3) Three subscores (C1a, C1b, C1c)
+      --------------------------------------- */
       const sA = Number(p.GetVar(compId + "a_score") || 0);
       const sB = Number(p.GetVar(compId + "b_score") || 0);
       const sC = Number(p.GetVar(compId + "c_score") || 0);
 
       const correct = sA + sB + sC;
 
-      // missed[] detection
       const missed = [];
-      if (sA !== 1) missed.push(compId + "a");
-      if (sB !== 1) missed.push(compId + "b");
-      if (sC !== 1) missed.push(compId + "c");
+      if (sA !== 1) missed.push(`${compId}a`);
+      if (sB !== 1) missed.push(`${compId}b`);
+      if (sC !== 1) missed.push(`${compId}c`);
 
-      /* ---------------------------------------------------------
-         3) Mastery level by score
-      --------------------------------------------------------- */
+      /* ---------------------------------------
+         4) Mastery
+      --------------------------------------- */
       let mastery = "Failing";
       if (correct === 3) mastery = "Mastery";
       else if (correct === 2) mastery = "Proficient";
@@ -1283,129 +1285,79 @@ window.Script13 = function()
 
       const testedOut = correct === 3;
       const finalized = false;
-      const passed = correct >= 2;
 
-      /* ---------------------------------------------------------
-         4) Identity + Session
-      --------------------------------------------------------- */
+      /* ---------------------------------------
+         5) Identity + session
+      --------------------------------------- */
       let learner =
         localStorage.getItem("learnerName") ||
         p.GetVar("actorName") ||
         "Anonymous";
 
-      learner = (learner || "").trim() || "Anonymous";
-
-      let sid =
+      learner = learner.trim() || "Anonymous";
+      const sid =
         localStorage.getItem("sessionId") ||
-        p.GetVar("sessionId") ||
-        (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()));
+        p.GetVar("sessionId");
 
-      localStorage.setItem("sessionId", sid);
-      const mbox = "mailto:" + encodeURIComponent(learner) + "@wirelxdfirm.com";
+      const mbox =
+        "mailto:" + encodeURIComponent(learner) + "@wirelxdfirm.com";
 
-      /* ---------------------------------------------------------
-         5) Build result object for xAPI
-      --------------------------------------------------------- */
-      const scaled = correct / 3; // 0 to 1
-
+      /* ---------------------------------------
+         6) xAPI Statement (COMPLETE)
+      --------------------------------------- */
       const resultObj = {
-        score: {
-          raw: correct,
-          min: 0,
-          max: 3,
-          scaled: scaled
-        },
-        success: passed,
+        score: { raw: correct, min: 0, max: 3 },
+        success: correct >= 2,
         completion: true,
         extensions: {
-          // keep both keys so everything downstream can read it
           "https://acbl.wirelxdfirm.com/extensions/learnerName": learner,
           "https://acbl.wirelxdfirm.com/extensions/sessionId": sid,
           "https://acbl.wirelxdfirm.com/extensions/competencyId": compId,
           "https://acbl.wirelxdfirm.com/extensions/masteryLevel": mastery,
-          "https://acbl.wirelxdfirm.com/extensions/mastery": mastery,
           "https://acbl.wirelxdfirm.com/extensions/missed": missed,
           "https://acbl.wirelxdfirm.com/extensions/testedOut": testedOut,
           "https://acbl.wirelxdfirm.com/extensions/finalized": finalized
         }
       };
 
-      const verbId = passed
+      const verbId = correct >= 2
         ? "http://adlnet.gov/expapi/verbs/passed"
         : "http://adlnet.gov/expapi/verbs/failed";
 
-      const verbDisplay = passed ? "passed" : "failed";
+      const verbDisplay = correct >= 2 ? "passed" : "failed";
 
-      const objectId = `https://acbl.wirelxdfirm.com/activities/${compId}/test`;
-      const objectName = `${compId} Test`;
-      const objectDesc = `Assessment for competency ${compId}`;
+      const objectId =
+        `https://acbl.wirelxdfirm.com/activities/${compId}/test`;
 
-      /* ---------------------------------------------------------
-         6) SEND VIA MASTER-SLIDE OVERRIDE OR DIRECT TO LAMBDA
-      --------------------------------------------------------- */
+      /* ---------------------------------------
+         7) SEND (Master Override)
+      --------------------------------------- */
       if (window.sendXAPI) {
         window.sendXAPI(
           verbId,
           verbDisplay,
           objectId,
-          objectName,
+          `${compId} Test`,
           resultObj,
-          objectDesc
+          `Assessment for ${compId}`
         );
-        console.log("✅ Summary sent through sendXAPI()", {
-          correct,
-          mastery,
-          missed
-        });
-      } else {
-        console.warn("⚠ sendXAPI() missing - using direct fetch fallback");
-
-        fetch(
-          "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws?mode=write",
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              actor: { name: learner, mbox },
-              verb: { id: verbId, display: { "en-US": verbDisplay } },
-              object: {
-                id: objectId,
-                definition: {
-                  name: { "en-US": objectName },
-                  description: { "en-US": objectDesc },
-                  type: "http://adlnet.gov/expapi/activities/assessment"
-                },
-                objectType: "Activity"
-              },
-              result: resultObj,
-              context: { registration: sid },
-              timestamp: new Date().toISOString()
-            })
-          }
-        )
-          .then(r => r.text())
-          .then(t => console.log("Lambda write response:", t))
-          .catch(err => console.error("Lambda write error:", err));
       }
 
-      /* ---------------------------------------------------------
-         7) Save adaptive state for next.html
-      --------------------------------------------------------- */
-      localStorage.setItem(`${compId}.score`, String(correct));
-      localStorage.setItem(`${compId}.missed`, JSON.stringify(missed));
-      localStorage.setItem(`${compId}.mastery`, mastery);
-      localStorage.setItem(`${compId}.testedOut`, String(testedOut));
-      localStorage.setItem(`${compId}.finalized`, String(finalized));
+      /* ---------------------------------------
+         8) Save adaptive state (LOCAL aligned)
+      --------------------------------------- */
+      localStorage.setItem(`${compId}_score`, correct);
+      localStorage.setItem(`${compId}_mastery`, mastery);
+      localStorage.setItem(`${compId}_missed`, JSON.stringify(missed));
+      localStorage.setItem(`${compId}_testedOut`, testedOut);
+      localStorage.setItem(`${compId}_finalized`, finalized);
       localStorage.setItem("currentCompetency", compId);
       localStorage.setItem("currentMasteryLevel", mastery);
 
-      console.log(
-        `🎉 FINAL SCORE for ${compId}: ${correct}/3 (${mastery})`,
-        { missed }
-      );
+      console.log(`🎉 FINAL SCORE: ${correct}/3 (${mastery})`);
 
-    } catch (e) {
-      console.warn("❌ Results slide script failed:", e);
+    } catch (err) {
+      console.warn("❌ Results slide failed:", err);
     }
   }
 
@@ -1417,61 +1369,97 @@ window.Script13 = function()
 window.Script14 = function()
 {
   /* ============================================================
-   FAILURE LAYER INITIALIZER - PATCHED
-   Marks test attempt as completed and clears Storyline resume
-   Does not override score or mastery already sent from base
+   FAILURE LAYER INITIALIZER – Fully Aligned
 ============================================================ */
 
 (function () {
   try {
-    /* ----------------------------------------------------------
-       1. Detect competency safely (C1 / C2 / C3)
-    ---------------------------------------------------------- */
-    let compId = "C1";
-    try {
-      const match = window.location.href.toUpperCase().match(/C[123]/);
-      if (match && match[0]) compId = match[0];
-      else console.warn("⚠ No compId found in URL, defaulting to C1");
-    } catch (e) {
-      console.warn("⚠ URL parse failed; defaulting compId = C1");
-    }
+    const p = GetPlayer();
+    if (!p) return;
 
-    /* ----------------------------------------------------------
-       2. Mark attempt as completed
-          Score/mastery already handled on base layer
-    ---------------------------------------------------------- */
-    try {
-      localStorage.setItem(`${compId}.completed`, "true");
-      console.log(`✔ Marked ${compId} attempt completed (FAILURE outcome)`);
-    } catch (e) {
-      console.warn("⚠ Could not set completion flag:", e);
-    }
+    const compId =
+      (location.href.toUpperCase().match(/C[123]/) || ["C1"])[0];
 
-    /* ----------------------------------------------------------
-       3. Clear Storyline resume keys only
-    ---------------------------------------------------------- */
-    try {
-      const keys = Object.keys(localStorage);
-      const slKeys = keys.filter(k =>
-        k.startsWith("story") || k.includes("story_html5")
-      );
+    const learner =
+      localStorage.getItem("learnerName") ||
+      p.GetVar("learnerName") ||
+      "Anonymous";
 
-      for (const k of slKeys) {
-        localStorage.removeItem(k);
+    const sid =
+      localStorage.getItem("sessionId") ||
+      p.GetVar("sessionId");
+
+    const mastery =
+      localStorage.getItem(`${compId}_mastery`) ||
+      p.GetVar("masteryLevel") ||
+      "Failing";
+
+    const score =
+      Number(localStorage.getItem(`${compId}_score`) || 0);
+
+    const missedRaw =
+      localStorage.getItem(`${compId}_missed`) || "[]";
+
+    let missed = [];
+    try { missed = JSON.parse(missedRaw); } catch {}
+
+    const testedOut =
+      localStorage.getItem(`${compId}_testedOut`) === "true";
+
+    const finalized =
+      localStorage.getItem(`${compId}_finalized`) === "true";
+
+    /* ---------- SEND COMPLETION STATEMENT ---------- */
+    const stmt = {
+      actor: {
+        name: learner,
+        mbox:
+          "mailto:" +
+          encodeURIComponent(learner.replace(/\s+/g, "")) +
+          "@wirelxdfirm.com"
+      },
+      verb: {
+        id: "http://adlnet.gov/expapi/verbs/completed",
+        display: { "en-US": "completed" }
+      },
+      object: {
+        id: `https://acbl.wirelxdfirm.com/activities/${compId}/test`,
+        definition: {
+          name: { "en-US": `${compId} Test` },
+          type: "http://adlnet.gov/expapi/activities/assessment"
+        }
+      },
+      result: {
+        score: { raw: score, min: 0, max: 3 },
+        success: false,
+        completion: true,
+        extensions: {
+          "https://acbl.wirelxdfirm.com/extensions/competencyId": compId,
+          "https://acbl.wirelxdfirm.com/extensions/masteryLevel": mastery,
+          "https://acbl.wirelxdfirm.com/extensions/missed": missed,
+          "https://acbl.wirelxdfirm.com/extensions/testedOut": testedOut,
+          "https://acbl.wirelxdfirm.com/extensions/finalized": finalized,
+          "https://acbl.wirelxdfirm.com/extensions/sessionId": sid
+        }
       }
+    };
 
-      console.log("✔ Storyline resume keys cleared (FAILURE)");
-    } catch (e) {
-      console.warn("⚠ Could not clear resume keys:", e);
+    if (window.sendXAPI) {
+      window.sendXAPI("write", stmt);
     }
 
-    /* ----------------------------------------------------------
-       4. Prevent rare double fire
-    ---------------------------------------------------------- */
-    window.__failureLayerInit = true;
+    /* ---------- Mark attempt complete ---------- */
+    localStorage.setItem(`${compId}.completed`, "true");
+
+    /* ---------- Clear resume keys ---------- */
+    Object.keys(localStorage)
+      .filter(k => k.startsWith("story") || k.includes("story_html5"))
+      .forEach(k => localStorage.removeItem(k));
+
+    console.log(`✔ FAILURE processed for ${compId}`);
 
   } catch (err) {
-    console.error("❌ Failure-layer initialization failed:", err);
+    console.error("❌ Failure-layer failed:", err);
   }
 })();
 
@@ -1557,86 +1545,97 @@ window.Script15 = function()
 window.Script16 = function()
 {
   /* ============================================================
-   SUCCESS LAYER INITIALIZER (Final Patched Version)
-   Marks test attempt as completed + clears Storyline resume
-   Does NOT send xAPI (base layer already handled score/mastery)
+   SUCCESS LAYER INITIALIZER – Fully Aligned
 ============================================================ */
 
 (function () {
   try {
+    const p = GetPlayer();
+    if (!p) return;
 
-    /* ----------------------------------------------------------
-       1. Detect competency safely (C1 / C2 / C3)
-    ---------------------------------------------------------- */
-    let compId = "C1";
-    try {
-      const match = window.location.href.toUpperCase().match(/C[123]/);
-      if (match && match[0]) compId = match[0];
-      else console.warn("⚠ No compId found in URL, defaulting to C1");
-    } catch (e) {
-      console.warn("⚠ URL parse failed; defaulting compId = C1");
-    }
+    const compId =
+      (location.href.toUpperCase().match(/C[123]/) || ["C1"])[0];
 
-    /* ----------------------------------------------------------
-       2. Mark attempt as completed
-          (Score, missed[], mastery handled on base layer)
-    ---------------------------------------------------------- */
-    try {
-      localStorage.setItem(`${compId}.completed`, "true");
-      console.log(`✔ Marked ${compId} attempt completed (SUCCESS outcome)`);
-    } catch (e) {
-      console.warn("⚠ Could not set completion flag:", e);
-    }
+    const learner =
+      localStorage.getItem("learnerName") ||
+      p.GetVar("learnerName") ||
+      "Anonymous";
 
-    /* ----------------------------------------------------------
-       3. Optional SCORM completion (ignored in HTML export)
-    ---------------------------------------------------------- */
-    try {
-      const lms = window.lmsAPI || null;
-      if (lms && typeof lms.SetStatus === "function") {
-        lms.SetStatus("completed");
-        lms.CommitData();
-        console.log("✔ SCORM completion sent (SUCCESS)");
+    const sid =
+      localStorage.getItem("sessionId") ||
+      p.GetVar("sessionId");
+
+    const mastery =
+      localStorage.getItem(`${compId}_mastery`) ||
+      p.GetVar("masteryLevel") ||
+      "Failing";
+
+    const score =
+      Number(localStorage.getItem(`${compId}_score`) || 0);
+
+    const missedRaw =
+      localStorage.getItem(`${compId}_missed`) || "[]";
+
+    let missed = [];
+    try { missed = JSON.parse(missedRaw); } catch {}
+
+    const testedOut =
+      localStorage.getItem(`${compId}_testedOut`) === "true";
+
+    const finalized =
+      localStorage.getItem(`${compId}_finalized`) === "true";
+
+    /* ---------- SEND COMPLETION STATEMENT ---------- */
+    const stmt = {
+      actor: {
+        name: learner,
+        mbox:
+          "mailto:" +
+          encodeURIComponent(learner.replace(/\s+/g, "")) +
+          "@wirelxdfirm.com"
+      },
+      verb: {
+        id: "http://adlnet.gov/expapi/verbs/completed",
+        display: { "en-US": "completed" }
+      },
+      object: {
+        id: `https://acbl.wirelxdfirm.com/activities/${compId}/test`,
+        definition: {
+          name: { "en-US": `${compId} Test` },
+          type: "http://adlnet.gov/expapi/activities/assessment"
+        }
+      },
+      result: {
+        score: { raw: score, min: 0, max: 3 },
+        success: mastery === "Mastery",
+        completion: true,
+        extensions: {
+          "https://acbl.wirelxdfirm.com/extensions/competencyId": compId,
+          "https://acbl.wirelxdfirm.com/extensions/masteryLevel": mastery,
+          "https://acbl.wirelxdfirm.com/extensions/missed": missed,
+          "https://acbl.wirelxdfirm.com/extensions/testedOut": testedOut,
+          "https://acbl.wirelxdfirm.com/extensions/finalized": finalized,
+          "https://acbl.wirelxdfirm.com/extensions/sessionId": sid
+        }
       }
-    } catch (e) {
-      console.log("ℹ SCORM API unavailable (HTML export)");
+    };
+
+    if (window.sendXAPI) {
+      window.sendXAPI("write", stmt);
     }
 
-    /* ----------------------------------------------------------
-       4. Clear Storyline resume keys ONLY
-          Do NOT clear:
-            learnerName
-            sessionId
-            C?_mastery
-            C?_missed
-            C?_score
-            testedOut
-            finalized
-    ---------------------------------------------------------- */
-    try {
-      const keys = Object.keys(localStorage);
+    /* ---------- Mark attempt complete ---------- */
+    localStorage.setItem(`${compId}.completed`, "true");
 
-      const slKeys = keys.filter(k =>
-        k.startsWith("story") || k.includes("story_html5")
-      );
+    /* ---------- Clear resume keys ---------- */
+    Object.keys(localStorage)
+      .filter(k => k.startsWith("story") || k.includes("story_html5"))
+      .forEach(k => localStorage.removeItem(k));
 
-      for (const k of slKeys) {
-        localStorage.removeItem(k);
-      }
-
-      console.log("✔ Storyline resume keys cleared (SUCCESS)");
-
-    } catch (e) {
-      console.warn("⚠ Could not clear resume keys:", e);
-    }
-
-    /* ----------------------------------------------------------
-       5. Prevent double-fire
-    ---------------------------------------------------------- */
-    window.__successLayerInit = true;
+    console.log(`✔ SUCCESS processed for ${compId}`);
 
   } catch (err) {
-    console.error("❌ Success-layer initialization failed:", err);
+    console.error("❌ Success-layer failed:", err);
   }
 })();
 

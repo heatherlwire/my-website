@@ -1,0 +1,476 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- Canonical redirect (top-level only so iframes are safe) -->
+    <script>
+        if (window.top === window.self) {
+            if (location.hostname === "wirelearningsolutions.com") {
+                location.replace(
+                    "https://www.wirelearningsolutions.com" +
+                    location.pathname +
+                    location.search
+                );
+            }
+        }
+    </script>
+
+    <meta charset="UTF-8" />
+    <title>Adaptive Learning Launch</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <style>
+        :root {
+            --bg-0: #0a0f1a;
+            --bg-1: #0e1526;
+            --bg-2: #0f1b33;
+            --ink-0: #e8f1ff;
+            --ink-1: #b9c8e8;
+            --sky-1: #0ea5e9;
+            --sky-2: #22d3ee;
+            --ok: #22c55e;
+            --warn: #f59e0b;
+            --err: #ef4444;
+            --focus: #93c5fd;
+            --shadow: 0 10px 24px rgba(0,0,0,.35);
+        }
+
+        body {
+            margin: 0;
+            color: var(--ink-0);
+            font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+            background: radial-gradient(1200px 800px at 70% -10%, rgba(34,211,238,.10), transparent 60%), radial-gradient(1000px 600px at -10% 20%, rgba(14,165,233,.15), transparent 55%), linear-gradient(180deg, #07101e 0%, #0a1322 50%, #0b1628 100%);
+            min-height: 100dvh;
+        }
+
+        header {
+            padding: 28px 24px 10px;
+        }
+
+        .title-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: clamp(22px, 2.4vw, 28px);
+            background: linear-gradient(90deg, var(--ink-0), #cfe8ff);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            padding: 8px 12px;
+            border-radius: 999px;
+            background: rgba(14,165,233,.10);
+            border: 1px solid rgba(34,211,238,.35);
+        }
+
+        .badge-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--warn);
+        }
+
+            .badge-dot.ok {
+                background: var(--ok);
+                box-shadow: 0 0 0 0 rgba(34,197,94,.6);
+                animation: pulse 1.8s ease-out infinite;
+            }
+
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(34,197,94,.5);
+            }
+
+            70% {
+                box-shadow: 0 0 0 10px rgba(34,197,94,0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(34,197,94,0);
+            }
+        }
+
+        .wrap {
+            padding: 6px 24px 32px;
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.015)), var(--bg-1);
+            border: 1px solid rgba(148,163,184,.15);
+            border-radius: 14px;
+            padding: 20px 18px;
+            margin: 16px 0;
+            box-shadow: var(--shadow);
+        }
+
+        .muted {
+            color: var(--ink-1);
+        }
+
+        input {
+            width: 100%;
+            max-width: 360px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px solid rgba(148,163,184,.35);
+            background: #020617;
+            color: var(--ink-0);
+            font-size: 15px;
+            outline: none;
+            margin-bottom: 8px;
+        }
+
+            input:focus {
+                border-color: var(--focus);
+                box-shadow: 0 0 0 1px rgba(147,197,253,.6);
+            }
+
+        .error {
+            color: var(--err);
+            font-size: 13px;
+            margin: 2px 0 4px;
+        }
+
+        button {
+            padding: 10px 16px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 15px;
+            border: 1px solid rgba(148,163,184,.35);
+            background: #0f1a2e;
+            color: var(--ink-0);
+            transition: transform .05s ease, box-shadow .15s ease;
+        }
+
+            button.primary {
+                background: linear-gradient(180deg,#0e87c7,#0c6aa0);
+                border-color: rgba(34,211,238,.55);
+                box-shadow: 0 6px 24px rgba(14,165,233,.35);
+            }
+
+            button:hover:not(:disabled) {
+                transform: translateY(-1px);
+            }
+
+            button:disabled {
+                opacity: .6;
+                cursor: not-allowed;
+            }
+
+        .btn-outline {
+            background: transparent;
+            border-color: rgba(148,163,184,.5);
+        }
+
+        .row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: center;
+            margin-top: 16px;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <div class="title-row">
+            <h1>Adaptive Learning Launch</h1>
+            <span class="badge">
+                <span class="badge-dot" id="connDot"></span>
+                <span id="connText">Checking connection…</span>
+            </span>
+        </div>
+    </header>
+
+    <main class="wrap">
+
+        <!-- NEW LEARNER -->
+        <section class="card" id="newUserSection">
+            <h2 style="margin:0 0 8px 0;">Welcome</h2>
+            <p class="muted">
+                Enter your full name and email to begin. The next page will analyze your progress.
+            </p>
+
+            <div style="margin-top:14px;">
+                <div class="field-label">Learner name</div>
+                <input id="nameInput" type="text" placeholder="First Last" autocomplete="name" />
+
+                <div class="field-label">Email</div>
+                <input id="emailInput" type="email" placeholder="you@example.com" autocomplete="email" />
+                <p id="emailError" class="error" hidden>Enter a valid email like name@example.com.</p>
+            </div>
+
+            <div class="row">
+                <button class="primary" id="launchBtn" disabled>Launch</button>
+            </div>
+        </section>
+
+        <!-- RETURNING LEARNER -->
+        <section class="card" id="returningSection" hidden>
+            <h2 style="margin:0 0 8px 0;">Welcome back</h2>
+            <p class="muted" id="welcomeText"></p>
+
+            <div class="row">
+                <button class="primary" id="continueBtn">Continue where you left off</button>
+                <button class="btn-outline" id="resetBtn">Reset learner</button>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        /* ---------------- CONNECTION CHECK ---------------- */
+        const PROXY_URL =
+            "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
+
+        async function checkConnection() {
+            const dot = document.getElementById("connDot");
+            const txt = document.getElementById("connText");
+
+            try {
+                const res = await fetch(PROXY_URL + "?mode=ping", { method: "GET", cache: "no-store" });
+                const body = await res.text();
+
+                let ok = false;
+                try { ok = JSON.parse(body).ok; } catch { }
+
+                if (res.ok && (ok || body.includes("Lambda OK"))) {
+                    dot.classList.add("ok");
+                    txt.textContent = "Connected to LRS";
+                } else {
+                    dot.style.background = "var(--warn)";
+                    txt.textContent = "Unstable connection";
+                }
+            } catch {
+                dot.style.background = "var(--err)";
+                txt.textContent = "Offline";
+            }
+        }
+        checkConnection();
+
+        /* ---------------- ELEMENTS ---------------- */
+        const newUserSection = document.getElementById("newUserSection");
+        const returningSection = document.getElementById("returningSection");
+        const nameInput = document.getElementById("nameInput");
+        const emailInput = document.getElementById("emailInput");
+        const emailError = document.getElementById("emailError");
+        const launchBtn = document.getElementById("launchBtn");
+        const continueBtn = document.getElementById("continueBtn");
+        const resetBtn = document.getElementById("resetBtn");
+        const welcomeText = document.getElementById("welcomeText");
+
+        /* ---------------- VALIDATION ---------------- */
+        function isValidName(name) {
+            const clean = (name || "").trim();
+            if (clean.length < 2) return false;
+            const parts = clean.split(/\s+/).filter(p => p.length > 1);
+            return parts.length >= 2;
+        }
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+        function isEmailValid(v) {
+            return emailRegex.test((v || "").trim());
+        }
+
+        function validate() {
+            const nameVal = nameInput.value.trim();
+            const emailVal = emailInput.value.trim();
+
+            const nameOk = isValidName(nameVal);
+            const emailOk = isEmailValid(emailVal);
+
+            emailError.hidden = (emailVal === "" || emailOk);
+            launchBtn.disabled = !(nameOk && emailOk);
+        }
+
+        ["input", "blur", "change"].forEach(ev => {
+            nameInput.addEventListener(ev, validate);
+            emailInput.addEventListener(ev, validate);
+        });
+
+        /* ---------------- SID ---------------- */
+        function ensureSid() {
+            let sid = localStorage.getItem("sessionId");
+            if (!sid) {
+                sid = crypto.randomUUID();
+                localStorage.setItem("sessionId", sid);
+            }
+            return sid;
+        }
+
+        function goToNext(name, email, sid) {
+            window.location.href =
+                "next.html?learnerName=" +
+                encodeURIComponent(name) +
+                "&email=" +
+                encodeURIComponent(email) +
+                "&sid=" +
+                encodeURIComponent(sid);
+        }
+
+        /* ---------------- SANITIZE ---------------- */
+        function sanitizeIdentity() {
+            const storedName = localStorage.getItem("learnerName") || "";
+            const storedEmail = localStorage.getItem("learnerEmail") || "";
+
+            const nameBad = !isValidName(storedName);
+            const emailBad = !emailRegex.test(storedEmail);
+
+            if (nameBad && emailBad) {
+                [
+                    "learnerName", "learnerEmail", "sessionId",
+                    "actorName", "actorMbox",
+                    "currentCompetency", "pendingRoutes",
+                    "lastPath", "lastApplyLaunched"
+                ].forEach(k => localStorage.removeItem(k));
+            }
+        }
+        sanitizeIdentity();
+
+        /* ---------------- LRS LOOKUP (NEW RETURN DETECTION) ---------------- */
+        async function lrsLookupForReturn() {
+            let storedName = localStorage.getItem("learnerName");
+            let storedEmail = localStorage.getItem("learnerEmail");
+
+            if (!storedName && !storedEmail) return false;
+
+            const url =
+                PROXY_URL +
+                "?mode=summary" +
+                (storedName ? "&learnerName=" + encodeURIComponent(storedName) : "") +
+                (storedEmail ? "&email=" + encodeURIComponent(storedEmail) : "");
+
+            try {
+                const res = await fetch(url);
+                if (!res.ok) return false;
+
+                const data = await res.json();
+                // A valid learner has some kind of data
+                const hasHistory =
+                    data?.C1?.mastery ||
+                    data?.C1?.finalized ||
+                    data?.C2?.mastery ||
+                    data?.C3?.mastery;
+
+                return !!hasHistory;
+            } catch {
+                return false;
+            }
+        }
+
+        /* ---------------- SHOW SECTION ---------------- */
+        async function showCorrectSection() {
+            const name = localStorage.getItem("learnerName");
+            const email = localStorage.getItem("learnerEmail");
+
+            if (!name || !email) {
+                newUserSection.hidden = false;
+                returningSection.hidden = true;
+                return;
+            }
+
+            // Check LRS to ensure this learner actually has history
+            const isReturning = await lrsLookupForReturn();
+
+            if (isReturning) {
+                welcomeText.textContent = `Learner detected: ${name} (${email})`;
+                newUserSection.hidden = true;
+                returningSection.hidden = false;
+            } else {
+                // If LRS has no data, treat as new
+                newUserSection.hidden = false;
+                returningSection.hidden = true;
+            }
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            validate();
+            showCorrectSection();
+        });
+
+        /* ---------------- NEW LEARNER ---------------- */
+        launchBtn.addEventListener("click", () => {
+            const name = nameInput.value.trim();
+            const email = emailInput.value.trim().toLowerCase();
+
+            if (!isValidName(name) || !isEmailValid(email)) return;
+
+            localStorage.setItem("learnerName", name);
+            localStorage.setItem("learnerEmail", email);
+
+            const sid = ensureSid();
+
+            launchBtn.disabled = true;
+            launchBtn.textContent = "Launching…";
+
+            goToNext(name, email, sid);
+        });
+
+        /* ---------------- RETURNING LEARNER ---------------- */
+        continueBtn.addEventListener("click", () => {
+            const name = localStorage.getItem("learnerName");
+            const email = localStorage.getItem("learnerEmail");
+
+            const sid = ensureSid();
+
+            continueBtn.disabled = true;
+            continueBtn.textContent = "Continuing…";
+
+            goToNext(name, email, sid);
+        });
+
+        /* ---------------- RESET ---------------- */
+        resetBtn.addEventListener("click", () => {
+            if (!confirm("Clear ALL learner progress and restart?")) return;
+
+            // Clear Storyline suspend_data
+            Object.keys(localStorage).forEach(k => {
+                if (k.includes("story") || k.includes("suspend") || k.startsWith("story_content")) {
+                    localStorage.removeItem(k);
+                }
+            });
+
+            // Clear identity + logic
+            [
+                "learnerName", "learnerEmail", "sessionId", "actorName", "actorMbox",
+                "currentCompetency", "pendingRoutes", "lastPath", "lastApplyLaunched"
+            ].forEach(k => localStorage.removeItem(k));
+
+            // Clear competency cache
+            ["C1", "C2", "C3"].forEach(c => {
+                localStorage.removeItem(c + ".mastery");
+                localStorage.removeItem(c + ".score");
+                localStorage.removeItem(c + ".missed");
+                localStorage.removeItem(c + ".finalized");
+                localStorage.removeItem(c + ".testedOut");
+                localStorage.removeItem(c + ".completed");
+                localStorage.removeItem(c + ".startedAt");
+            });
+
+            sessionStorage.clear();
+            window.location.href = "index.html";
+        });
+
+        /* ---------------- ENTER KEY ---------------- */
+        document.addEventListener("keydown", (e) => {
+            if (e.key === "Enter" && !launchBtn.disabled && !newUserSection.hidden) {
+                launchBtn.click();
+            }
+        });
+    </script>
+
+</body>
+</html>

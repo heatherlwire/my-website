@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- Canonical redirect (top level only) -->
+    <script>
+        if (window.top === window.self) {
+            if (location.hostname === "wirelearningsolutions.com") {
+                location.replace(
+                    "https://www.wirelearningsolutions.com" +
+                    location.pathname +
+                    location.search
+                );
+            }
+        }
+    </script>
+
+    <meta charset="UTF-8" />
+    <title>Program Complete</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+
+    <style>
+        :root {
+            --bg-0: #0a0f1a;
+            --bg-1: #0e1526;
+            --bg-2: #0f1b33;
+            --ink-0: #e8f1ff;
+            --ink-1: #b9c8e8;
+            --sky-1: #0ea5e9;
+            --sky-2: #22d3ee;
+            --ok: #22c55e;
+            --warn: #f59e0b;
+            --err: #ef4444;
+            --card-radius: 18px;
+            --shadow-soft: 0 18px 45px rgba(15, 23, 42, 0.8);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background:
+                radial-gradient(circle at top, rgba(56, 189, 248, 0.18), transparent 60%),
+                radial-gradient(circle at bottom, rgba(59, 130, 246, 0.12), transparent 55%),
+                linear-gradient(135deg, var(--bg-0), var(--bg-2));
+            color: var(--ink-0);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .shell {
+            width: 100%;
+            max-width: 720px;
+        }
+
+        .card {
+            background: linear-gradient(145deg, rgba(15, 23, 42, 0.96), rgba(15, 23, 42, 0.9));
+            border-radius: var(--card-radius);
+            box-shadow: var(--shadow-soft);
+            border: 1px solid rgba(148, 163, 184, 0.25);
+            padding: 28px 26px 26px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: "";
+            position: absolute;
+            inset: -40%;
+            opacity: 0.22;
+            background:
+                radial-gradient(circle at 10% 0%, rgba(56, 189, 248, 0.4), transparent 55%),
+                radial-gradient(circle at 90% 100%, rgba(129, 140, 248, 0.38), transparent 55%);
+            pointer-events: none;
+        }
+
+        .card-inner {
+            position: relative;
+            z-index: 1;
+        }
+
+        h1 {
+            font-size: 1.9rem;
+            margin: 0 0 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        h1 span.badge {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            border-radius: 999px;
+            border: 1px solid rgba(56, 189, 248, 0.6);
+            padding: 2px 10px 3px;
+            backdrop-filter: blur(8px);
+            background: linear-gradient(
+                135deg,
+                rgba(56, 189, 248, 0.16),
+                rgba(37, 99, 235, 0.18)
+            );
+        }
+
+        .subhead {
+            margin: 0 0 18px;
+            color: var(--ink-1);
+            font-size: 0.98rem;
+        }
+
+        .highlight {
+            color: var(--sky-1);
+            font-weight: 600;
+        }
+
+        .summary {
+            border-radius: 14px;
+            border: 1px solid rgba(148, 163, 184, 0.35);
+            background: radial-gradient(circle at top left, rgba(15, 23, 42, 0.9), rgba(15, 23, 42, 0.96));
+            padding: 14px 14px 10px;
+            margin-bottom: 18px;
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            font-size: 0.95rem;
+            margin-bottom: 6px;
+        }
+
+        .summary-row span.label {
+            color: var(--ink-1);
+        }
+
+        .summary-row span.value {
+            font-weight: 600;
+        }
+
+        .summary-row span.status-ok {
+            color: var(--ok);
+        }
+
+        .summary-row span.status-warn {
+            color: var(--warn);
+        }
+
+        .summary-row span.status-err {
+            color: var(--err);
+        }
+
+        .list {
+            margin: 0 0 18px;
+            padding: 0;
+            list-style: none;
+            font-size: 0.95rem;
+            color: var(--ink-1);
+        }
+
+        .list li {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 999px;
+            margin-top: 6px;
+            background: var(--sky-1);
+            flex-shrink: 0;
+        }
+
+        .actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 4px;
+        }
+
+        .btn-primary {
+            border: none;
+            border-radius: 999px;
+            padding: 9px 18px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            background: linear-gradient(135deg, var(--sky-1), var(--sky-2));
+            color: #0b1220;
+            box-shadow: 0 12px 25px rgba(15, 23, 42, 0.65);
+        }
+
+        .btn-ghost {
+            border-radius: 999px;
+            border: 1px solid rgba(148, 163, 184, 0.6);
+            padding: 8px 16px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            background: transparent;
+            color: var(--ink-0);
+        }
+
+        .footer-note {
+            margin-top: 10px;
+            font-size: 0.8rem;
+            color: var(--ink-1);
+            opacity: 0.9;
+        }
+
+        @media (max-width: 540px) {
+            .card {
+                padding: 22px 18px 18px;
+            }
+            h1 {
+                font-size: 1.6rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="shell">
+        <main class="card">
+            <div class="card-inner">
+                <h1>
+                    Program complete
+                    <span class="badge">ACBL</span>
+                </h1>
+                <p id="welcome" class="subhead">
+                    You have reached the end of this adaptive competency program.
+                </p>
+
+                <section class="summary" id="summary">
+                    <div class="summary-row">
+                        <span class="label">Learner</span>
+                        <span class="value" id="learnerLabel">Guest learner</span>
+                    </div>
+                    <div class="summary-row">
+                        <span class="label">Overall status</span>
+                        <span class="value status-ok" id="overallStatus">
+                            Complete
+                        </span>
+                    </div>
+                    <div class="summary-row">
+                        <span class="label">Competencies</span>
+                        <span class="value" id="compSummary">
+                            C1, C2, C3
+                        </span>
+                    </div>
+                </section>
+
+                <ul class="list" id="compList"></ul>
+
+                <div class="actions">
+                    <button class="btn-primary" type="button" onclick="window.close();">
+                        Close this window
+                    </button>
+                    <button class="btn-ghost" type="button" onclick="location.href='https://www.wirelearningsolutions.com';">
+                        Return to home
+                    </button>
+                </div>
+
+                <p class="footer-note">
+                    Your progress and assessment data have been recorded. You can safely close this window or return to the home page.
+                </p>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        /* ---------- URL PARAM SUPPORT ---------- */
+        function getQueryParam(name) {
+            const url = new URL(window.location.href);
+            const val = url.searchParams.get(name);
+            return val ? decodeURIComponent(val) : null;
+        }
+
+        /* ---------- Store URL data into storage ---------- */
+        (function () {
+            try {
+                const paramName = getQueryParam("learnerName");
+                const paramEmail = getQueryParam("email");
+                const paramSid = getQueryParam("sid");
+
+                if (paramName) localStorage.setItem("learnerName", paramName);
+                if (paramEmail) localStorage.setItem("learnerEmail", paramEmail);
+                if (paramSid) localStorage.setItem("sessionId", paramSid);
+
+            } catch (e) {
+                console.warn("URL param parsing failed:", e);
+            }
+        })();
+
+        /* ---------- Build page UI ---------- */
+        (function () {
+            try {
+                const learnerName =
+                    localStorage.getItem("learnerName") ||
+                    localStorage.getItem("actorName") ||
+                    "Guest learner";
+
+                const trimmed = learnerName.trim() || "Guest learner";
+
+                const comps = ["C1", "C2", "C3"];
+                const compStates = [];
+
+                comps.forEach(id => {
+                    const mastery =
+                        localStorage.getItem(id + ".mastery") ||
+                        localStorage.getItem(id + "_mastery") ||
+                        "";
+                    const completed =
+                        localStorage.getItem(id + ".completed") === "true";
+                    const score =
+                        localStorage.getItem(id + ".score") ||
+                        localStorage.getItem(id + "_score") ||
+                        "";
+
+                    compStates.push({ id, mastery, completed, score });
+                });
+
+                const welcomeEl = document.getElementById("welcome");
+                const learnerLabel = document.getElementById("learnerLabel");
+                const compSummary = document.getElementById("compSummary");
+                const listEl = document.getElementById("compList");
+                const overallStatusEl = document.getElementById("overallStatus");
+
+                learnerLabel.textContent = trimmed;
+
+                const completedCount = compStates.filter(c => c.completed).length;
+
+                if (completedCount === comps.length) {
+                    overallStatusEl.textContent = "All competencies complete";
+                    overallStatusEl.classList.add("status-ok");
+                } else if (completedCount > 0) {
+                    overallStatusEl.textContent = "Partially complete";
+                    overallStatusEl.classList.remove("status-ok");
+                    overallStatusEl.classList.add("status-warn");
+                } else {
+                    overallStatusEl.textContent = "Progress recorded";
+                    overallStatusEl.classList.remove("status-ok");
+                    overallStatusEl.classList.add("status-warn");
+                }
+
+                const mastered = compStates
+                    .filter(c => c.mastery === "Mastery")
+                    .map(c => c.id);
+
+                if (mastered.length > 0) {
+                    compSummary.textContent = mastered.join(", ");
+                } else {
+                    compSummary.textContent = "In progress or complete";
+                }
+
+                listEl.innerHTML = "";
+                compStates.forEach(c => {
+                    const li = document.createElement("li");
+                    const dot = document.createElement("div");
+                    dot.className = "dot";
+
+                    const text = document.createElement("div");
+
+                    const line1 = document.createElement("div");
+                    line1.innerHTML = `<strong>${c.id}</strong>`;
+
+                    const line2 = document.createElement("div");
+                    const masteryLabel = c.mastery || "Not set";
+                    const statusParts = [];
+
+                    statusParts.push("Mastery: " + masteryLabel);
+
+                    if (c.score !== "") {
+                        statusParts.push("Score: " + c.score + "/3");
+                    }
+
+                    if (c.completed) {
+                        statusParts.push("Status: completed");
+                    } else {
+                        statusParts.push("Status: in progress");
+                    }
+
+                    line2.textContent = statusParts.join(" · ");
+                    line2.style.fontSize = "0.86rem";
+                    line2.style.color = "var(--ink-1)";
+
+                    text.appendChild(line1);
+                    text.appendChild(line2);
+
+                    li.appendChild(dot);
+                    li.appendChild(text);
+                    listEl.appendChild(li);
+                });
+
+                welcomeEl.innerHTML =
+                    `Nice work, <span class="highlight">${trimmed}</span>. ` +
+                    `You have reached the end of this adaptive program.`;
+
+            } catch (e) {
+                console.warn("Program complete page could not read state:", e);
+            }
+        })();
+    </script>
+</body>
+</html>

@@ -1,0 +1,158 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script>
+        if (location.hostname === "wirelearningsolutions.com") {
+            location.href =
+                "https://www.wirelearningsolutions.com"
+                + location.pathname
+                + location.search;
+        }
+    </script>
+    <meta charset="UTF-8" />
+    <title>Launching Your Adaptive Experience…</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+        :root {
+            --bg-0: #0a0f1a;
+            --bg-1: #0e1526;
+            --ink-0: #e8f1ff;
+            --sky-2: #22d3ee;
+            --ok: #22c55e;
+            --shadow: 0 10px 24px rgba(0,0,0,.35);
+        }
+
+        body {
+            margin: 0;
+            font-family: ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;
+            color: var(--ink-0);
+            background: radial-gradient(1200px 800px at 70% -10%,rgba(34,211,238,.10),transparent 60%), radial-gradient(1000px 600px at -10% 20%,rgba(14,165,233,.15),transparent 55%), linear-gradient(180deg,#07101e 0%,#0a1322 50%,#0b1628 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            animation: fadeIn 1s ease-out forwards;
+        }
+
+        h1 {
+            font-size: clamp(28px, 4vw, 38px);
+            background: linear-gradient(90deg,var(--ink-0),#cfe8ff);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            margin: 0;
+            animation: slideUp 1s ease-out;
+        }
+
+        .sub {
+            font-size: 19px;
+            color: rgba(255,255,255,0.8);
+            margin-top: 12px;
+            animation: fadeUp 1s ease-out .3s both;
+        }
+
+        .name {
+            font-size: 22px;
+            font-weight: 600;
+            color: var(--sky-2);
+            margin-top: 8px;
+            letter-spacing: .3px;
+            animation: fadeUp 1s ease-out .5s both;
+        }
+
+        .loader {
+            margin-top: 36px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            justify-content: center;
+            animation: fadeUp 1s ease-out .8s both;
+        }
+
+        .dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--ok);
+            animation: pulse 1.8s ease-out infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(34,197,94,.5);
+            }
+
+            70% {
+                box-shadow: 0 0 0 12px rgba(34,197,94,0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(34,197,94,0);
+            }
+        }
+
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(12px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: scale(.96);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+<body>
+    <main>
+        <h1>Launching Your Adaptive Experience…</h1>
+        <p class="sub">Please wait while we analyze your progress and prepare your next step.</p>
+        <div class="name" id="learnerNameDisplay"></div>
+        <div class="loader">
+            <div class="dot"></div>
+            <div class="dot" style="animation-delay:.3s"></div>
+            <div class="dot" style="animation-delay:.6s"></div>
+        </div>
+    </main>
+
+    <script>
+    const params = new URLSearchParams(location.search);
+    const learner = localStorage.getItem("learnerName") || params.get("learnerName") || "Learner";
+    const nameEl = document.getElementById("learnerNameDisplay");
+    nameEl.textContent = learner ? `Welcome, ${learner}!` : "";
+
+    // Redirect to next.html with name parameter
+    setTimeout(() => {
+      const nextPage = "next.html";
+      window.location.href = `${nextPage}?learnerName=${encodeURIComponent(learner)}`;
+    }, 2500);
+    </script>
+</body>
+</html>

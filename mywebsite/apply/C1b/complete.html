@@ -1,0 +1,181 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Lesson Complete</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!-- =============================
+         BLOCK RISE AUTO-LOADING
+         prevents white screens
+    ============================== -->
+    <script>
+        window.disableRisePlayer = true;
+    </script>
+
+    <style>
+        body {
+            margin: 0;
+            font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+            background: #07101e;
+            color: #e8f1ff;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            padding: 20px;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 26px;
+            margin-bottom: 8px;
+        }
+
+        .msg {
+            font-size: 15px;
+            opacity: 0.8;
+            line-height: 1.4;
+            max-width: 340px;
+        }
+
+        #status {
+            margin-top: 20px;
+            opacity: 0.7;
+            font-size: 14px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Lesson Complete</h1>
+    <p class="msg">Your progress is being recorded…</p>
+    <div id="status">Sending activity data…</div>
+
+    <script>
+        /* ============================================================
+           COMPLETE.HTML — BULLETPROOF UNIVERSAL APPLY TRACKER
+           Safe inside Rise folders. Sends perfect xAPI to Lambda.
+        ============================================================ */
+
+        /* ------------------ Identity ------------------ */
+        const qs = new URLSearchParams(location.search);
+
+        const target = (qs.get("target") || "").toLowerCase();
+        const learnerName =
+            qs.get("learnerName") ||
+            localStorage.getItem("learnerName") ||
+            "Anonymous";
+
+        let sid =
+            qs.get("sid") ||
+            localStorage.getItem("sessionId") ||
+            (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()));
+
+        localStorage.setItem("learnerName", learnerName);
+        localStorage.setItem("sessionId", sid);
+
+        /* ------------------ Detect competency + sub ------------------ */
+        let comp = "c1";
+        let subCompetency = "";
+
+        const compMatch = target.match(/c[1-3]/i);
+        if (compMatch) comp = compMatch[0].toLowerCase();
+
+        const subMatch = target.match(/c[1-3][a-c]/i);
+        if (subMatch) subCompetency = subMatch[0].toLowerCase();
+
+        localStorage.setItem("currentCompetency", comp);
+
+        /* ------------------ xAPI Endpoint ------------------ */
+        const PROXY =
+            "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
+
+        const NS = "https://acbl.wirelxdfirm.com/extensions/";
+        const EX = k => NS + k;
+
+        /* ------------------ Statement ------------------ */
+        const stmt = {
+            actor: {
+                name: learnerName,
+                mbox: "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com"
+            },
+            verb: {
+                id: "http://adlnet.gov/expapi/verbs/completed",
+                display: { "en-US": "completed" }
+            },
+            object: {
+                id: `https://acbl.wirelxdfirm.com/activities/${target}`,
+                definition: {
+                    name: { "en-US": `${target} Apply Lesson` },
+                    description: { "en-US": "Apply lesson completed" },
+                    type: "http://adlnet.gov/expapi/activities/lesson"
+                },
+                objectType: "Activity"
+            },
+            result: {
+                extensions: {
+                    [EX("learnerName")]: learnerName,
+                    [EX("competencyId")]: comp.toUpperCase(),
+                    [EX("subCompetency")]: subCompetency ? subCompetency.toUpperCase() : "",
+                    [EX("applyComplete")]: true
+                }
+            },
+            context: {
+                registration: sid
+            },
+            timestamp: new Date().toISOString()
+        };
+
+        /* ------------------ Send xAPI with retry ------------------ */
+        async function sendXAPI() {
+            const status = document.getElementById("status");
+            status.textContent = "Sending completion…";
+
+            try {
+                const res = await fetch(PROXY + "?mode=write", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(stmt)
+                });
+
+                if (!res.ok) throw new Error("Network error");
+
+                status.textContent = "Recorded. Redirecting…";
+
+                setTimeout(() => {
+                    const nextURL = new URL("https://www.wirelearningsolutions.com/next.html");
+                    nextURL.searchParams.set("learnerName", learnerName);
+                    nextURL.searchParams.set("sid", sid);
+                    nextURL.searchParams.set("from", target);
+
+                    window.location.href = nextURL.toString();
+                }, 600);
+
+            } catch (err) {
+                console.error("Retrying send…", err);
+                status.textContent = "Retrying…";
+
+                setTimeout(sendXAPI, 1400);
+            }
+        }
+
+        sendXAPI();
+
+        /* ============================================================
+           Remove Rise runtime scripts to prevent crashes
+        ============================================================ */
+        document.addEventListener("DOMContentLoaded", () => {
+            const killers = ["content.js", "commons.js", "runtime", "main", "index"];
+            document.querySelectorAll("script").forEach(s => {
+                if (s.src && killers.some(k => s.src.includes(k))) {
+                    console.warn("Blocked Rise script:", s.src);
+                    s.remove();
+                }
+            });
+        });
+    </script>
+
+</body>
+</html>
