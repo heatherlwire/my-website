@@ -420,16 +420,27 @@
             );
         }
 
+        /* Extract competency from statement */
         function compFromStatement(stmt) {
             const ext = stmt?.result?.extensions || {};
             const byExt = ext[EX("competencyId")];
-            if (byExt && /^C[1-3]$/i.test(byExt)) {
+
+            if (byExt && /^C[1-3]$/i.test(byExt))
                 return byExt.toUpperCase();
-            }
+
             const id = stmt?.object?.id || "";
             const m = id.match(/C[1-3]/i);
             return m ? m[0].toUpperCase() : null;
         }
+
+        /* Extract subCompetency (NEW) */
+        function subFromStatement(stmt) {
+            const ext = stmt?.result?.extensions || {};
+            const sub = ext[EX("subCompetency")];
+            if (sub && /^C[1-3][A-C]$/i.test(sub)) return sub.toUpperCase();
+            return null;
+        }
+
 
         async function loadSummary() {
             const url = `${LRS_ENDPOINT}statements?limit=200&format=exact`;
@@ -469,6 +480,15 @@
                 if (!comp || !summary[comp]) continue;
 
                 const ext = s.result?.extensions || {};
+
+                // NEW: detect apply completions (sub-competency completions)
+                const sub = subFromStatement(s);
+                if (sub) {
+                    if (!summary[comp].subsCompleted)
+                        summary[comp].subsCompleted = [];
+                    if (!summary[comp].subsCompleted.includes(sub))
+                        summary[comp].subsCompleted.push(sub);
+                }
 
                 const masteryVal = ext[EX("masteryLevel")];
                 if (masteryVal) summary[comp].mastery = masteryVal;
