@@ -279,7 +279,7 @@ window.Script2 = function()
     function resetMasteryLevel() {
         const comp = localStorage.getItem("currentCompetency") || "C1"; // Get the current competency
 
-        // Reset mastery and other relevant data
+        // Clear mastery and related data for the current competency
         localStorage.removeItem(`${comp}.mastery`);
         localStorage.removeItem(`${comp}.score`);
         localStorage.removeItem(`${comp}.missed`);
@@ -290,7 +290,7 @@ window.Script2 = function()
         console.log(`🔄 Mastery level for ${comp} has been reset.`);
     }
 
-    // Call this function at the start of each test attempt
+    // Call the function when starting a new test attempt
     resetMasteryLevel();
 
     /* ---------------------------------------
