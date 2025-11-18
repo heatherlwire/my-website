@@ -1302,93 +1302,6 @@ window.Script12 = function()
 window.Script13 = function()
 {
   /* ============================================================
-   FAILURE LAYER INITIALIZER (Bulletproof Final Version)
-   Marks test attempt as completed & clears Storyline resume
-============================================================ */
-
-(function () {
-  try {
-
-    /* ----------------------------------------------------------
-       1. Detect competency safely (C1 / C2 / C3)
-    ---------------------------------------------------------- */
-    let compId = "C1";
-    try {
-      const match = window.location.href.toUpperCase().match(/C[123]/);
-      if (match && match[0]) compId = match[0];
-      else console.warn("⚠ No compId found in URL, defaulting to C1");
-    } catch (e) {
-      console.warn("⚠ URL parse failed; defaulting compId = C1");
-    }
-
-    /* ----------------------------------------------------------
-       2. Mark attempt as completed (adaptive state written in base)
-    ---------------------------------------------------------- */
-    try {
-      localStorage.setItem(`${compId}.completed`, "true");
-      console.log(`✔ Marked ${compId} attempt completed (FAILURE outcome)`);
-    } catch (e) {
-      console.warn("⚠ Could not set completion flag:", e);
-    }
-
-    /* ----------------------------------------------------------
-       3. Optional SCORM completion (ignored in HTML export)
-          Note: A failed test attempt is still a "completed" attempt.
-    ---------------------------------------------------------- */
-    try {
-      const lms = window.lmsAPI || null;
-      if (lms && typeof lms.SetStatus === "function") {
-        lms.SetStatus("completed");
-        lms.CommitData();
-        console.log("✔ SCORM completion sent (FAILURE)");
-      }
-    } catch (e) {
-      console.log("ℹ SCORM API unavailable (HTML export)");
-    }
-
-    /* ----------------------------------------------------------
-       4. Clear Storyline *only* resume keys
-          DO NOT clear:
-            learnerName
-            sessionId
-            C?_mastery
-            C?_missed
-            C?_score
-            testedOut
-            finalized
-    ---------------------------------------------------------- */
-    try {
-      const keys = Object.keys(localStorage);
-
-      const slKeys = keys.filter(k =>
-        k.startsWith("story") || k.includes("story_html5")
-      );
-
-      for (const k of slKeys) {
-        localStorage.removeItem(k);
-      }
-
-      console.log("✔ Storyline resume keys cleared (FAILURE)");
-
-    } catch (e) {
-      console.warn("⚠ Could not clear resume keys:", e);
-    }
-
-    /* ----------------------------------------------------------
-       5. Prevent rare Storyline double-fire
-    ---------------------------------------------------------- */
-    window.__failureLayerInit = true;
-
-  } catch (err) {
-    console.error("❌ Failure-layer initialization failed:", err);
-  }
-})();
-
-}
-
-window.Script14 = function()
-{
-  /* ============================================================
    RESULTS SLIDE – FINAL BULLETPROOF VERSION
    SCORM CLOUD–COMPLIANT + CORRECT SCORE COLLECTION
 ============================================================ */
@@ -1550,6 +1463,93 @@ window.Script14 = function()
   }
 
   run();
+})();
+
+}
+
+window.Script14 = function()
+{
+  /* ============================================================
+   FAILURE LAYER INITIALIZER (Bulletproof Final Version)
+   Marks test attempt as completed & clears Storyline resume
+============================================================ */
+
+(function () {
+  try {
+
+    /* ----------------------------------------------------------
+       1. Detect competency safely (C1 / C2 / C3)
+    ---------------------------------------------------------- */
+    let compId = "C1";
+    try {
+      const match = window.location.href.toUpperCase().match(/C[123]/);
+      if (match && match[0]) compId = match[0];
+      else console.warn("⚠ No compId found in URL, defaulting to C1");
+    } catch (e) {
+      console.warn("⚠ URL parse failed; defaulting compId = C1");
+    }
+
+    /* ----------------------------------------------------------
+       2. Mark attempt as completed (adaptive state written in base)
+    ---------------------------------------------------------- */
+    try {
+      localStorage.setItem(`${compId}.completed`, "true");
+      console.log(`✔ Marked ${compId} attempt completed (FAILURE outcome)`);
+    } catch (e) {
+      console.warn("⚠ Could not set completion flag:", e);
+    }
+
+    /* ----------------------------------------------------------
+       3. Optional SCORM completion (ignored in HTML export)
+          Note: A failed test attempt is still a "completed" attempt.
+    ---------------------------------------------------------- */
+    try {
+      const lms = window.lmsAPI || null;
+      if (lms && typeof lms.SetStatus === "function") {
+        lms.SetStatus("completed");
+        lms.CommitData();
+        console.log("✔ SCORM completion sent (FAILURE)");
+      }
+    } catch (e) {
+      console.log("ℹ SCORM API unavailable (HTML export)");
+    }
+
+    /* ----------------------------------------------------------
+       4. Clear Storyline *only* resume keys
+          DO NOT clear:
+            learnerName
+            sessionId
+            C?_mastery
+            C?_missed
+            C?_score
+            testedOut
+            finalized
+    ---------------------------------------------------------- */
+    try {
+      const keys = Object.keys(localStorage);
+
+      const slKeys = keys.filter(k =>
+        k.startsWith("story") || k.includes("story_html5")
+      );
+
+      for (const k of slKeys) {
+        localStorage.removeItem(k);
+      }
+
+      console.log("✔ Storyline resume keys cleared (FAILURE)");
+
+    } catch (e) {
+      console.warn("⚠ Could not clear resume keys:", e);
+    }
+
+    /* ----------------------------------------------------------
+       5. Prevent rare Storyline double-fire
+    ---------------------------------------------------------- */
+    window.__failureLayerInit = true;
+
+  } catch (err) {
+    console.error("❌ Failure-layer initialization failed:", err);
+  }
 })();
 
 }
@@ -1719,174 +1719,6 @@ window.Script16 = function()
 }
 
 window.Script17 = function()
-{
-  /* ============================================================
-   RESULTS SLIDE – FINAL BULLETPROOF VERSION
-   SCORM CLOUD–COMPLIANT + CORRECT SCORE COLLECTION
-============================================================ */
-(function () {
-  function run() {
-    try {
-      const p = window.GetPlayer && window.GetPlayer();
-      if (!p) {
-        setTimeout(run, 150);
-        return;
-      }
-
-      /* ---------------------------------------------------------
-         IMPORTANT: Delay one cycle so Storyline finishes scoring
-      --------------------------------------------------------- */
-      if (window.__delayResultsRun !== true) {
-        window.__delayResultsRun = true;
-        setTimeout(run, 350);   // ← THIS FIXES THE 0-SCORE ISSUE 100 percent
-        return;
-      }
-
-      /* ---------------------------------------------------------
-         1) Detect competency (C1 / C2 / C3)
-      --------------------------------------------------------- */
-      const url = window.location.href.toUpperCase();
-      const compMatch = url.match(/C[123]/);
-      const compId = compMatch ? compMatch[0] : "C1";
-
-      /* ---------------------------------------------------------
-         2) Subscores: C1a_score, C1b_score, C1c_score
-      --------------------------------------------------------- */
-      const sA = Number(p.GetVar(compId + "a_score") || 0);
-      const sB = Number(p.GetVar(compId + "b_score") || 0);
-      const sC = Number(p.GetVar(compId + "c_score") || 0);
-
-      const correct = sA + sB + sC;
-
-      /* missed[] detection */
-      const missed = [];
-      if (sA !== 1) missed.push(compId + "a");
-      if (sB !== 1) missed.push(compId + "b");
-      if (sC !== 1) missed.push(compId + "c");
-
-      /* ---------------------------------------------------------
-         3) Mastery level
-      --------------------------------------------------------- */
-      let mastery = "Failing";
-      if (correct === 3) mastery = "Mastery";
-      else if (correct === 2) mastery = "Proficient";
-      else if (correct === 1) mastery = "Emerging";
-
-      const testedOut = correct === 3;
-      const finalized = false;
-
-      /* ---------------------------------------------------------
-         4) Identity + Session
-      --------------------------------------------------------- */
-      let learner =
-        localStorage.getItem("learnerName") ||
-        p.GetVar("actorName") ||
-        "Anonymous";
-
-      learner = learner.trim() || "Anonymous";
-
-      let sid =
-        localStorage.getItem("sessionId") ||
-        p.GetVar("sessionId") ||
-        (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()));
-
-      localStorage.setItem("sessionId", sid);
-      const mbox = "mailto:" + encodeURIComponent(learner) + "@wirelxdfirm.com";
-
-      /* ---------------------------------------------------------
-         5) Build summary statement (COMPLETE + SCORE)
-      --------------------------------------------------------- */
-      const passed = correct >= 2;
-
-      const resultObj = {
-        score: { raw: correct, min: 0, max: 3 },
-        success: passed,
-        completion: true,
-        extensions: {
-          "https://acbl.wirelxdfirm.com/extensions/learnerName": learner,
-          "https://acbl.wirelxdfirm.com/extensions/sessionId": sid,
-          "https://acbl.wirelxdfirm.com/extensions/competencyId": compId,
-          "https://acbl.wirelxdfirm.com/extensions/masteryLevel": mastery,
-          "https://acbl.wirelxdfirm.com/extensions/missed": missed,
-          "https://acbl.wirelxdfirm.com/extensions/testedOut": testedOut,
-          "https://acbl.wirelxdfirm.com/extensions/finalized": finalized
-        }
-      };
-
-      const verbId = passed
-        ? "http://adlnet.gov/expapi/verbs/passed"
-        : "http://adlnet.gov/expapi/verbs/failed";
-
-      const verbDisplay = passed ? "passed" : "failed";
-
-      const objectId = `https://acbl.wirelxdfirm.com/activities/${compId}/test`;
-      const objectName = `${compId} Test`;
-      const objectDesc = `Assessment for competency ${compId}`;
-
-      /* ---------------------------------------------------------
-         6) SEND VIA MASTER-SLIDE OVERRIDE
-      --------------------------------------------------------- */
-      if (window.sendXAPI) {
-        window.sendXAPI(
-          verbId,
-          verbDisplay,
-          objectId,
-          objectName,
-          resultObj,
-          objectDesc
-        );
-        console.log("✅ Summary sent through sendXAPI()");
-      } else {
-        console.warn("⚠ sendXAPI() missing — fallback direct");
-        fetch(
-          "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws?mode=write",
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              actor: { name: learner, mbox },
-              verb: { id: verbId, display: { "en-US": verbDisplay } },
-              object: {
-                id: objectId,
-                definition: {
-                  name: { "en-US": objectName },
-                  description: { "en-US": objectDesc },
-                  type: "http://adlnet.gov/expapi/activities/assessment"
-                },
-                objectType: "Activity"
-              },
-              result: resultObj,
-              context: { registration: sid },
-              timestamp: new Date().toISOString()
-            })
-          }
-        );
-      }
-
-      /* ---------------------------------------------------------
-         7) Save adaptive state
-      --------------------------------------------------------- */
-      localStorage.setItem(`${compId}.score`, correct);
-      localStorage.setItem(`${compId}.missed`, JSON.stringify(missed));
-      localStorage.setItem(`${compId}.mastery`, mastery);
-      localStorage.setItem(`${compId}.testedOut`, testedOut);
-      localStorage.setItem(`${compId}.finalized`, finalized);
-      localStorage.setItem("currentCompetency", compId);
-      localStorage.setItem("currentMasteryLevel", mastery);
-
-      console.log(`🎉 FINAL SCORE: ${correct}/3 (${mastery})`, { missed });
-
-    } catch (e) {
-      console.warn("❌ Results slide script failed:", e);
-    }
-  }
-
-  run();
-})();
-
-}
-
-window.Script18 = function()
 {
   /* ============================================================
    RESULTS CONTINUE BUTTON (FINAL PATCHED VERSION)
