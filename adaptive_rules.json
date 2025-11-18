@@ -1,9 +1,9 @@
 {
   "meta": {
-    "version": "2.0.1",
-    "lastUpdated": "2025-11-17",
+    "version": "2.0.2",
+    "lastUpdated": "2025-11-18",
     "author": "Wire LXD Firm",
-    "description": "Dynamic Adaptive Routing Rules for C1–C3 based on mastery level and missed sub-competencies",
+    "description": "Dynamic Adaptive Routing Rules for C1–C3 based on mastery, missed subs, testedOut, and learner choice to accept proficiency.",
     "namespace": "https://acbl.wirelxdfirm.com/extensions/",
     "conventions": {
       "masteryLevels": [ "Mastery", "Proficient", "Emerging", "Failing" ],
@@ -20,6 +20,14 @@
   },
 
   "C1": [
+    {
+      "if": { "testedOut": true },
+      "then": [
+        { "set": { "completed": true } },
+        { "route": { "go": "C2-test" } }
+      ]
+    },
+
     {
       "if": { "finalized": true },
       "then": [
@@ -67,6 +75,14 @@
 
   "C2": [
     {
+      "if": { "testedOut": true },
+      "then": [
+        { "set": { "completed": true } },
+        { "route": { "go": "C3-test" } }
+      ]
+    },
+
+    {
       "if": { "finalized": true },
       "then": [
         { "set": { "completed": true } },
@@ -112,6 +128,14 @@
   ],
 
   "C3": [
+    {
+      "if": { "testedOut": true },
+      "then": [
+        { "set": { "completed": true } },
+        { "route": { "go": "program-complete" } }
+      ]
+    },
+
     {
       "if": { "finalized": true },
       "then": [
