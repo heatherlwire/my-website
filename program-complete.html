@@ -224,6 +224,7 @@
         }
     </style>
 </head>
+
 <body>
     <div class="shell">
         <main class="card">
@@ -255,9 +256,7 @@
                     </div>
                 </section>
 
-                <ul class="list" id="compList">
-                    <!-- Filled by script -->
-                </ul>
+                <ul class="list" id="compList"></ul>
 
                 <div class="actions">
                     <button class="btn-primary" type="button" onclick="window.close();">
@@ -276,6 +275,30 @@
     </div>
 
     <script>
+        /* ---------- URL PARAM SUPPORT ---------- */
+        function getQueryParam(name) {
+            const url = new URL(window.location.href);
+            const val = url.searchParams.get(name);
+            return val ? decodeURIComponent(val) : null;
+        }
+
+        /* ---------- Store URL data into storage ---------- */
+        (function () {
+            try {
+                const paramName = getQueryParam("learnerName");
+                const paramEmail = getQueryParam("email");
+                const paramSid = getQueryParam("sid");
+
+                if (paramName) localStorage.setItem("learnerName", paramName);
+                if (paramEmail) localStorage.setItem("learnerEmail", paramEmail);
+                if (paramSid) localStorage.setItem("sessionId", paramSid);
+
+            } catch (e) {
+                console.warn("URL param parsing failed:", e);
+            }
+        })();
+
+        /* ---------- Build page UI ---------- */
         (function () {
             try {
                 const learnerName =
