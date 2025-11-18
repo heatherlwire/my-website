@@ -318,19 +318,16 @@
            CONFIG
         ============================================================ */
 
-        // Lambda: write-only (Accept Mastery)
         const PROXY_URL =
             "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
 
-        // Adaptive rules JSON
         const RULES_URL =
             "https://www.wirelearningsolutions.com/adaptive_rules.json";
 
-        // xAPI extension namespace
         const EXT_NS = "https://acbl.wirelxdfirm.com/extensions/";
+        const ALT_NS = "https://acbl.wirelearningsolutions.com/extensions/";
         const EX = k => EXT_NS + k;
 
-        // SCORM Cloud LRS (direct READ)
         const LRS_ENDPOINT = "https://cloud.scorm.com/lrs/TENBKY6BZ6/sandbox/";
         const LRS_KEY = "d_cPqAqYNvM3sMTyJ2M";
         const LRS_SECRET = "rh70yfaxONPyu11z_vk";
@@ -420,10 +417,11 @@
             );
         }
 
-        /* Extract competency from statement */
         function compFromStatement(stmt) {
             const ext = stmt?.result?.extensions || {};
-            const byExt = ext[EX("competencyId")];
+            const byExt =
+                ext[EX("competencyId")] ||
+                ext[ALT_NS + "competencyId"];
 
             if (byExt && /^C[1-3]$/i.test(byExt))
                 return byExt.toUpperCase();
@@ -433,14 +431,17 @@
             return m ? m[0].toUpperCase() : null;
         }
 
-        /* Extract subCompetency (NEW) */
         function subFromStatement(stmt) {
             const ext = stmt?.result?.extensions || {};
-            const sub = ext[EX("subCompetency")];
-            if (sub && /^C[1-3][A-C]$/i.test(sub)) return sub.toUpperCase();
+            const sub =
+                ext[EX("subCompetency")] ||
+                ext[ALT_NS + "subCompetency"];
+
+            if (sub && /^C[1-3][a-c]$/i.test(sub))
+                return sub.toUpperCase();
+
             return null;
         }
-
 
         async function loadSummary() {
             const url = `${LRS_ENDPOINT}statements?limit=200&format=exact`;
@@ -462,7 +463,9 @@
 
             const filtered = stmts.filter((s) => {
                 const ex = s.result?.extensions || {};
-                const extName = ex[EX("learnerName")];
+                const extName =
+                    ex[EX("learnerName")] ||
+                    ex[ALT_NS + "learnerName"];
                 const actorName = s.actor?.name;
                 if (learnerName && extName === learnerName) return true;
                 if (learnerName && actorName === learnerName) return true;
@@ -481,7 +484,7 @@
 
                 const ext = s.result?.extensions || {};
 
-                // NEW: detect apply completions (sub-competency completions)
+                // track sub-competency completions from apply/content
                 const sub = subFromStatement(s);
                 if (sub) {
                     if (!summary[comp].subsCompleted)
@@ -490,20 +493,27 @@
                         summary[comp].subsCompleted.push(sub);
                 }
 
-                const masteryVal = ext[EX("masteryLevel")];
+                const masteryVal =
+                    ext[EX("masteryLevel")] ||
+                    ext[ALT_NS + "masteryLevel"];
                 if (masteryVal) summary[comp].mastery = masteryVal;
 
-                if (ext.hasOwnProperty(EX("finalized"))) {
-                    summary[comp].finalized = toBool(ext[EX("finalized")]);
+                if (ext.hasOwnProperty(EX("finalized")) || ext.hasOwnProperty(ALT_NS + "finalized")) {
+                    const v = ext[EX("finalized")] ?? ext[ALT_NS + "finalized"];
+                    summary[comp].finalized = toBool(v);
                 }
 
-                if (ext.hasOwnProperty(EX("testedOut"))) {
-                    summary[comp].testedOut = toBool(ext[EX("testedOut")]);
+                if (ext.hasOwnProperty(EX("testedOut")) || ext.hasOwnProperty(ALT_NS + "testedOut")) {
+                    const v = ext[EX("testedOut")] ?? ext[ALT_NS + "testedOut"];
+                    summary[comp].testedOut = toBool(v);
                 }
 
-                const missedVal = ext[EX("missed")];
+                const missedVal =
+                    ext[EX("missed")] ??
+                    ext[ALT_NS + "missed"];
+
                 if (Array.isArray(missedVal)) {
-                    summary[comp].missed = missedVal;
+                    summary[comp].missed = missedVal.slice();
                 } else if (typeof missedVal === "string" && missedVal.trim()) {
                     try {
                         const arr = JSON.parse(missedVal);
@@ -517,6 +527,24 @@
                     }
                 }
             }
+
+            /* ---------- reconcile missed vs subsCompleted (fixes C1b loop, case-insensitive) ---------- */
+            ["C1", "C2", "C3"].forEach((compKey) => {
+                const s = summary[compKey];
+                if (!s) return;
+
+                const missed = Array.isArray(s.missed) ? s.missed : [];
+                const done = Array.isArray(s.subsCompleted) ? s.subsCompleted : [];
+
+                if (!missed.length || !done.length) {
+                    s.missed = missed;
+                    return;
+                }
+
+                const doneLower = done.map(x => String(x).toLowerCase());
+                s.missed = missed.filter(m => !doneLower.includes(String(m).toLowerCase()));
+            });
+            /* ----------------------------------------------------------------------------------------- */
 
             return summary;
         }
@@ -553,7 +581,7 @@
         }
 
         /* ============================================================
-           APPLY RULES (flexible for current JSON)
+           APPLY RULES
         ============================================================ */
         function buildRoutes(summary, rules) {
             const current = detectCurrent(summary);
@@ -563,8 +591,6 @@
 
             const state = summary[current] || {};
             const mastery = state.mastery || null;
-            const finalized = !!state.finalized;
-            const missed = Array.isArray(state.missed) ? state.missed : [];
 
             function pushRoute(routeObj) {
                 const type = Object.keys(routeObj)[0];
@@ -594,12 +620,10 @@
 
                 if (!ok) continue;
 
-                // matched rule
                 matched = true;
 
                 for (const step of rule.then || []) {
 
-                    // forEach: "missed"   OR   forEach: ["C1a","C1b","C1c"]
                     if (step.forEach) {
                         const src = step.forEach;
                         let items = [];
@@ -628,7 +652,8 @@
                     }
                 }
 
-                break; // stop after first matching rule
+                // Stop after the first matching rule
+                break;
             }
 
             if (!matched) {
@@ -639,7 +664,7 @@
         }
 
         /* ============================================================
-           ROUTE → URL (matches your folder structure)
+           ROUTE -> URL
         ============================================================ */
         function resolveRoute(route) {
             const { type, target } = route;
@@ -653,12 +678,10 @@
             }
 
             if (type === "assessment") {
-                // "C1-test" → "C1-test/story.html"
                 return `${target}/story.html`;
             }
 
             if (type === "content") {
-                // "C1a-content" or "C1a"
                 if (/-content$/i.test(target)) {
                     return `content/${target}.html`;
                 }
@@ -666,7 +689,6 @@
             }
 
             if (type === "apply") {
-                // "C1a-apply" or "C1a"
                 let item = target;
                 if (/-apply$/i.test(item)) {
                     item = item.replace(/-apply$/i, "");
@@ -674,12 +696,11 @@
                 return `apply/${item}/${item}-apply.html`;
             }
 
-            // Fallback
             return `${target}.html`;
         }
 
         /* ============================================================
-           ACCEPT MASTERY (off-ramp via Lambda)
+           ACCEPT MASTERY
         ============================================================ */
         async function acceptMastery(compId) {
             try {
@@ -774,13 +795,13 @@
 
                 const tr = document.createElement("tr");
                 tr.innerHTML = `
-                    <td>${comp}</td>
-                    <td>${mastery}</td>
-                    <td>
-                        <span class="status ${statusKey}">
-                            <span class="s-dot"></span>${labelStatus(statusKey)}
-                        </span>
-                    </td>`;
+                            <td>${comp}</td>
+                            <td>${mastery}</td>
+                            <td>
+                                <span class="status ${statusKey}">
+                                    <span class="s-dot"></span>${labelStatus(statusKey)}
+                                </span>
+                            </td>`;
                 tbody.appendChild(tr);
             });
         }
@@ -798,7 +819,7 @@
                 : (state.mastery ? "In Progress" : "Not Started");
 
             line.innerHTML =
-                `Current: <b>${currentLabel}</b> — <b>${masteryTxt}</b> (${statusTxt})`;
+                `Current: <b>${currentLabel}</b> - <b>${masteryTxt}</b> (${statusTxt})`;
 
             let nextTarget = nextRoute ? nextRoute.target : "";
             let comp = (nextTarget.match(/C[1-3]/i)?.[0] || current).toUpperCase();
