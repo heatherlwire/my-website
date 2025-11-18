@@ -462,10 +462,15 @@ window.Script3 = function()
 
 window.Script4 = function()
 {
-  /* C1 Q1 – Incorrect layer */
+  /* C1 Q1 – Incorrect */
 (function () {
     const p = GetPlayer();
     if (!p) return;
+
+    const comp = "C1";
+    const sub = p.GetVar("C1_Q1_Sub") || p.GetVar("C1_SubCompetency") || "";
+    const fullSub = `${comp}${sub}`;
+    const qid = `${fullSub}-Q1`;
 
     const learner =
         p.GetVar("learnerName") ||
@@ -474,29 +479,22 @@ window.Script4 = function()
 
     let sid =
         localStorage.getItem("sessionId") ||
-        p.GetVar("sessionId") ||
-        (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()));
-
+        crypto.randomUUID();
     localStorage.setItem("sessionId", sid);
-
-    const comp = "C1";
-    const subId = "C1a";     // same as above
-    const qNum = 1;
-    const qid = `${subId}-Q${qNum}`;
 
     const answer = p.GetVar("C1_Q1_Answer") || "";
 
     sendXAPI(
         "http://adlnet.gov/expapi/verbs/answered",
         "answered",
-        `${comp}/questions/${qid}`,
+        `https://acbl.wirelxdfirm.com/activities/${comp}/questions/${qid}`,
         qid,
         {
-            success: false,       // Incorrect layer
+            success: false,
             response: answer,
             extensions: {
                 "https://acbl.wirelxdfirm.com/extensions/competencyId": comp,
-                "https://acbl.wirelxdfirm.com/extensions/subCompetency": subId,
+                "https://acbl.wirelxdfirm.com/extensions/subCompetency": fullSub,
                 "https://acbl.wirelxdfirm.com/extensions/questionId": qid,
                 "https://acbl.wirelxdfirm.com/extensions/sessionId": sid
             }
@@ -508,12 +506,16 @@ window.Script4 = function()
 
 window.Script5 = function()
 {
-  /* C1 Q1 – Correct layer */
+  /* C1 Q1 – Correct */
 (function () {
     const p = GetPlayer();
     if (!p) return;
 
-    // Identity / session
+    const comp = "C1";
+    const sub = p.GetVar("C1_Q1_Sub") || p.GetVar("C1_SubCompetency") || "";
+    const fullSub = `${comp}${sub}`;
+    const qid = `${fullSub}-Q1`;
+
     const learner =
         p.GetVar("learnerName") ||
         localStorage.getItem("learnerName") ||
@@ -521,33 +523,22 @@ window.Script5 = function()
 
     let sid =
         localStorage.getItem("sessionId") ||
-        p.GetVar("sessionId") ||
-        (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()));
-
+        crypto.randomUUID();
     localStorage.setItem("sessionId", sid);
 
-    // This question's mapping
-    const comp = "C1";          // competency
-    const subId = "C1a";        // sub-competency for Q1
-    const qNum = 1;
-    const qid = `${subId}-Q${qNum}`; // "C1a-Q1"
-
-    // Optional: pull text/response if you have these vars
     const answer = p.GetVar("C1_Q1_Answer") || "";
-    // const qText = p.GetVar("C1_Q1_Text") || "";
 
-    // Send xAPI via master override
     sendXAPI(
         "http://adlnet.gov/expapi/verbs/answered",
         "answered",
-        `${comp}/questions/${qid}`,  // becomes https://acbl.../activities/C1/questions/C1a-Q1
+        `https://acbl.wirelxdfirm.com/activities/${comp}/questions/${qid}`,
         qid,
         {
-            success: true,          // Correct layer
+            success: true,
             response: answer,
             extensions: {
                 "https://acbl.wirelxdfirm.com/extensions/competencyId": comp,
-                "https://acbl.wirelxdfirm.com/extensions/subCompetency": subId,
+                "https://acbl.wirelxdfirm.com/extensions/subCompetency": fullSub,
                 "https://acbl.wirelxdfirm.com/extensions/questionId": qid,
                 "https://acbl.wirelxdfirm.com/extensions/sessionId": sid
             }
@@ -720,10 +711,15 @@ window.Script6 = function()
 
 window.Script7 = function()
 {
-  /* C1 Q1 – Incorrect layer */
+  /* C1 Q2 – Incorrect */
 (function () {
     const p = GetPlayer();
     if (!p) return;
+
+    const comp = "C1";
+    const sub = p.GetVar("C1_Q2_Sub") || p.GetVar("C1_SubCompetency") || "";
+    const fullSub = `${comp}${sub}`;
+    const qid = `${fullSub}-Q2`;
 
     const learner =
         p.GetVar("learnerName") ||
@@ -732,28 +728,22 @@ window.Script7 = function()
 
     let sid =
         localStorage.getItem("sessionId") ||
-        p.GetVar("sessionId") ||
-        (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()));
-
+        crypto.randomUUID();
     localStorage.setItem("sessionId", sid);
 
-    const comp = "C1";
-    const subId = "C1b";
-	const qNum = 2;
-
-	const answer = p.GetVar("C1_Q2_Answer") || "";
+    const answer = p.GetVar("C1_Q2_Answer") || "";
 
     sendXAPI(
         "http://adlnet.gov/expapi/verbs/answered",
         "answered",
-        `${comp}/questions/${qid}`,
+        `https://acbl.wirelxdfirm.com/activities/${comp}/questions/${qid}`,
         qid,
         {
-            success: false,       // Incorrect layer
+            success: false,
             response: answer,
             extensions: {
                 "https://acbl.wirelxdfirm.com/extensions/competencyId": comp,
-                "https://acbl.wirelxdfirm.com/extensions/subCompetency": subId,
+                "https://acbl.wirelxdfirm.com/extensions/subCompetency": fullSub,
                 "https://acbl.wirelxdfirm.com/extensions/questionId": qid,
                 "https://acbl.wirelxdfirm.com/extensions/sessionId": sid
             }
@@ -765,12 +755,16 @@ window.Script7 = function()
 
 window.Script8 = function()
 {
-  /* C1 Q1 – Correct layer */
+  /* C1 Q2 – Correct */
 (function () {
     const p = GetPlayer();
     if (!p) return;
 
-    // Identity / session
+    const comp = "C1";
+    const sub = p.GetVar("C1_Q2_Sub") || p.GetVar("C1_SubCompetency") || "";
+    const fullSub = `${comp}${sub}`;
+    const qid = `${fullSub}-Q2`;
+
     const learner =
         p.GetVar("learnerName") ||
         localStorage.getItem("learnerName") ||
@@ -778,33 +772,22 @@ window.Script8 = function()
 
     let sid =
         localStorage.getItem("sessionId") ||
-        p.GetVar("sessionId") ||
-        (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()));
-
+        crypto.randomUUID();
     localStorage.setItem("sessionId", sid);
 
-    // This question's mapping
-    const comp = "C1";          // competency
-    const subId = "C1a";        // sub-competency for Q1
-    const qNum = 1;
-    const qid = `${subId}-Q${qNum}`; // "C1a-Q1"
+    const answer = p.GetVar("C1_Q2_Answer") || "";
 
-    // Optional: pull text/response if you have these vars
-    const answer = p.GetVar("C1_Q1_Answer") || "";
-    // const qText = p.GetVar("C1_Q1_Text") || "";
-
-    // Send xAPI via master override
     sendXAPI(
         "http://adlnet.gov/expapi/verbs/answered",
         "answered",
-        `${comp}/questions/${qid}`,  // becomes https://acbl.../activities/C1/questions/C1a-Q1
+        `https://acbl.wirelxdfirm.com/activities/${comp}/questions/${qid}`,
         qid,
         {
-            success: true,          // Correct layer
+            success: true,
             response: answer,
             extensions: {
                 "https://acbl.wirelxdfirm.com/extensions/competencyId": comp,
-                "https://acbl.wirelxdfirm.com/extensions/subCompetency": subId,
+                "https://acbl.wirelxdfirm.com/extensions/subCompetency": fullSub,
                 "https://acbl.wirelxdfirm.com/extensions/questionId": qid,
                 "https://acbl.wirelxdfirm.com/extensions/sessionId": sid
             }
@@ -977,10 +960,15 @@ window.Script9 = function()
 
 window.Script10 = function()
 {
-  /* C1 Q1 – Incorrect layer */
+  /* C1 Q3 – Incorrect */
 (function () {
     const p = GetPlayer();
     if (!p) return;
+
+    const comp = "C1";
+    const sub = p.GetVar("C1_Q3_Sub") || p.GetVar("C1_SubCompetency") || "";
+    const fullSub = `${comp}${sub}`;
+    const qid = `${fullSub}-Q3`;
 
     const learner =
         p.GetVar("learnerName") ||
@@ -989,29 +977,22 @@ window.Script10 = function()
 
     let sid =
         localStorage.getItem("sessionId") ||
-        p.GetVar("sessionId") ||
-        (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()));
-
+        crypto.randomUUID();
     localStorage.setItem("sessionId", sid);
 
-    const comp = "C1";
-    const subId = "C1c";
-	const qNum = 3;
-	
-	const answer = p.GetVar("C1_Q3_Answer") || "";
-
+    const answer = p.GetVar("C1_Q3_Answer") || "";
 
     sendXAPI(
         "http://adlnet.gov/expapi/verbs/answered",
         "answered",
-        `${comp}/questions/${qid}`,
+        `https://acbl.wirelxdfirm.com/activities/${comp}/questions/${qid}`,
         qid,
         {
-            success: false,       // Incorrect layer
+            success: false,
             response: answer,
             extensions: {
                 "https://acbl.wirelxdfirm.com/extensions/competencyId": comp,
-                "https://acbl.wirelxdfirm.com/extensions/subCompetency": subId,
+                "https://acbl.wirelxdfirm.com/extensions/subCompetency": fullSub,
                 "https://acbl.wirelxdfirm.com/extensions/questionId": qid,
                 "https://acbl.wirelxdfirm.com/extensions/sessionId": sid
             }
@@ -1023,12 +1004,16 @@ window.Script10 = function()
 
 window.Script11 = function()
 {
-  /* C1 Q1 – Correct layer */
+  /* C1 Q3 – Correct */
 (function () {
     const p = GetPlayer();
     if (!p) return;
 
-    // Identity / session
+    const comp = "C1";
+    const sub = p.GetVar("C1_Q3_Sub") || p.GetVar("C1_SubCompetency") || "";
+    const fullSub = `${comp}${sub}`;
+    const qid = `${fullSub}-Q3`;
+
     const learner =
         p.GetVar("learnerName") ||
         localStorage.getItem("learnerName") ||
@@ -1036,34 +1021,22 @@ window.Script11 = function()
 
     let sid =
         localStorage.getItem("sessionId") ||
-        p.GetVar("sessionId") ||
-        (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()));
-
+        crypto.randomUUID();
     localStorage.setItem("sessionId", sid);
 
-    // This question's mapping
-    const comp = "C1";          // competency
-   	const subId = "C1c";
-	const qNum = 3;
+    const answer = p.GetVar("C1_Q3_Answer") || "";
 
-
-
-    // Optional: pull text/response if you have these vars
-	const answer = p.GetVar("C1_Q3_Answer") || "";
-    // const qText = p.GetVar("C1_Q1_Text") || "";
-
-    // Send xAPI via master override
     sendXAPI(
         "http://adlnet.gov/expapi/verbs/answered",
         "answered",
-        `${comp}/questions/${qid}`,  // becomes https://acbl.../activities/C1/questions/C1a-Q1
+        `https://acbl.wirelxdfirm.com/activities/${comp}/questions/${qid}`,
         qid,
         {
-            success: true,          // Correct layer
+            success: true,
             response: answer,
             extensions: {
                 "https://acbl.wirelxdfirm.com/extensions/competencyId": comp,
-                "https://acbl.wirelxdfirm.com/extensions/subCompetency": subId,
+                "https://acbl.wirelxdfirm.com/extensions/subCompetency": fullSub,
                 "https://acbl.wirelxdfirm.com/extensions/questionId": qid,
                 "https://acbl.wirelxdfirm.com/extensions/sessionId": sid
             }
