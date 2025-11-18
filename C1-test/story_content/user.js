@@ -272,8 +272,29 @@ window.Script2 = function()
       }
     }
 
+    /* ============================================================
+       7. Reset Mastery Level for New Test Attempt
+       Ensures previous mastery state is cleared
+    ============================================================ */
+    function resetMasteryLevel() {
+        const comp = localStorage.getItem("currentCompetency") || "C1"; // Get the current competency
+
+        // Reset mastery and other relevant data
+        localStorage.removeItem(`${comp}.mastery`);
+        localStorage.removeItem(`${comp}.score`);
+        localStorage.removeItem(`${comp}.missed`);
+        localStorage.removeItem(`${comp}.finalized`);
+        localStorage.removeItem(`${comp}.testedOut`);
+        localStorage.removeItem(`${comp}.completed`);
+
+        console.log(`🔄 Mastery level for ${comp} has been reset.`);
+    }
+
+    // Call this function at the start of each test attempt
+    resetMasteryLevel();
+
     /* ---------------------------------------
-       7. Resume Gate
+       8. Resume Gate
        --------------------------------------- */
     const scoreKey     = `${comp}.score`;
     const completeKey  = `${comp}.completed`;
