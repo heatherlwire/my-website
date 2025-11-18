@@ -3,179 +3,282 @@
 <head>
     <meta charset="UTF-8" />
     <title>Lesson Complete</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-
-    <!-- =============================
-         BLOCK RISE AUTO-LOADING
-         prevents white screens
-    ============================== -->
-    <script>
-        window.disableRisePlayer = true;
-    </script>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
 
     <style>
+        :root {
+            --bg-0: #0a0f1a;
+            --bg-1: #0e1526;
+            --ink-0: #e8f1ff;
+            --ink-1: #b9c8e8;
+            --sky-1: #0ea5e9;
+            --ok: #22c55e;
+            --shadow: 0 10px 24px rgba(0,0,0,.35);
+        }
+
         body {
             margin: 0;
             font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
-            background: #07101e;
-            color: #e8f1ff;
+            background: radial-gradient(1200px 800px at 70% -10%, rgba(34,211,238,.10), transparent 60%), radial-gradient(1000px 600px at -10% 20%, rgba(14,165,233,.15), transparent 55%), linear-gradient(180deg, #07101e 0%, #0a1322 50%, #0b1628 100%);
+            color: var(--ink-0);
+            min-height: 100vh;
             display: flex;
-            flex-direction: column;
-            justify-content: center;
             align-items: center;
-            height: 100vh;
-            padding: 20px;
+            justify-content: center;
+        }
+
+        .card {
+            background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.015)), var(--bg-1);
+            border-radius: 16px;
+            border: 1px solid rgba(148,163,184,.2);
+            box-shadow: var(--shadow);
+            padding: 20px 22px;
+            max-width: 420px;
             text-align: center;
         }
 
         h1 {
-            font-size: 26px;
-            margin-bottom: 8px;
+            margin: 0 0 8px;
+            font-size: 20px;
         }
 
-        .msg {
-            font-size: 15px;
-            opacity: 0.8;
-            line-height: 1.4;
-            max-width: 340px;
-        }
-
-        #status {
-            margin-top: 20px;
-            opacity: 0.7;
+        p {
+            margin: 4px 0;
+            color: var(--ink-1);
             font-size: 14px;
+        }
+
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 12px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            border: 1px solid rgba(148,163,184,.4);
+            background: rgba(15,23,42,.9);
+            font-size: 13px;
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 999px;
+            background: var(--ok);
+            box-shadow: 0 0 0 0 rgba(34,197,94,.6);
+            animation: pulse 1.8s ease-out infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(34,197,94,.5);
+            }
+
+            70% {
+                box-shadow: 0 0 0 10px rgba(34,197,94,0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(34,197,94,0);
+            }
+        }
+
+        .small {
+            font-size: 12px;
         }
     </style>
 </head>
-
 <body>
-    <h1>Lesson Complete</h1>
-    <p class="msg">Your progress is being recorded…</p>
-    <div id="status">Sending activity data…</div>
+    <div class="card">
+        <h1>Lesson complete</h1>
+        <p id="msg">Saving your progress and updating your dashboard.</p>
+        <div class="pill">
+            <span class="dot"></span>
+            <span id="pillLabel">Sending data to LRS…</span>
+        </div>
+        <p class="small" id="detail"></p>
+    </div>
 
     <script>
         /* ============================================================
-           COMPLETE.HTML — BULLETPROOF UNIVERSAL APPLY TRACKER
-           Safe inside Rise folders. Sends perfect xAPI to Lambda.
+           CONFIG
         ============================================================ */
-
-        /* ------------------ Identity ------------------ */
-        const qs = new URLSearchParams(location.search);
-
-        const target = (qs.get("target") || "").toLowerCase();
-        const learnerName =
-            qs.get("learnerName") ||
-            localStorage.getItem("learnerName") ||
-            "Anonymous";
-
-        let sid =
-            qs.get("sid") ||
-            localStorage.getItem("sessionId") ||
-            (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()));
-
-        localStorage.setItem("learnerName", learnerName);
-        localStorage.setItem("sessionId", sid);
-
-        /* ------------------ Detect competency + sub ------------------ */
-        let comp = "c1";
-        let subCompetency = "";
-
-        const compMatch = target.match(/c[1-3]/i);
-        if (compMatch) comp = compMatch[0].toLowerCase();
-
-        const subMatch = target.match(/c[1-3][a-c]/i);
-        if (subMatch) subCompetency = subMatch[0].toLowerCase();
-
-        localStorage.setItem("currentCompetency", comp);
-
-        /* ------------------ xAPI Endpoint ------------------ */
-        const PROXY =
+        const PROXY_URL =
             "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
 
-        const NS = "https://acbl.wirelxdfirm.com/extensions/";
-        const EX = k => NS + k;
+        const EXT_NS = "https://acbl.wirelxdfirm.com/extensions/";
+        const ALT_NS = "https://acbl.wirelearningsolutions.com/extensions/";
+        const EX = k => EXT_NS + k;
 
-        /* ------------------ Statement ------------------ */
-        const stmt = {
-            actor: {
-                name: learnerName,
-                mbox: "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com"
-            },
-            verb: {
-                id: "http://adlnet.gov/expapi/verbs/completed",
-                display: { "en-US": "completed" }
-            },
-            object: {
-                id: `https://acbl.wirelxdfirm.com/activities/${target}`,
-                definition: {
-                    name: { "en-US": `${target} Apply Lesson` },
-                    description: { "en-US": "Apply lesson completed" },
-                    type: "http://adlnet.gov/expapi/activities/lesson"
+        function withIdentity(url, learnerName, email, sid) {
+            const sep = url.includes("?") ? "&" : "?";
+            return url + sep +
+                "learnerName=" + encodeURIComponent(learnerName || "") +
+                "&email=" + encodeURIComponent(email || "") +
+                "&sid=" + encodeURIComponent(sid || "");
+        }
+
+        /* ============================================================
+           PARSE PARAMS AND IDENTITY
+        ============================================================ */
+        const qs = new URLSearchParams(location.search);
+        let target = qs.get("target") || "";
+        let learnerName =
+            qs.get("learnerName") || localStorage.getItem("learnerName") || "";
+        let email =
+            qs.get("email") || localStorage.getItem("learnerEmail") || "";
+        let sid =
+            qs.get("sid") || localStorage.getItem("sessionId") || "";
+
+        if (!sid) {
+            sid = (window.crypto && crypto.randomUUID)
+                ? crypto.randomUUID()
+                : String(Date.now());
+        }
+
+        if (learnerName) localStorage.setItem("learnerName", learnerName);
+        if (email) localStorage.setItem("learnerEmail", email);
+        if (sid) localStorage.setItem("sessionId", sid);
+
+        /* ============================================================
+           DERIVE COMPETENCY AND SUBCOMPETENCY FROM TARGET
+           Examples:
+              C1a-apply, C1a-content, C1b-apply, etc
+        ============================================================ */
+        function deriveIds(target) {
+            if (!target) return { compId: null, subId: null, mode: null };
+
+            const m = target.match(/C([1-3][a-c])/i);
+            const full = m ? m[1].toUpperCase() : null;  // C1A, C1B etc
+            if (!full) return { compId: null, subId: null, mode: null };
+
+            const compNum = full.charAt(1);            // "1"
+            const compId = "C" + compNum;              // "C1"
+            const subId = "C" + full;                  // "CC1A" (too many C's), so build a better string
+
+            // Build C1a from the match, then uppercase
+            const raw = "C" + m[1];                    // "C1a"
+            const sub = raw.toUpperCase();             // "C1A"
+
+            let mode = "apply";
+            if (/content/i.test(target)) mode = "content";
+
+            return { compId, subId: sub, mode };
+        }
+
+        /* ============================================================
+           BUILD AND SEND STATEMENT
+        ============================================================ */
+        async function sendStatement() {
+            const msgEl = document.getElementById("msg");
+            const pillLabel = document.getElementById("pillLabel");
+            const detail = document.getElementById("detail");
+
+            const { compId, subId, mode } = deriveIds(target);
+
+            console.log("complete.html target:", target, "compId:", compId, "subId:", subId, "mode:", mode);
+
+            if (!compId || !subId) {
+                msgEl.textContent = "We could not identify which lesson you completed.";
+                pillLabel.textContent = "Please return to your dashboard.";
+                detail.textContent = "Missing or invalid target parameter in complete.html.";
+                return;
+            }
+
+            const actorName = learnerName || email || "Anonymous";
+            const mbox = "mailto:" + encodeURIComponent(actorName) + "@wirelxdfirm.com";
+
+            const verbId = mode === "apply"
+                ? "http://adlnet.gov/expapi/verbs/completed"
+                : "http://adlnet.gov/expapi/verbs/experienced";
+
+            const verbLabel = mode === "apply"
+                ? "completed application"
+                : "experienced content";
+
+            const activityId =
+                mode === "apply"
+                    ? `https://acbl.wirelxdfirm.com/activities/${subId}/apply`
+                    : `https://acbl.wirelxdfirm.com/activities/${subId}/content`;
+
+            const displayName =
+                mode === "apply"
+                    ? `${subId} Apply Completed`
+                    : `${subId} Content Completed`;
+
+            const stmt = {
+                actor: {
+                    name: actorName,
+                    mbox: mbox
                 },
-                objectType: "Activity"
-            },
-            result: {
-                extensions: {
-                    [EX("learnerName")]: learnerName,
-                    [EX("competencyId")]: comp.toUpperCase(),
-                    [EX("subCompetency")]: subCompetency ? subCompetency.toUpperCase() : "",
-                    [EX("applyComplete")]: true
-                }
-            },
-            context: {
-                registration: sid
-            },
-            timestamp: new Date().toISOString()
-        };
+                verb: {
+                    id: verbId,
+                    display: { "en-US": verbLabel }
+                },
+                object: {
+                    id: activityId,
+                    definition: {
+                        name: { "en-US": displayName },
+                        type: "http://adlnet.gov/expapi/activities/lesson"
+                    },
+                    objectType: "Activity"
+                },
+                result: {
+                    completion: true,
+                    success: true,
+                    extensions: {
+                        [EX("competencyId")]: compId,
+                        [EX("subCompetency")]: subId,
+                        [EX("learnerName")]: actorName
+                    }
+                },
+                context: {
+                    registration: sid || undefined
+                },
+                timestamp: new Date().toISOString()
+            };
 
-        /* ------------------ Send xAPI with retry ------------------ */
-        async function sendXAPI() {
-            const status = document.getElementById("status");
-            status.textContent = "Sending completion…";
+            console.log("complete.html sending statement:", stmt);
 
             try {
-                const res = await fetch(PROXY + "?mode=write", {
+                pillLabel.textContent = "Sending data to LRS…";
+
+                const res = await fetch(PROXY_URL + "?mode=write", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(stmt)
                 });
 
-                if (!res.ok) throw new Error("Network error");
+                if (!res.ok) {
+                    console.warn("LRS proxy write failed:", res.status, await res.text());
+                    msgEl.textContent = "We had trouble saving your progress.";
+                    pillLabel.textContent = "Please return to your dashboard.";
+                    detail.textContent = "Status: " + res.status + ". Try again or contact your facilitator.";
+                    return;
+                }
 
-                status.textContent = "Recorded. Redirecting…";
+                msgEl.textContent = "Your progress has been saved.";
+                pillLabel.textContent = "Routing you to your dashboard…";
+                detail.textContent = `Recorded ${subId} (${mode}) for ${actorName}.`;
 
+                // Small delay so the learner sees the message, then go back to next.html
                 setTimeout(() => {
-                    const nextURL = new URL("https://www.wirelearningsolutions.com/next.html");
-                    nextURL.searchParams.set("learnerName", learnerName);
-                    nextURL.searchParams.set("sid", sid);
-                    nextURL.searchParams.set("from", target);
-
-                    window.location.href = nextURL.toString();
-                }, 600);
+                    const nextUrl = withIdentity("next.html", learnerName, email, sid);
+                    window.location.href = nextUrl;
+                }, 1500);
 
             } catch (err) {
-                console.error("Retrying send…", err);
-                status.textContent = "Retrying…";
-
-                setTimeout(sendXAPI, 1400);
+                console.error("complete.html LRS error:", err);
+                msgEl.textContent = "We had trouble talking to the learning record store.";
+                pillLabel.textContent = "Please try again.";
+                detail.textContent = String(err);
             }
         }
 
-        sendXAPI();
-
         /* ============================================================
-           Remove Rise runtime scripts to prevent crashes
+           START
         ============================================================ */
-        document.addEventListener("DOMContentLoaded", () => {
-            const killers = ["content.js", "commons.js", "runtime", "main", "index"];
-            document.querySelectorAll("script").forEach(s => {
-                if (s.src && killers.some(k => s.src.includes(k))) {
-                    console.warn("Blocked Rise script:", s.src);
-                    s.remove();
-                }
-            });
-        });
+        sendStatement().catch(console.error);
     </script>
-
 </body>
 </html>
