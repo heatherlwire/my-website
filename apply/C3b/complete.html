@@ -24,88 +24,72 @@
             --bg-1: #0e1526;
             --ink-0: #e8f1ff;
             --ink-1: #b9c8e8;
-            --sky-1: #0ea5e9;
             --ok: #22c55e;
             --shadow: 0 10px 24px rgba(0,0,0,.35);
         }
 
         body {
             margin: 0;
-            color: var(--ink-0);
-            font-family: ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;
-            background: radial-gradient(1000px 600px at 70% -10%,rgba(34,211,238,.10),transparent 60%), linear-gradient(180deg,#07101e 0%,#0a1322 50%,#0b1628 100%);
+            font-family: ui-sans-serif,system-ui;
+            background: radial-gradient(1000px 600px at 70% -10%,rgba(34,211,238,.10),transparent 60%), linear-gradient(180deg,#07101e,#0a1322 50%,#0b1628 100%);
             min-height: 100dvh;
             display: flex;
             align-items: center;
             justify-content: center;
             padding: 24px;
+            color: var(--ink-0);
         }
 
         .card {
-            background: linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.015)), var(--bg-1);
+            background: linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.015)),var(--bg-1);
             border: 1px solid rgba(148,163,184,.15);
             border-radius: 16px;
-            box-shadow: var(--shadow);
             padding: 28px 24px;
-            backdrop-filter: blur(6px);
-            max-width: 640px;
             text-align: center;
+            box-shadow: var(--shadow);
+            max-width: 640px;
+            width: 100%;
         }
 
         h1 {
-            font-size: clamp(22px,2.4vw,28px);
             margin-bottom: 10px;
-            background: linear-gradient(90deg,var(--ink-0),#cfe8ff);
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
-        }
-
-        .badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            padding: 10px 14px;
-            border-radius: 999px;
-            border: 1px solid rgba(34,211,238,.45);
-            background: rgba(14,165,233,.10);
-            margin-bottom: 14px;
-            font-size: 14px;
-        }
-
-        .dot {
-            width: 14px;
-            height: 14px;
-            border-radius: 50%;
-            background: var(--ok);
-            box-shadow: 0 0 0 0 rgba(34,197,94,.55);
-            animation: pulse 1.8s ease-out infinite;
-        }
-
-        @keyframes pulse {
-            0% {
-                box-shadow: 0 0 0 0 rgba(34,197,94,.5)
-            }
-
-            70% {
-                box-shadow: 0 0 0 10px rgba(34,197,94,0)
-            }
-
-            100% {
-                box-shadow: 0 0 0 0 rgba(34,197,94,0)
-            }
         }
 
         .muted {
             color: var(--ink-1);
         }
 
-        .row {
-            display: flex;
-            gap: 10px;
-            justify-content: center;
-            margin-top: 16px;
-            flex-wrap: wrap;
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border-radius: 999px;
+            background: rgba(14,165,233,.10);
+            border: 1px solid rgba(34,211,238,.35);
+            margin-bottom: 12px;
+        }
+
+        .dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--ok);
+            animation: pulse 1.8s ease-out infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(34,197,94,.5);
+            }
+
+            70% {
+                box-shadow: 0 0 0 10px rgba(34,197,94,0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(34,197,94,0);
+            }
         }
 
         .btn {
@@ -113,36 +97,26 @@
             border-radius: 10px;
             border: 1px solid rgba(148,163,184,.35);
             background: #0f1a2e;
-            color: var(--ink-0);
+            color: #fff;
             cursor: pointer;
-            font-size: 14px;
-            transition: transform .05s ease, box-shadow .2s ease, opacity .2s ease;
+            margin: 8px;
         }
 
-            .btn:hover {
-                transform: translateY(-1px);
-                box-shadow: 0 4px 14px rgba(15,23,42,.65);
-            }
-
         pre {
-            white-space: pre-wrap;
-            word-break: break-word;
+            text-align: left;
             background: #0b1222;
-            color: #dbeafe;
-            border: 1px solid rgba(148,163,184,.2);
-            border-radius: 12px;
             padding: 12px;
+            border-radius: 12px;
             max-height: 260px;
             overflow: auto;
-            margin-top: 12px;
-            text-align: left;
-            font-size: 12px;
+            border: 1px solid rgba(148,163,184,.2);
         }
     </style>
 </head>
 
 <body>
     <section class="card">
+
         <div class="badge">
             <span class="dot"></span>
             <span id="statusText">Recording completion…</span>
@@ -151,39 +125,37 @@
         <h1>Lesson Complete</h1>
 
         <p class="muted">
-            You just finished
-            <span class="module" id="moduleName">—</span>
+            You completed: <b id="modName">—</b>
         </p>
 
-        <p class="muted">
-            Redirecting in <span id="count">3</span> seconds…
-        </p>
+        <p class="muted">Redirecting in <span id="count">3</span>…</p>
 
-        <div class="row">
-            <button id="continueBtn" class="btn">Go now</button>
-            <button id="viewDebug" class="btn">Show debug</button>
+        <div>
+            <button class="btn" id="goBtn">Go now</button>
+            <button class="btn" id="dbgBtn">Show debug</button>
         </div>
 
-        <div id="debugPanel" style="display:none">
-            <pre id="debugOut">Loading…</pre>
+        <div id="dbgPanel" style="display:none;">
+            <pre id="dbgOut"></pre>
         </div>
+
     </section>
 
     <script>
         (function () {
 
-            /* -----------------------------
-               Query + learner context
-            ----------------------------- */
+            /* -----------------------
+               Query & Identity
+            ----------------------- */
             const qs = new URLSearchParams(location.search);
-            const targetKey = (qs.get("target") || "unknown-module").trim();
+            const target = qs.get("target") || "unknown";
 
             const learnerName =
-                (qs.get("learnerName") ||
-                    localStorage.getItem("learnerName") ||
-                    "Anonymous").trim();
+                qs.get("learnerName") ||
+                localStorage.getItem("learnerName") ||
+                "Anonymous";
 
-            const sid =
+            let sid =
                 qs.get("sid") ||
                 localStorage.getItem("sessionId") ||
                 (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()));
@@ -191,125 +163,104 @@
             localStorage.setItem("learnerName", learnerName);
             localStorage.setItem("sessionId", sid);
 
-            const compMatch = targetKey.match(/(C[1-3])/i);
-            const comp = (compMatch ? compMatch[1] :
-                localStorage.getItem("currentCompetency") ||
-                "C1").toUpperCase();
-
+            /* Detect competency */
+            const compMatch = target.match(/C[1-3]/i);
+            const comp = compMatch ? compMatch[0].toUpperCase() : "C1";
             localStorage.setItem("currentCompetency", comp);
 
+            /* Save lastPath */
+            const folder = target.split("-")[0];
+            const fullPath = `/apply/${folder}/${target}.html`;
+            localStorage.setItem("lastPath", fullPath);
 
-            /* -----------------------------
-               lastPath (REQUIRED)
-            ----------------------------- */
-            const folder = targetKey.split("-")[0];
-            const fullApplyPath = `/apply/${folder}/${targetKey}.html`;
-            localStorage.setItem("lastPath", fullApplyPath);
+            document.getElementById("modName").textContent = target.toUpperCase();
 
+            /* -----------------------
+               Build next.html URL
+            ----------------------- */
+            const nextURL = new URL("https://www.wirelearningsolutions.com/next.html");
+            nextURL.searchParams.set("learnerName", learnerName);
+            nextURL.searchParams.set("sid", sid);
+            nextURL.searchParams.set("current", comp);
 
-            /* -----------------------------
-               UI text
-            ----------------------------- */
-            document.getElementById("moduleName").textContent =
-                `${targetKey.toUpperCase()} Lesson`;
-
-
-            /* -----------------------------
-               Build URL to next.html
-            ----------------------------- */
-            const nextUrl = new URL("https://www.wirelearningsolutions.com/next.html");
-            nextUrl.searchParams.set("learnerName", learnerName);
-            nextUrl.searchParams.set("sid", sid);
-            nextUrl.searchParams.set("current", comp);
-
-
-            /* -----------------------------
-               xAPI statement for completion
-            ----------------------------- */
-            const PROXY_URL =
-                "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
-
+            /* -----------------------
+               xAPI Statement
+            ----------------------- */
+            const PROXY = "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
             const NS = "https://acbl.wirelxdfirm.com/extensions/";
             const EX = k => NS + k;
 
             const stmt = {
                 actor: {
                     name: learnerName,
-                    mbox: `mailto:${encodeURIComponent(learnerName)}@wirelxdfirm.com`
+                    mbox: "mailto:" + encodeURIComponent(learnerName) + "@wirelxdfirm.com"
                 },
                 verb: {
                     id: "http://adlnet.gov/expapi/verbs/completed",
                     display: { "en-US": "completed" }
                 },
                 object: {
-                    id: `https://acbl.wirelxdfirm.com/activities/${targetKey}`,
-                    definition: { name: { "en-US": `${targetKey.toUpperCase()} Lesson` } }
+                    id: `https://acbl.wirelxdfirm.com/activities/${target}`,
+                    definition: {
+                        name: { "en-US": `${target} Apply Lesson` },
+                        type: "http://adlnet.gov/expapi/activities/lesson"
+                    }
                 },
                 result: {
                     completion: true,
                     extensions: {
-                        [EX("targetKey")]: targetKey,
                         [EX("competencyId")]: comp,
-                        [EX("sessionId")]: sid
+                        [EX("targetKey")]: target,
+                        [EX("sessionId")]: sid,
+                        [EX("applyComplete")]: true
                     }
                 },
+                context: { registration: sid },
                 timestamp: new Date().toISOString()
             };
 
             (async () => {
                 try {
-                    await fetch(`${PROXY_URL}?mode=write`, {
+                    await fetch(PROXY + "?mode=write", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify(stmt)
                     });
                     document.getElementById("statusText").textContent = "Progress recorded";
-                } catch (e) {
-                    console.warn("xAPI write failed:", e);
-                    document.getElementById("statusText").textContent = "Saved locally (offline)";
+                } catch (err) {
+                    document.getElementById("statusText").textContent = "Saved offline";
+                    console.warn(err);
                 }
 
-                document.getElementById("debugOut").textContent = JSON.stringify({
-                    learnerName,
-                    sid,
-                    comp,
-                    targetKey,
-                    fullApplyPath,
-                    nextUrl: nextUrl.toString()
-                }, null, 2);
+                /* Debug panel */
+                document.getElementById("dbgOut").textContent =
+                    JSON.stringify({ learnerName, sid, comp, target, fullPath, next: nextURL.toString() }, null, 2);
             })();
 
-
-            /* -----------------------------
+            /* -----------------------
                Auto redirect
-            ----------------------------- */
+            ----------------------- */
             let t = 3;
-            const countEl = document.getElementById("count");
+            const counter = document.getElementById("count");
             const timer = setInterval(() => {
                 t--;
-                countEl.textContent = t;
+                counter.textContent = t;
                 if (t <= 0) {
                     clearInterval(timer);
-                    location.href = nextUrl.toString();
+                    location.href = nextURL.toString();
                 }
             }, 1000);
 
-            document.getElementById("continueBtn").onclick = () => {
+            document.getElementById("goBtn").onclick = () => {
                 clearInterval(timer);
-                location.href = nextUrl.toString();
+                location.href = nextURL.toString();
             };
 
-
-            /* -----------------------------
-               Debug toggle
-            ----------------------------- */
-            const debugBtn = document.getElementById("viewDebug");
-            const debugPanel = document.getElementById("debugPanel");
-
-            debugBtn.onclick = () => {
-                const open = debugPanel.style.display !== "block";
-                debugPanel.style.display = open ? "block" : "none";
-                debugBtn.textContent = open ? "Hide debug" : "Show debug";
+            document.getElementById("dbgBtn").onclick = () => {
+                const p = document.getElementById("dbgPanel");
+                const v = p.style.display === "block";
+                p.style.display = v ? "none" : "block";
+                document.getElementById("dbgBtn").textContent = v ? "Show debug" : "Hide debug";
             };
 
         })();
