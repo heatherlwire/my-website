@@ -88,15 +88,15 @@
 
         @keyframes pulse {
             0% {
-                box-shadow: 0 0 0 0 rgba(34,197,94,.5)
+                box-shadow: 0 0 0 0 rgba(34,197,94,.5);
             }
 
             70% {
-                box-shadow: 0 0 0 10px rgba(34,197,94,0)
+                box-shadow: 0 0 0 10px rgba(34,197,94,0);
             }
 
             100% {
-                box-shadow: 0 0 0 0 rgba(34,197,94,0)
+                box-shadow: 0 0 0 0 rgba(34,197,94,0);
             }
         }
 
@@ -298,7 +298,7 @@
         <!-- Progress table -->
         <section class="card" id="progress">
             <h3 style="margin:0 0 6px;">Your Progress</h3>
-            <p class="muted" style="margin:0 0 8px;">Real-time data from your learning record.</p>
+            <p class="muted" style="margin:0 0 8px;">Real time data from your learning record.</p>
             <table>
                 <thead>
                     <tr><th>Competency</th><th>Mastery Level</th><th>Status</th></tr>
@@ -317,7 +317,6 @@
         /* ============================================================
            CONFIG
         ============================================================ */
-
         const PROXY_URL =
             "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
 
@@ -484,7 +483,7 @@
 
                 const ext = s.result?.extensions || {};
 
-                // track sub-competency completions from apply/content
+                // track sub-competency completions from apply or content
                 const sub = subFromStatement(s);
                 if (sub) {
                     if (!summary[comp].subsCompleted)
@@ -528,7 +527,7 @@
                 }
             }
 
-            /* ---------- reconcile missed vs subsCompleted (fixes C1b loop, case-insensitive) ---------- */
+            // reconcile missed vs subsCompleted, case insensitive
             ["C1", "C2", "C3"].forEach((compKey) => {
                 const s = summary[compKey];
                 if (!s) return;
@@ -544,7 +543,6 @@
                 const doneLower = done.map(x => String(x).toLowerCase());
                 s.missed = missed.filter(m => !doneLower.includes(String(m).toLowerCase()));
             });
-            /* ----------------------------------------------------------------------------------------- */
 
             return summary;
         }
@@ -652,7 +650,7 @@
                     }
                 }
 
-                // Stop after the first matching rule
+                // stop after the first matching rule
                 break;
             }
 
@@ -795,13 +793,13 @@
 
                 const tr = document.createElement("tr");
                 tr.innerHTML = `
-                                <td>${comp}</td>
-                                <td>${mastery}</td>
-                                <td>
-                                    <span class="status ${statusKey}">
-                                        <span class="s-dot"></span>${labelStatus(statusKey)}
-                                    </span>
-                                </td>`;
+                        <td>${comp}</td>
+                        <td>${mastery}</td>
+                        <td>
+                            <span class="status ${statusKey}">
+                                <span class="s-dot"></span>${labelStatus(statusKey)}
+                            </span>
+                        </td>`;
                 tbody.appendChild(tr);
             });
         }
@@ -955,103 +953,6 @@
                 };
             }
         })();
-
-        <script>
-            (async function () {
-        const PROXY_URL = "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
-            const LRS_ENDPOINT = "https://cloud.scorm.com/lrs/TENBKY6BZ6/sandbox/";
-            const LRS_KEY = "d_cPqAqYNvM3sMTyJ2M";
-            const LRS_SECRET = "rh70yfaxONPyu11z_vk";
-            const LRS_AUTH = "Basic " + btoa(`${LRS_KEY}:${LRS_SECRET}`);
-
-            const EXT_NS = "https://acbl.wirelxdfirm.com/extensions/";
-            const ALT_NS = "https://acbl.wirelearningsolutions.com/extensions/";
-        const EX = k => EXT_NS + k;
-
-            const qs = new URLSearchParams(location.search);
-            let learnerName = qs.get("learnerName") || localStorage.getItem("learnerName");
-            let sid = qs.get("sid") || localStorage.getItem("sessionId");
-
-            async function loadSummary() {
-            const url = `${LRS_ENDPOINT}statements?limit=200&format=exact`;
-
-            const res = await fetch(url, {
-                headers: {
-                "Authorization": LRS_AUTH,
-            "X-Experience-API-Version": "1.0.3"
-                }
-            });
-
-            if (!res.ok) {
-                console.warn("LRS fetch failed:", res.status);
-            return {C1: { }, C2: { }, C3: { } };
-            }
-
-            const data = await res.json();
-            const stmts = Array.isArray(data.statements) ? data.statements : [];
-            const filtered = stmts.filter((s) => {
-                const ex = s.result?.extensions || { };
-            const extName = ex[EX("learnerName")] || ex[ALT_NS + "learnerName"];
-            const actorName = s.actor?.name;
-            if (learnerName && extName === learnerName) return true;
-            if (learnerName && actorName === learnerName) return true;
-            return false;
-            });
-
-            const summary = {
-                C1: {mastery: null, finalized: false, testedOut: false, missed: [] },
-            C2: {mastery: null, finalized: false, testedOut: false, missed: [] },
-            C3: {mastery: null, finalized: false, testedOut: false, missed: [] }
-            };
-
-            for (const s of filtered) {
-                const ext = s.result?.extensions || { };
-            const comp = ext[EX("competencyId")] || ext[ALT_NS + "competencyId"];
-            if (comp && summary[comp]) {
-                    const mastery = ext[EX("masteryLevel")] || ext[ALT_NS + "masteryLevel"];
-            summary[comp].mastery = mastery;
-            summary[comp].finalized = ext[EX("finalized")] || ext[ALT_NS + "finalized"];
-            summary[comp].testedOut = ext[EX("testedOut")] || ext[ALT_NS + "testedOut"];
-            summary[comp].missed = ext[EX("missed")] || [];
-                }
-            }
-
-            return summary;
-        }
-
-            async function renderProgress(summary) {
-            const tbody = document.getElementById("progressTable");
-            tbody.innerHTML = "";
-
-            ["C1", "C2", "C3"].forEach(comp => {
-                const s = summary[comp] || { };
-            const mastery = s.mastery || "—";
-
-            let statusKey = "NotStarted";
-            if (s.finalized || s.mastery === "Mastery" || s.testedOut) {
-                statusKey = "Completed";
-                } else if (s.mastery) {
-                statusKey = "InProgress";
-                }
-
-            const tr = document.createElement("tr");
-            tr.innerHTML = `
-            <td>${comp}</td>
-            <td>${mastery}</td>
-            <td>
-                <span class="status ${statusKey}">
-                    <span class="s-dot"></span>${statusKey}
-                </span>
-            </td>`;
-            tbody.appendChild(tr);
-            });
-        }
-
-            const summary = await loadSummary();
-            renderProgress(summary);
-})();
-    </script>
-
     </script>
 </body>
 </html>
