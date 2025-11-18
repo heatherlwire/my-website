@@ -1231,8 +1231,8 @@ window.Script12 = function()
 window.Script13 = function()
 {
   /* ============================================================
-   RESULTS SLIDE – FINAL BULLETPROOF VERSION
-   SCORM CLOUD–COMPLIANT + CORRECT SCORE COLLECTION
+   RESULTS SLIDE - FINAL PATCHED VERSION
+   SCORM CLOUD COMPLIANT + CORRECT SCORE COLLECTION
 ============================================================ */
 (function () {
   function run() {
@@ -1243,12 +1243,10 @@ window.Script13 = function()
         return;
       }
 
-      /* ---------------------------------------------------------
-         IMPORTANT: Delay one cycle so Storyline finishes scoring
-      --------------------------------------------------------- */
+      // Delay so Storyline finishes scoring
       if (window.__delayResultsRun !== true) {
         window.__delayResultsRun = true;
-        setTimeout(run, 350);   // ← THIS FIXES THE 0-SCORE ISSUE 100 percent
+        setTimeout(run, 350); // helps avoid 0-score issue
         return;
       }
 
@@ -1261,6 +1259,7 @@ window.Script13 = function()
 
       /* ---------------------------------------------------------
          2) Subscores: C1a_score, C1b_score, C1c_score
+            These should be 0 or 1
       --------------------------------------------------------- */
       const sA = Number(p.GetVar(compId + "a_score") || 0);
       const sB = Number(p.GetVar(compId + "b_score") || 0);
@@ -1268,14 +1267,14 @@ window.Script13 = function()
 
       const correct = sA + sB + sC;
 
-      /* missed[] detection */
+      // missed[] detection
       const missed = [];
       if (sA !== 1) missed.push(compId + "a");
       if (sB !== 1) missed.push(compId + "b");
       if (sC !== 1) missed.push(compId + "c");
 
       /* ---------------------------------------------------------
-         3) Mastery level
+         3) Mastery level by score
       --------------------------------------------------------- */
       let mastery = "Failing";
       if (correct === 3) mastery = "Mastery";
@@ -1284,6 +1283,7 @@ window.Script13 = function()
 
       const testedOut = correct === 3;
       const finalized = false;
+      const passed = correct >= 2;
 
       /* ---------------------------------------------------------
          4) Identity + Session
@@ -1293,7 +1293,7 @@ window.Script13 = function()
         p.GetVar("actorName") ||
         "Anonymous";
 
-      learner = learner.trim() || "Anonymous";
+      learner = (learner || "").trim() || "Anonymous";
 
       let sid =
         localStorage.getItem("sessionId") ||
@@ -1304,19 +1304,26 @@ window.Script13 = function()
       const mbox = "mailto:" + encodeURIComponent(learner) + "@wirelxdfirm.com";
 
       /* ---------------------------------------------------------
-         5) Build summary statement (COMPLETE + SCORE)
+         5) Build result object for xAPI
       --------------------------------------------------------- */
-      const passed = correct >= 2;
+      const scaled = correct / 3; // 0 to 1
 
       const resultObj = {
-        score: { raw: correct, min: 0, max: 3 },
+        score: {
+          raw: correct,
+          min: 0,
+          max: 3,
+          scaled: scaled
+        },
         success: passed,
         completion: true,
         extensions: {
+          // keep both keys so everything downstream can read it
           "https://acbl.wirelxdfirm.com/extensions/learnerName": learner,
           "https://acbl.wirelxdfirm.com/extensions/sessionId": sid,
           "https://acbl.wirelxdfirm.com/extensions/competencyId": compId,
           "https://acbl.wirelxdfirm.com/extensions/masteryLevel": mastery,
+          "https://acbl.wirelxdfirm.com/extensions/mastery": mastery,
           "https://acbl.wirelxdfirm.com/extensions/missed": missed,
           "https://acbl.wirelxdfirm.com/extensions/testedOut": testedOut,
           "https://acbl.wirelxdfirm.com/extensions/finalized": finalized
@@ -1334,7 +1341,7 @@ window.Script13 = function()
       const objectDesc = `Assessment for competency ${compId}`;
 
       /* ---------------------------------------------------------
-         6) SEND VIA MASTER-SLIDE OVERRIDE
+         6) SEND VIA MASTER-SLIDE OVERRIDE OR DIRECT TO LAMBDA
       --------------------------------------------------------- */
       if (window.sendXAPI) {
         window.sendXAPI(
@@ -1345,9 +1352,14 @@ window.Script13 = function()
           resultObj,
           objectDesc
         );
-        console.log("✅ Summary sent through sendXAPI()");
+        console.log("✅ Summary sent through sendXAPI()", {
+          correct,
+          mastery,
+          missed
+        });
       } else {
-        console.warn("⚠ sendXAPI() missing — fallback direct");
+        console.warn("⚠ sendXAPI() missing - using direct fetch fallback");
+
         fetch(
           "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws?mode=write",
           {
@@ -1370,21 +1382,27 @@ window.Script13 = function()
               timestamp: new Date().toISOString()
             })
           }
-        );
+        )
+          .then(r => r.text())
+          .then(t => console.log("Lambda write response:", t))
+          .catch(err => console.error("Lambda write error:", err));
       }
 
       /* ---------------------------------------------------------
-         7) Save adaptive state
+         7) Save adaptive state for next.html
       --------------------------------------------------------- */
-      localStorage.setItem(`${compId}.score`, correct);
+      localStorage.setItem(`${compId}.score`, String(correct));
       localStorage.setItem(`${compId}.missed`, JSON.stringify(missed));
       localStorage.setItem(`${compId}.mastery`, mastery);
-      localStorage.setItem(`${compId}.testedOut`, testedOut);
-      localStorage.setItem(`${compId}.finalized`, finalized);
+      localStorage.setItem(`${compId}.testedOut`, String(testedOut));
+      localStorage.setItem(`${compId}.finalized`, String(finalized));
       localStorage.setItem("currentCompetency", compId);
       localStorage.setItem("currentMasteryLevel", mastery);
 
-      console.log(`🎉 FINAL SCORE: ${correct}/3 (${mastery})`, { missed });
+      console.log(
+        `🎉 FINAL SCORE for ${compId}: ${correct}/3 (${mastery})`,
+        { missed }
+      );
 
     } catch (e) {
       console.warn("❌ Results slide script failed:", e);
@@ -1399,13 +1417,13 @@ window.Script13 = function()
 window.Script14 = function()
 {
   /* ============================================================
-   FAILURE LAYER INITIALIZER (Bulletproof Final Version)
-   Marks test attempt as completed & clears Storyline resume
+   FAILURE LAYER INITIALIZER - PATCHED
+   Marks test attempt as completed and clears Storyline resume
+   Does not override score or mastery already sent from base
 ============================================================ */
 
 (function () {
   try {
-
     /* ----------------------------------------------------------
        1. Detect competency safely (C1 / C2 / C3)
     ---------------------------------------------------------- */
@@ -1419,7 +1437,8 @@ window.Script14 = function()
     }
 
     /* ----------------------------------------------------------
-       2. Mark attempt as completed (adaptive state written in base)
+       2. Mark attempt as completed
+          Score/mastery already handled on base layer
     ---------------------------------------------------------- */
     try {
       localStorage.setItem(`${compId}.completed`, "true");
@@ -1429,34 +1448,10 @@ window.Script14 = function()
     }
 
     /* ----------------------------------------------------------
-       3. Optional SCORM completion (ignored in HTML export)
-          Note: A failed test attempt is still a "completed" attempt.
-    ---------------------------------------------------------- */
-    try {
-      const lms = window.lmsAPI || null;
-      if (lms && typeof lms.SetStatus === "function") {
-        lms.SetStatus("completed");
-        lms.CommitData();
-        console.log("✔ SCORM completion sent (FAILURE)");
-      }
-    } catch (e) {
-      console.log("ℹ SCORM API unavailable (HTML export)");
-    }
-
-    /* ----------------------------------------------------------
-       4. Clear Storyline *only* resume keys
-          DO NOT clear:
-            learnerName
-            sessionId
-            C?_mastery
-            C?_missed
-            C?_score
-            testedOut
-            finalized
+       3. Clear Storyline resume keys only
     ---------------------------------------------------------- */
     try {
       const keys = Object.keys(localStorage);
-
       const slKeys = keys.filter(k =>
         k.startsWith("story") || k.includes("story_html5")
       );
@@ -1466,13 +1461,12 @@ window.Script14 = function()
       }
 
       console.log("✔ Storyline resume keys cleared (FAILURE)");
-
     } catch (e) {
       console.warn("⚠ Could not clear resume keys:", e);
     }
 
     /* ----------------------------------------------------------
-       5. Prevent rare Storyline double-fire
+       4. Prevent rare double fire
     ---------------------------------------------------------- */
     window.__failureLayerInit = true;
 
@@ -1563,8 +1557,9 @@ window.Script15 = function()
 window.Script16 = function()
 {
   /* ============================================================
-   SUCCESS LAYER INITIALIZER (Bulletproof Final Version)
-   Marks test attempt as completed & clears Storyline resume
+   SUCCESS LAYER INITIALIZER (Final Patched Version)
+   Marks test attempt as completed + clears Storyline resume
+   Does NOT send xAPI (base layer already handled score/mastery)
 ============================================================ */
 
 (function () {
@@ -1583,7 +1578,8 @@ window.Script16 = function()
     }
 
     /* ----------------------------------------------------------
-       2. Mark attempt as completed (adaptive state stays elsewhere)
+       2. Mark attempt as completed
+          (Score, missed[], mastery handled on base layer)
     ---------------------------------------------------------- */
     try {
       localStorage.setItem(`${compId}.completed`, "true");
@@ -1607,8 +1603,8 @@ window.Script16 = function()
     }
 
     /* ----------------------------------------------------------
-       4. Clear Storyline *only* resume keys
-          DO NOT clear:
+       4. Clear Storyline resume keys ONLY
+          Do NOT clear:
             learnerName
             sessionId
             C?_mastery
@@ -1620,7 +1616,6 @@ window.Script16 = function()
     try {
       const keys = Object.keys(localStorage);
 
-      // Storyline uses both "story" and "story_html5" patterns
       const slKeys = keys.filter(k =>
         k.startsWith("story") || k.includes("story_html5")
       );
@@ -1636,7 +1631,7 @@ window.Script16 = function()
     }
 
     /* ----------------------------------------------------------
-       5. Prevent rare Storyline double-fire
+       5. Prevent double-fire
     ---------------------------------------------------------- */
     window.__successLayerInit = true;
 
