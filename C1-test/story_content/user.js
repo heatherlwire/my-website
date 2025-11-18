@@ -462,14 +462,11 @@ window.Script3 = function()
 
 window.Script4 = function()
 {
-  /* Q1 Incorrect – Final Patched Version */
+  /* C1 Q1 – Incorrect layer */
 (function () {
     const p = GetPlayer();
     if (!p) return;
 
-    /* -------------------------------------------------------
-       Identity / Session
-    ------------------------------------------------------- */
     const learner =
         p.GetVar("learnerName") ||
         localStorage.getItem("learnerName") ||
@@ -482,38 +479,28 @@ window.Script4 = function()
 
     localStorage.setItem("sessionId", sid);
 
-    /* -------------------------------------------------------
-       Competency + Question Data
-    ------------------------------------------------------- */
     const comp = "C1";
+    const subId = "C1a";     // same as above
+    const qNum = 1;
+    const qid = `${subId}-Q${qNum}`;
 
-    const sub = p.GetVar("C1_Q1_Sub") || "";
     const answer = p.GetVar("C1_Q1_Answer") || "";
-    const qText = p.GetVar("C1_Q1_Text") || "";
-    const success = !!p.GetVar("C1_Q1_IsCorrect");   // FALSE for incorrect
 
-    const qid = `${comp}${sub}-Q1`;      // C1a-Q1
-    const fullSub = `${comp}${sub}`;     // C1a
-
-    /* -------------------------------------------------------
-       Send XAPI
-    ------------------------------------------------------- */
     sendXAPI(
         "http://adlnet.gov/expapi/verbs/answered",
         "answered",
-        `https://acbl.wirelxdfirm.com/activities/${comp}/questions/${qid}`,
+        `${comp}/questions/${qid}`,
         qid,
         {
-            success,
+            success: false,       // Incorrect layer
             response: answer,
             extensions: {
                 "https://acbl.wirelxdfirm.com/extensions/competencyId": comp,
-                "https://acbl.wirelxdfirm.com/extensions/subCompetency": fullSub,
+                "https://acbl.wirelxdfirm.com/extensions/subCompetency": subId,
                 "https://acbl.wirelxdfirm.com/extensions/questionId": qid,
                 "https://acbl.wirelxdfirm.com/extensions/sessionId": sid
             }
-        },
-        qText
+        }
     );
 })();
 
@@ -521,14 +508,12 @@ window.Script4 = function()
 
 window.Script5 = function()
 {
-  /* Q1 Correct – Final Patched Version */
+  /* C1 Q1 – Correct layer */
 (function () {
     const p = GetPlayer();
     if (!p) return;
 
-    /* -------------------------------------------------------
-       Identity / Session
-    ------------------------------------------------------- */
+    // Identity / session
     const learner =
         p.GetVar("learnerName") ||
         localStorage.getItem("learnerName") ||
@@ -541,38 +526,32 @@ window.Script5 = function()
 
     localStorage.setItem("sessionId", sid);
 
-    /* -------------------------------------------------------
-       Competency + Question Data
-    ------------------------------------------------------- */
-    const comp = "C1";
+    // This question's mapping
+    const comp = "C1";          // competency
+    const subId = "C1a";        // sub-competency for Q1
+    const qNum = 1;
+    const qid = `${subId}-Q${qNum}`; // "C1a-Q1"
 
-    const sub = p.GetVar("C1_Q1_Sub") || "";
+    // Optional: pull text/response if you have these vars
     const answer = p.GetVar("C1_Q1_Answer") || "";
-    const qText = p.GetVar("C1_Q1_Text") || "";
-    const success = !!p.GetVar("C1_Q1_IsCorrect");
+    // const qText = p.GetVar("C1_Q1_Text") || "";
 
-    const qid = `${comp}${sub}-Q1`;       // ex: C1a-Q1
-    const fullSub = `${comp}${sub}`;      // ex: C1a
-
-    /* -------------------------------------------------------
-       Send XAPI via helper
-    ------------------------------------------------------- */
+    // Send xAPI via master override
     sendXAPI(
         "http://adlnet.gov/expapi/verbs/answered",
         "answered",
-        `https://acbl.wirelxdfirm.com/activities/${comp}/questions/${qid}`,
+        `${comp}/questions/${qid}`,  // becomes https://acbl.../activities/C1/questions/C1a-Q1
         qid,
         {
-            success: success,
+            success: true,          // Correct layer
             response: answer,
             extensions: {
                 "https://acbl.wirelxdfirm.com/extensions/competencyId": comp,
-                "https://acbl.wirelxdfirm.com/extensions/subCompetency": fullSub,
+                "https://acbl.wirelxdfirm.com/extensions/subCompetency": subId,
                 "https://acbl.wirelxdfirm.com/extensions/questionId": qid,
                 "https://acbl.wirelxdfirm.com/extensions/sessionId": sid
             }
-        },
-        qText
+        }
     );
 })();
 
@@ -741,14 +720,11 @@ window.Script6 = function()
 
 window.Script7 = function()
 {
-  /* Q2 Incorrect – Final Patched Version */
+  /* C1 Q1 – Incorrect layer */
 (function () {
     const p = GetPlayer();
     if (!p) return;
 
-    /* -------------------------------------------------------
-       Identity / Session
-    ------------------------------------------------------- */
     const learner =
         p.GetVar("learnerName") ||
         localStorage.getItem("learnerName") ||
@@ -761,38 +737,27 @@ window.Script7 = function()
 
     localStorage.setItem("sessionId", sid);
 
-    /* -------------------------------------------------------
-       Competency + Question Data
-    ------------------------------------------------------- */
     const comp = "C1";
+    const subId = "C1b";
+	const qNum = 2;
 
-    const sub = p.GetVar("C1_Q2_Sub") || "";
-    const answer = p.GetVar("C1_Q2_Answer") || "";
-    const qText = p.GetVar("C1_Q2_Text") || "";
-    const success = !!p.GetVar("C1_Q2_IsCorrect");  // will be false
+	const answer = p.GetVar("C1_Q2_Answer") || "";
 
-    const qid = `${comp}${sub}-Q2`;       // ex: C1b-Q2
-    const fullSub = `${comp}${sub}`;      // ex: C1b
-
-    /* -------------------------------------------------------
-       Send XAPI via helper
-    ------------------------------------------------------- */
     sendXAPI(
         "http://adlnet.gov/expapi/verbs/answered",
         "answered",
-        `https://acbl.wirelxdfirm.com/activities/${comp}/questions/${qid}`,
+        `${comp}/questions/${qid}`,
         qid,
         {
-            success: success,
+            success: false,       // Incorrect layer
             response: answer,
             extensions: {
                 "https://acbl.wirelxdfirm.com/extensions/competencyId": comp,
-                "https://acbl.wirelxdfirm.com/extensions/subCompetency": fullSub,
+                "https://acbl.wirelxdfirm.com/extensions/subCompetency": subId,
                 "https://acbl.wirelxdfirm.com/extensions/questionId": qid,
                 "https://acbl.wirelxdfirm.com/extensions/sessionId": sid
             }
-        },
-        qText
+        }
     );
 })();
 
@@ -800,14 +765,12 @@ window.Script7 = function()
 
 window.Script8 = function()
 {
-  /* Q2 Correct – Final Patched Version */
+  /* C1 Q1 – Correct layer */
 (function () {
     const p = GetPlayer();
     if (!p) return;
 
-    /* -------------------------------------------------------
-       Identity / Session
-    ------------------------------------------------------- */
+    // Identity / session
     const learner =
         p.GetVar("learnerName") ||
         localStorage.getItem("learnerName") ||
@@ -820,38 +783,32 @@ window.Script8 = function()
 
     localStorage.setItem("sessionId", sid);
 
-    /* -------------------------------------------------------
-       Competency + Question Data
-    ------------------------------------------------------- */
-    const comp = "C1";
+    // This question's mapping
+    const comp = "C1";          // competency
+    const subId = "C1a";        // sub-competency for Q1
+    const qNum = 1;
+    const qid = `${subId}-Q${qNum}`; // "C1a-Q1"
 
-    const sub = p.GetVar("C1_Q2_Sub") || "";
-    const answer = p.GetVar("C1_Q2_Answer") || "";
-    const qText = p.GetVar("C1_Q2_Text") || "";
-    const success = !!p.GetVar("C1_Q2_IsCorrect");
+    // Optional: pull text/response if you have these vars
+    const answer = p.GetVar("C1_Q1_Answer") || "";
+    // const qText = p.GetVar("C1_Q1_Text") || "";
 
-    const qid = `${comp}${sub}-Q2`;       // ex: C1b-Q2
-    const fullSub = `${comp}${sub}`;      // ex: C1b
-
-    /* -------------------------------------------------------
-       Send XAPI via helper
-    ------------------------------------------------------- */
+    // Send xAPI via master override
     sendXAPI(
         "http://adlnet.gov/expapi/verbs/answered",
         "answered",
-        `https://acbl.wirelxdfirm.com/activities/${comp}/questions/${qid}`,
+        `${comp}/questions/${qid}`,  // becomes https://acbl.../activities/C1/questions/C1a-Q1
         qid,
         {
-            success: success,
+            success: true,          // Correct layer
             response: answer,
             extensions: {
                 "https://acbl.wirelxdfirm.com/extensions/competencyId": comp,
-                "https://acbl.wirelxdfirm.com/extensions/subCompetency": fullSub,
+                "https://acbl.wirelxdfirm.com/extensions/subCompetency": subId,
                 "https://acbl.wirelxdfirm.com/extensions/questionId": qid,
                 "https://acbl.wirelxdfirm.com/extensions/sessionId": sid
             }
-        },
-        qText
+        }
     );
 })();
 
@@ -1020,14 +977,11 @@ window.Script9 = function()
 
 window.Script10 = function()
 {
-  /* Q3 Incorrect – Final Patched Version */
+  /* C1 Q1 – Incorrect layer */
 (function () {
     const p = GetPlayer();
     if (!p) return;
 
-    /* -------------------------------------------------------
-       Identity / Session
-    ------------------------------------------------------- */
     const learner =
         p.GetVar("learnerName") ||
         localStorage.getItem("learnerName") ||
@@ -1040,40 +994,28 @@ window.Script10 = function()
 
     localStorage.setItem("sessionId", sid);
 
-    /* -------------------------------------------------------
-       Competency + Question Data
-    ------------------------------------------------------- */
     const comp = "C1";
+    const subId = "C1c";
+	const qNum = 3;
+	
+	const answer = p.GetVar("C1_Q3_Answer") || "";
 
-    const sub = p.GetVar("C1_Q3_Sub") || "";
-    const answer = p.GetVar("C1_Q3_Answer") || "";
-    const qText = p.GetVar("C1_Q3_Text") || "";
 
-    // SAFEST way (Storyline sometimes returns "False" as a string)
-    const success = p.GetVar("C1_Q3_IsCorrect") === true;
-
-    const qid = `${comp}${sub}-Q3`;   // ex: C1c-Q3
-    const fullSub = `${comp}${sub}`;  // ex: C1c
-
-    /* -------------------------------------------------------
-       Send XAPI
-    ------------------------------------------------------- */
     sendXAPI(
         "http://adlnet.gov/expapi/verbs/answered",
         "answered",
-        `https://acbl.wirelxdfirm.com/activities/${comp}/questions/${qid}`,
+        `${comp}/questions/${qid}`,
         qid,
         {
-            success,
+            success: false,       // Incorrect layer
             response: answer,
             extensions: {
                 "https://acbl.wirelxdfirm.com/extensions/competencyId": comp,
-                "https://acbl.wirelxdfirm.com/extensions/subCompetency": fullSub,
+                "https://acbl.wirelxdfirm.com/extensions/subCompetency": subId,
                 "https://acbl.wirelxdfirm.com/extensions/questionId": qid,
                 "https://acbl.wirelxdfirm.com/extensions/sessionId": sid
             }
-        },
-        qText
+        }
     );
 })();
 
@@ -1081,14 +1023,12 @@ window.Script10 = function()
 
 window.Script11 = function()
 {
-  /* Q3 Correct – Final Patched Version */
+  /* C1 Q1 – Correct layer */
 (function () {
     const p = GetPlayer();
     if (!p) return;
 
-    /* -------------------------------------------------------
-       Identity / Session
-    ------------------------------------------------------- */
+    // Identity / session
     const learner =
         p.GetVar("learnerName") ||
         localStorage.getItem("learnerName") ||
@@ -1101,38 +1041,33 @@ window.Script11 = function()
 
     localStorage.setItem("sessionId", sid);
 
-    /* -------------------------------------------------------
-       Competency + Question Data
-    ------------------------------------------------------- */
-    const comp = "C1";
+    // This question's mapping
+    const comp = "C1";          // competency
+   	const subId = "C1c";
+	const qNum = 3;
 
-    const sub = p.GetVar("C1_Q3_Sub") || "";
-    const answer = p.GetVar("C1_Q3_Answer") || "";
-    const qText = p.GetVar("C1_Q3_Text") || "";
-    const success = !!p.GetVar("C1_Q3_IsCorrect");
 
-    const qid = `${comp}${sub}-Q3`;       // ex: C1c-Q3
-    const fullSub = `${comp}${sub}`;      // ex: C1c
 
-    /* -------------------------------------------------------
-       Send XAPI via helper
-    ------------------------------------------------------- */
+    // Optional: pull text/response if you have these vars
+	const answer = p.GetVar("C1_Q3_Answer") || "";
+    // const qText = p.GetVar("C1_Q1_Text") || "";
+
+    // Send xAPI via master override
     sendXAPI(
         "http://adlnet.gov/expapi/verbs/answered",
         "answered",
-        `https://acbl.wirelxdfirm.com/activities/${comp}/questions/${qid}`,
+        `${comp}/questions/${qid}`,  // becomes https://acbl.../activities/C1/questions/C1a-Q1
         qid,
         {
-            success: success,
+            success: true,          // Correct layer
             response: answer,
             extensions: {
                 "https://acbl.wirelxdfirm.com/extensions/competencyId": comp,
-                "https://acbl.wirelxdfirm.com/extensions/subCompetency": fullSub,
+                "https://acbl.wirelxdfirm.com/extensions/subCompetency": subId,
                 "https://acbl.wirelxdfirm.com/extensions/questionId": qid,
                 "https://acbl.wirelxdfirm.com/extensions/sessionId": sid
             }
-        },
-        qText
+        }
     );
 })();
 
