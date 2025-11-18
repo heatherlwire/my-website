@@ -795,13 +795,13 @@
 
                 const tr = document.createElement("tr");
                 tr.innerHTML = `
-                            <td>${comp}</td>
-                            <td>${mastery}</td>
-                            <td>
-                                <span class="status ${statusKey}">
-                                    <span class="s-dot"></span>${labelStatus(statusKey)}
-                                </span>
-                            </td>`;
+                                <td>${comp}</td>
+                                <td>${mastery}</td>
+                                <td>
+                                    <span class="status ${statusKey}">
+                                        <span class="s-dot"></span>${labelStatus(statusKey)}
+                                    </span>
+                                </td>`;
                 tbody.appendChild(tr);
             });
         }
@@ -955,6 +955,103 @@
                 };
             }
         })();
+
+        <script>
+            (async function () {
+        const PROXY_URL = "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
+            const LRS_ENDPOINT = "https://cloud.scorm.com/lrs/TENBKY6BZ6/sandbox/";
+            const LRS_KEY = "d_cPqAqYNvM3sMTyJ2M";
+            const LRS_SECRET = "rh70yfaxONPyu11z_vk";
+            const LRS_AUTH = "Basic " + btoa(`${LRS_KEY}:${LRS_SECRET}`);
+
+            const EXT_NS = "https://acbl.wirelxdfirm.com/extensions/";
+            const ALT_NS = "https://acbl.wirelearningsolutions.com/extensions/";
+        const EX = k => EXT_NS + k;
+
+            const qs = new URLSearchParams(location.search);
+            let learnerName = qs.get("learnerName") || localStorage.getItem("learnerName");
+            let sid = qs.get("sid") || localStorage.getItem("sessionId");
+
+            async function loadSummary() {
+            const url = `${LRS_ENDPOINT}statements?limit=200&format=exact`;
+
+            const res = await fetch(url, {
+                headers: {
+                "Authorization": LRS_AUTH,
+            "X-Experience-API-Version": "1.0.3"
+                }
+            });
+
+            if (!res.ok) {
+                console.warn("LRS fetch failed:", res.status);
+            return {C1: { }, C2: { }, C3: { } };
+            }
+
+            const data = await res.json();
+            const stmts = Array.isArray(data.statements) ? data.statements : [];
+            const filtered = stmts.filter((s) => {
+                const ex = s.result?.extensions || { };
+            const extName = ex[EX("learnerName")] || ex[ALT_NS + "learnerName"];
+            const actorName = s.actor?.name;
+            if (learnerName && extName === learnerName) return true;
+            if (learnerName && actorName === learnerName) return true;
+            return false;
+            });
+
+            const summary = {
+                C1: {mastery: null, finalized: false, testedOut: false, missed: [] },
+            C2: {mastery: null, finalized: false, testedOut: false, missed: [] },
+            C3: {mastery: null, finalized: false, testedOut: false, missed: [] }
+            };
+
+            for (const s of filtered) {
+                const ext = s.result?.extensions || { };
+            const comp = ext[EX("competencyId")] || ext[ALT_NS + "competencyId"];
+            if (comp && summary[comp]) {
+                    const mastery = ext[EX("masteryLevel")] || ext[ALT_NS + "masteryLevel"];
+            summary[comp].mastery = mastery;
+            summary[comp].finalized = ext[EX("finalized")] || ext[ALT_NS + "finalized"];
+            summary[comp].testedOut = ext[EX("testedOut")] || ext[ALT_NS + "testedOut"];
+            summary[comp].missed = ext[EX("missed")] || [];
+                }
+            }
+
+            return summary;
+        }
+
+            async function renderProgress(summary) {
+            const tbody = document.getElementById("progressTable");
+            tbody.innerHTML = "";
+
+            ["C1", "C2", "C3"].forEach(comp => {
+                const s = summary[comp] || { };
+            const mastery = s.mastery || "—";
+
+            let statusKey = "NotStarted";
+            if (s.finalized || s.mastery === "Mastery" || s.testedOut) {
+                statusKey = "Completed";
+                } else if (s.mastery) {
+                statusKey = "InProgress";
+                }
+
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+            <td>${comp}</td>
+            <td>${mastery}</td>
+            <td>
+                <span class="status ${statusKey}">
+                    <span class="s-dot"></span>${statusKey}
+                </span>
+            </td>`;
+            tbody.appendChild(tr);
+            });
+        }
+
+            const summary = await loadSummary();
+            renderProgress(summary);
+})();
+    </script>
+
     </script>
 </body>
 </html>
