@@ -1,7 +1,7 @@
 ﻿<!DOCTYPE html>
 <html lang="en">
 <head>
-    <!-- Canonical redirect (top-level only so iframes are safe) -->
+    <!-- Canonical redirect (top-level only) -->
     <script>
         if (window.top === window.self) {
             if (location.hostname === "wirelearningsolutions.com") {
@@ -16,7 +16,7 @@
 
     <meta charset="UTF-8" />
     <title>Analyzing your progress</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
 
     <style>
         :root {
@@ -37,7 +37,7 @@
         body {
             margin: 0;
             color: var(--ink-0);
-            font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+            font-family: ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;
             background: radial-gradient(1200px 800px at 70% -10%, rgba(34,211,238,.10), transparent 60%), radial-gradient(1000px 600px at -10% 20%, rgba(14,165,233,.15), transparent 55%), linear-gradient(180deg, #07101e 0%, #0a1322 50%, #0b1628 100%);
             min-height: 100dvh;
         }
@@ -55,8 +55,8 @@
 
         h1 {
             margin: 0;
-            font-size: clamp(22px, 2.4vw, 28px);
-            background: linear-gradient(90deg, var(--ink-0), #cfe8ff);
+            font-size: clamp(22px,2.4vw,28px);
+            background: linear-gradient(90deg,var(--ink-0),#cfe8ff);
             -webkit-background-clip: text;
             background-clip: text;
             color: transparent;
@@ -107,7 +107,7 @@
         }
 
         .card {
-            background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.015)), var(--bg-1);
+            background: linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.015)),var(--bg-1);
             border: 1px solid rgba(148,163,184,.15);
             border-radius: 14px;
             padding: 16px;
@@ -139,7 +139,7 @@
         }
 
             button.primary {
-                background: linear-gradient(180deg, #0e87c7, #0c6aa0);
+                background: linear-gradient(180deg,#0e87c7,#0c6aa0);
                 border-color: rgba(34,211,238,.55);
                 box-shadow: 0 6px 24px rgba(14,165,233,.35);
             }
@@ -317,15 +317,21 @@
         /* ============================================================
            CONFIG
         ============================================================ */
-        const PROXY_URL = "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
-        const RULES_URL = "https://www.wirelearningsolutions.com/adaptive_rules.json";
+        const PROXY_URL =
+            "https://kh2do5aivc7hqegavqjeiwmd7q0smjqq.lambda-url.us-east-1.on.aws";
+
+        const RULES_URL =
+            "https://www.wirelearningsolutions.com/adaptive_rules.json";
+
         const EXT_NS = "https://acbl.wirelxdfirm.com/extensions/";
         const ALT_NS = "https://acbl.wirelearningsolutions.com/extensions/";
         const EX = k => EXT_NS + k;
+
         const LRS_ENDPOINT = "https://cloud.scorm.com/lrs/TENBKY6BZ6/sandbox/";
         const LRS_KEY = "d_cPqAqYNvM3sMTyJ2M";
         const LRS_SECRET = "rh70yfaxONPyu11z_vk";
         const LRS_AUTH = "Basic " + btoa(`${LRS_KEY}:${LRS_SECRET}`);
+
         const REFRESH_MS = 15000;
 
         /* ============================================================
@@ -333,9 +339,12 @@
         ============================================================ */
         const qs = new URLSearchParams(location.search);
 
-        let learnerName = qs.get("learnerName") || localStorage.getItem("learnerName") || "";
-        let email = qs.get("email") || localStorage.getItem("learnerEmail") || "";
-        let sid = qs.get("sid") || localStorage.getItem("sessionId") || "";
+        let learnerName =
+            qs.get("learnerName") || localStorage.getItem("learnerName") || "";
+        let email =
+            qs.get("email") || localStorage.getItem("learnerEmail") || "";
+        let sid =
+            qs.get("sid") || localStorage.getItem("sessionId") || "";
 
         if (!sid) {
             sid = (window.crypto && crypto.randomUUID)
@@ -501,7 +510,39 @@
                 const missedVal =
                     ext[EX("missed")] ??
                     ext[ALT_NS + "missed"];
+
+                if (Array.isArray(missedVal)) {
+                    summary[comp].missed = missedVal.slice();
+                } else if (typeof missedVal === "string" && missedVal.trim()) {
+                    try {
+                        const arr = JSON.parse(missedVal);
+                        if (Array.isArray(arr)) summary[comp].missed = arr;
+                    } catch {
+                        const arr = missedVal
+                            .split(",")
+                            .map((s2) => s2.replace(/"/g, "").trim())
+                            .filter(Boolean);
+                        if (arr.length) summary[comp].missed = arr;
+                    }
+                }
             }
+
+            // reconcile missed vs subsCompleted, case insensitive
+            ["C1", "C2", "C3"].forEach((compKey) => {
+                const s = summary[compKey];
+                if (!s) return;
+
+                const missed = Array.isArray(s.missed) ? s.missed : [];
+                const done = Array.isArray(s.subsCompleted) ? s.subsCompleted : [];
+
+                if (!missed.length || !done.length) {
+                    s.missed = missed;
+                    return;
+                }
+
+                const doneLower = done.map(x => String(x).toLowerCase());
+                s.missed = missed.filter(m => !doneLower.includes(String(m).toLowerCase()));
+            });
 
             return summary;
         }
@@ -752,13 +793,13 @@
 
                 const tr = document.createElement("tr");
                 tr.innerHTML = `
-                            <td>${comp}</td>
-                            <td>${mastery}</td>
-                            <td>
-                                <span class="status ${statusKey}">
-                                    <span class="s-dot"></span>${labelStatus(statusKey)}
-                                </span>
-                            </td>`;
+                        <td>${comp}</td>
+                        <td>${mastery}</td>
+                        <td>
+                            <span class="status ${statusKey}">
+                                <span class="s-dot"></span>${labelStatus(statusKey)}
+                            </span>
+                        </td>`;
                 tbody.appendChild(tr);
             });
         }
