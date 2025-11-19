@@ -38,49 +38,56 @@
             min-height: 100vh;
             color: var(--ink-0);
             font-family: ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;
-            background: radial-gradient(1200px 800px at 70% -10%, rgba(34,211,238,.10), transparent 60%), radial-gradient(1000px 600px at -10% 20%, rgba(14,165,233,.15), transparent 55%), linear-gradient(180deg,#07101e 0%,#0a1322 50%,#0b1628 100%);
+            background: radial-gradient(1300px 800px at 80% -10%, rgba(34,211,238,.08), transparent 60%), radial-gradient(1000px 600px at -10% 20%, rgba(14,165,233,.10), transparent 55%), linear-gradient(180deg,#07101e 0%,#0a1322 50%,#0b1628 100%);
             display: flex;
             justify-content: center;
             align-items: center;
-            padding: 20px;
+            padding: 24px;
         }
 
         .card {
-            width: min(1200px,98vw);
+            width: min(1200px,95vw);
+            max-width: 1200px;
             background: linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.015)),var(--bg-1);
             border: 1px solid rgba(148,163,184,.15);
             border-radius: 16px;
-            padding: 20px;
+            padding: 20px 24px;
             box-shadow: var(--shadow);
             backdrop-filter: blur(6px);
         }
 
         h1 {
-            font-size: clamp(20px,2.2vw,26px);
             margin: 0 0 6px;
+            font-size: clamp(22px,2.4vw,30px);
             background: linear-gradient(90deg,var(--ink-0),#cfe8ff);
             -webkit-background-clip: text;
             color: transparent;
         }
 
         h2#subtitle {
-            margin: 0 0 10px;
+            margin: 0 0 8px;
+            font-weight: 600;
             font-size: clamp(16px,1.8vw,20px);
             color: var(--ink-1);
         }
 
+        .muted {
+            color: var(--ink-1);
+            margin-bottom: 14px;
+        }
+
         #playerWrap {
-            margin-top: 12px;
             border: 1px solid rgba(148,163,184,.2);
             border-radius: 12px;
             overflow: hidden;
             background: #0b1222;
             aspect-ratio: 16/9;
             width: 100%;
+            margin-top: 12px;
         }
 
         button {
-            padding: 12px 20px;
+            padding: 12px 18px;
             border-radius: 10px;
             font-size: 16px;
             cursor: pointer;
@@ -103,12 +110,11 @@
 
         pre {
             background: #0b1222;
-            padding: 10px;
-            border-radius: 10px;
-            margin-top: 8px;
             color: var(--ink-1);
-            font-size: 14px;
-            max-height: 240px;
+            border-radius: 12px;
+            padding: 12px;
+            margin-top: 12px;
+            max-height: 250px;
             overflow: auto;
         }
     </style>
@@ -118,7 +124,7 @@
     <section class="card">
         <h1 id="title">Content</h1>
         <h2 id="subtitle"></h2>
-        <p class="muted">Watch the video to unlock the next step.</p>
+        <p class="muted">Watch the entire video to unlock the next step.</p>
 
         <div id="playerWrap"><div id="player"></div></div>
 
@@ -135,11 +141,11 @@
 
     <script>
         /* ===========================================================================
-           1. UNIVERSAL FILENAME PARSING (ALL 9 PAGES)
+           UNIVERSAL SUBCOMPETENCY DETECTION (ALL 9 PAGES)
         =========================================================================== */
         (function () {
             const file = location.pathname.split("/").pop() || "";
-            const key = file.replace(".html", "");      // C1a-content
+            const key = file.replace(".html", "");
             const m = key.match(/^(C[1-3])([a-c])\-content$/i);
 
             if (!m) {
@@ -148,8 +154,8 @@
             }
 
             window._meta = {
-                compId: m[1].toUpperCase(),                 // "C1"
-                subCompetency: (m[1] + m[2]).toUpperCase(), // "C1A"
+                compId: m[1].toUpperCase(),             // C1
+                subCompetency: (m[1] + m[2]).toUpperCase(), // C1A
                 keyRaw: key
             };
 
@@ -159,7 +165,7 @@
 
     <script>
         /* ===========================================================================
-           2. BASIC IDENTITY
+           IDENTITY
         =========================================================================== */
         const qs = new URLSearchParams(location.search);
         const learnerName = qs.get("learnerName") || localStorage.getItem("learnerName") || "Anonymous";
@@ -169,7 +175,7 @@
         localStorage.setItem("sessionId", sid);
 
         /* ===========================================================================
-           3. LRS CONFIG
+           LRS / XAPI CONFIG
         =========================================================================== */
         const endpoint = "https://cloud.scorm.com/lrs/TENBKY6BZ6/sandbox/";
         const keyLRS = "d_cPqAqYNvM3sMTyJ2M";
@@ -180,7 +186,7 @@
         const EX = k => NS + k;
 
         /* ===========================================================================
-           4. XAPI SEND
+           XAPI SEND FUNCTION
         =========================================================================== */
         function sendXAPI(verbId, verb, ext = {}) {
             return fetch(endpoint + "statements", {
@@ -203,11 +209,11 @@
                     },
                     timestamp: new Date().toISOString()
                 })
-            }).catch(err => console.error("xAPI error:", err));
+            });
         }
 
         /* ===========================================================================
-           5. YouTube PLAYER + UNLOCK
+           YOUTUBE PLAYER + TITLE + CAPTIONS
         =========================================================================== */
         let player, duration = 0;
 
@@ -215,6 +221,40 @@
             const b = document.getElementById("nextBtn");
             b.disabled = false;
             b.classList.add("ready");
+        }
+
+        function loadYouTubeTitle(videoId) {
+            fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`)
+                .then(r => r.json())
+                .then(d => {
+                    document.getElementById("subtitle").textContent = d.title || "";
+                }).catch(() => { });
+        }
+
+        function loadCaptions(videoId) {
+            fetch(`https://video.google.com/timedtext?lang=en&v=${videoId}`)
+                .then(r => r.text())
+                .then(xml => {
+                    if (!xml.includes("<text")) return;
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(xml, "text/xml");
+                    const texts = [...doc.querySelectorAll("text")].map(n => n.textContent);
+                    const cap = texts.join(" ");
+
+                    const box = document.createElement("pre");
+                    box.textContent = cap;
+                    box.style.display = "none";
+                    box.id = "captionsBox";
+                    document.querySelector(".card").appendChild(box);
+
+                    const btn = document.getElementById("captionBtn");
+                    btn.style.display = "inline-block";
+                    btn.addEventListener("click", () => {
+                        const vis = box.style.display === "block";
+                        box.style.display = vis ? "none" : "block";
+                        btn.textContent = vis ? "Show Captions" : "Hide Captions";
+                    });
+                });
         }
 
         function onPlayerReady(e) {
@@ -227,26 +267,46 @@
             }
         }
 
-        function launchPlayer() {
-            const tag = document.createElement("script");
-            tag.src = "https://www.youtube.com/iframe_api";
-            document.head.appendChild(tag);
-
+        function launchPlayer(videoId) {
             window.onYouTubeIframeAPIReady = () => {
                 player = new YT.Player("player", {
-                    videoId: "olOSOl0YPL4", // You can override through FALLBACK_MAP
+                    videoId: videoId,
+                    playerVars: { rel: 0, modestbranding: 1, playsinline: 1 },
                     events: { onReady: onPlayerReady, onStateChange: onPlayerStateChange }
                 });
             };
+            const tag = document.createElement("script");
+            tag.src = "https://www.youtube.com/iframe_api";
+            document.head.appendChild(tag);
         }
-        launchPlayer();
 
         /* ===========================================================================
-           6. UNIVERSAL NEXT BUTTON (THIS FIXES THE LOOP)
+           FALLBACK MAP (YOU CAN EDIT VIDEO IDS IF NEEDED)
+        =========================================================================== */
+        const FALLBACK_MAP = {
+            "C1a-content": { video: "olOSOl0YPL4", apply: "../apply/C1a/C1a-apply.html" },
+            "C1b-content": { video: "VnXdj0yqpzI", apply: "../apply/C1b/C1b-apply.html" },
+            "C1c-content": { video: "QXGOjzcQdhQ", apply: "../apply/C1c/C1c-apply.html" },
+
+            "C2a-content": { video: "S6Y1QrQ-Wuw", apply: "../apply/C2a/C2a-apply.html" },
+            "C2b-content": { video: "VnXdj0yqpzI", apply: "../apply/C2b/C2b-apply.html" },
+            "C2c-content": { video: "XscUZ8dIa-8", apply: "../apply/C2c/C2c-apply.html" },
+
+            "C3a-content": { video: "VnXdj0yqpzI", apply: "../apply/C3a/C3a-apply.html" },
+            "C3b-content": { video: "6Pl3hPRwO-o", apply: "../apply/C3b/C3b-apply.html" },
+            "C3c-content": { video: "vswvFKIeMfg", apply: "../apply/C3c/C3c-apply.html" }
+        };
+
+        const cfg = FALLBACK_MAP[window._meta.keyRaw];
+        launchPlayer(cfg.video);
+        loadYouTubeTitle(cfg.video);
+        loadCaptions(cfg.video);
+
+        /* ===========================================================================
+           UNIVERSAL NEXT-BUTTON LOGIC (FIXES LOOP)
         =========================================================================== */
         document.getElementById("nextBtn").addEventListener("click", async () => {
 
-            // 1. SEND CORRECT CONTENT COMPLETION XAPI
             await sendXAPI(
                 "http://adlnet.gov/expapi/verbs/completed",
                 "completed content",
@@ -258,9 +318,6 @@
                 }
             );
 
-            console.log("SENT CONTENT COMPLETION:", window._meta);
-
-            // 2. SEND TO ADAPTIVE ENGINE (next.html)
             const url = new URL("https://www.wirelearningsolutions.com/next.html");
             url.searchParams.set("learnerName", learnerName);
             url.searchParams.set("sid", sid);
@@ -269,7 +326,7 @@
         });
 
         /* ===========================================================================
-           7. DEBUG TOGGLE
+           DEBUG TOGGLE
         =========================================================================== */
         document.getElementById("debugBtn").addEventListener("click", () => {
             const p = document.getElementById("debugPanel");
