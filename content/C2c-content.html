@@ -1,7 +1,7 @@
 ﻿<!DOCTYPE html>
 <html lang="en">
 <head>
-    <!-- Canonical redirect -->
+    <!-- Canonical redirect (top-level only) -->
     <script>
         if (window.top === window.self) {
             if (location.hostname === "wirelearningsolutions.com") {
@@ -38,56 +38,65 @@
             min-height: 100vh;
             color: var(--ink-0);
             font-family: ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;
-            background: radial-gradient(1300px 800px at 80% -10%, rgba(34,211,238,.08), transparent 60%), radial-gradient(1000px 600px at -10% 20%, rgba(14,165,233,.10), transparent 55%), linear-gradient(180deg,#07101e 0%,#0a1322 50%,#0b1628 100%);
+            background: radial-gradient(1200px 800px at 70% -10%, rgba(34,211,238,.10), transparent 60%), radial-gradient(1000px 600px at -10% 20%, rgba(14,165,233,.15), transparent 55%), linear-gradient(180deg,#07101e 0%,#0a1322 50%,#0b1628 100%);
             display: flex;
             justify-content: center;
             align-items: center;
-            padding: 24px;
+            padding: 20px;
         }
 
         .card {
-            width: min(1200px,95vw);
-            max-width: 1200px;
-            background: linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.015)),var(--bg-1);
+            width: min(1200px,98vw);
+            background: linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.015)), var(--bg-1);
             border: 1px solid rgba(148,163,184,.15);
             border-radius: 16px;
-            padding: 20px 24px;
+            padding: 20px;
             box-shadow: var(--shadow);
             backdrop-filter: blur(6px);
         }
 
         h1 {
+            font-size: clamp(20px,2.2vw,26px);
             margin: 0 0 6px;
-            font-size: clamp(22px,2.4vw,30px);
             background: linear-gradient(90deg,var(--ink-0),#cfe8ff);
             -webkit-background-clip: text;
+            background-clip: text;
             color: transparent;
         }
 
         h2#subtitle {
             margin: 0 0 8px;
-            font-weight: 600;
             font-size: clamp(16px,1.8vw,20px);
             color: var(--ink-1);
+            font-weight: 600;
         }
 
         .muted {
             color: var(--ink-1);
-            margin-bottom: 14px;
+            margin-bottom: 12px;
+            font-size: 15px;
         }
 
         #playerWrap {
+            margin-top: 12px;
             border: 1px solid rgba(148,163,184,.2);
             border-radius: 12px;
             overflow: hidden;
             background: #0b1222;
             aspect-ratio: 16/9;
             width: 100%;
-            margin-top: 12px;
+        }
+
+        /* Make the YouTube iframe actually fit */
+        #player, #player iframe {
+            width: 100% !important;
+            height: 100% !important;
+            display: block;
+            object-fit: cover;
         }
 
         button {
-            padding: 12px 18px;
+            padding: 12px 20px;
             border-radius: 10px;
             font-size: 16px;
             cursor: pointer;
@@ -110,11 +119,12 @@
 
         pre {
             background: #0b1222;
+            padding: 10px;
+            border-radius: 10px;
+            margin-top: 8px;
             color: var(--ink-1);
-            border-radius: 12px;
-            padding: 12px;
-            margin-top: 12px;
-            max-height: 250px;
+            font-size: 14px;
+            max-height: 240px;
             overflow: auto;
         }
     </style>
@@ -124,7 +134,7 @@
     <section class="card">
         <h1 id="title">Content</h1>
         <h2 id="subtitle"></h2>
-        <p class="muted">Watch the entire video to unlock the next step.</p>
+        <p class="muted">Watch the video to unlock the next step.</p>
 
         <div id="playerWrap"><div id="player"></div></div>
 
@@ -141,11 +151,12 @@
 
     <script>
         /* ===========================================================================
-           UNIVERSAL SUBCOMPETENCY DETECTION (ALL 9 PAGES)
+           1. UNIVERSAL FILENAME PARSING (ALL 9 PAGES)
+           - Detects C1/C2/C3 + a/b/c from filename, e.g. C1a-content.html
         =========================================================================== */
         (function () {
             const file = location.pathname.split("/").pop() || "";
-            const key = file.replace(".html", "");
+            const key = file.replace(".html", "");      // e.g., "C1a-content"
             const m = key.match(/^(C[1-3])([a-c])\-content$/i);
 
             if (!m) {
@@ -154,18 +165,19 @@
             }
 
             window._meta = {
-                compId: m[1].toUpperCase(),             // C1
-                subCompetency: (m[1] + m[2]).toUpperCase(), // C1A
-                keyRaw: key
+                compId: m[1].toUpperCase(),                 // "C1"
+                subCompetency: (m[1] + m[2]).toUpperCase(), // "C1A"
+                keyRaw: key                                  // "C1a-content"
             };
 
-            document.getElementById("title").textContent = window._meta.subCompetency + " Content";
+            document.getElementById("title").textContent =
+                window._meta.subCompetency + " Content";
         })();
     </script>
 
     <script>
         /* ===========================================================================
-           IDENTITY
+           2. BASIC IDENTITY
         =========================================================================== */
         const qs = new URLSearchParams(location.search);
         const learnerName = qs.get("learnerName") || localStorage.getItem("learnerName") || "Anonymous";
@@ -175,7 +187,7 @@
         localStorage.setItem("sessionId", sid);
 
         /* ===========================================================================
-           LRS / XAPI CONFIG
+           3. LRS CONFIG + XAPI HELPER
         =========================================================================== */
         const endpoint = "https://cloud.scorm.com/lrs/TENBKY6BZ6/sandbox/";
         const keyLRS = "d_cPqAqYNvM3sMTyJ2M";
@@ -185,9 +197,6 @@
         const NS = "https://acbl.wirelxdfirm.com/extensions/";
         const EX = k => NS + k;
 
-        /* ===========================================================================
-           XAPI SEND FUNCTION
-        =========================================================================== */
         function sendXAPI(verbId, verb, ext = {}) {
             return fetch(endpoint + "statements", {
                 method: "POST",
@@ -197,9 +206,14 @@
                     "X-Experience-API-Version": "1.0.3"
                 },
                 body: JSON.stringify({
-                    actor: { name: learnerName, mbox: `mailto:${encodeURIComponent(learnerName)}@wirelxdfirm.com` },
+                    actor: {
+                        name: learnerName,
+                        mbox: `mailto:${encodeURIComponent(learnerName)}@wirelxdfirm.com`
+                    },
                     verb: { id: verbId, display: { "en-US": verb } },
-                    object: { id: `https://acbl.wirelxdfirm.com/activities/${window._meta.keyRaw}` },
+                    object: {
+                        id: `https://acbl.wirelxdfirm.com/activities/${window._meta.keyRaw}`
+                    },
                     result: {
                         extensions: {
                             [EX("learnerName")]: learnerName,
@@ -209,26 +223,57 @@
                     },
                     timestamp: new Date().toISOString()
                 })
-            });
+            }).catch(err => console.error("xAPI error:", err));
         }
 
         /* ===========================================================================
-           YOUTUBE PLAYER + TITLE + CAPTIONS
+           4. CONTENT CONFIG MAP (DETECTS VIDEO BY FILENAME)
+           - Uses window._meta.keyRaw, e.g. "C1a-content"
         =========================================================================== */
-        let player, duration = 0;
+        const FALLBACK_MAP = {
+            // C1
+            "C1a-content": { video: "olOSOl0YPL4", apply: "../apply/C1a/C1a-apply.html" },
+            "C1b-content": { video: "VnXdj0yqpzI", apply: "../apply/C1b/C1b-apply.html" },
+            "C1c-content": { video: "QXGOjzcQdhQ", apply: "../apply/C1c/C1c-apply.html" },
+
+            // C2
+            "C2a-content": { video: "S6Y1QrQ-Wuw", apply: "../apply/C2a/C2a-apply.html" },
+            "C2b-content": { video: "VnXdj0yqpzI", apply: "../apply/C2b/C2b-apply.html" },
+            "C2c-content": { video: "XscUZ8dIa-8", apply: "../apply/C2c/C2c-apply.html" },
+
+            // C3
+            "C3a-content": { video: "VnXdj0yqpzI", apply: "../apply/C3a/C3a-apply.html" },
+            "C3b-content": { video: "6Pl3hPRwO-o", apply: "../apply/C3b/C3b-apply.html" },
+            "C3c-content": { video: "vswvFKIeMfg", apply: "../apply/C3c/C3c-apply.html" }
+        };
+
+        const cfg = FALLBACK_MAP[window._meta.keyRaw] || null;
+
+        if (!cfg) {
+            console.error("No config for key:", window._meta.keyRaw);
+        }
+
+        /* ===========================================================================
+           5. YOUTUBE PLAYER + TITLE + CAPTIONS
+        =========================================================================== */
+        let player, duration = 0, started = false;
 
         function enableNext() {
             const b = document.getElementById("nextBtn");
-            b.disabled = false;
-            b.classList.add("ready");
+            if (b.disabled) {
+                b.disabled = false;
+                b.classList.add("ready");
+            }
         }
 
         function loadYouTubeTitle(videoId) {
             fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`)
-                .then(r => r.json())
+                .then(r => r.ok ? r.json() : null)
                 .then(d => {
+                    if (!d) return;
                     document.getElementById("subtitle").textContent = d.title || "";
-                }).catch(() => { });
+                })
+                .catch(() => { });
         }
 
         function loadCaptions(videoId) {
@@ -254,7 +299,8 @@
                         box.style.display = vis ? "none" : "block";
                         btn.textContent = vis ? "Show Captions" : "Hide Captions";
                     });
-                });
+                })
+                .catch(() => { });
         }
 
         function onPlayerReady(e) {
@@ -262,12 +308,40 @@
         }
 
         function onPlayerStateChange(e) {
+            if (e.data === YT.PlayerState.PLAYING && !started) {
+                started = true;
+                sendXAPI(
+                    "http://adlnet.gov/expapi/verbs/experienced",
+                    "experienced content",
+                    {
+                        [EX("competencyId")]: window._meta.compId,
+                        [EX("subCompetency")]: window._meta.subCompetency
+                    }
+                );
+            }
+            if (e.data === YT.PlayerState.PAUSED) {
+                sendXAPI(
+                    "http://id.tincanapi.com/verb/paused",
+                    "paused content",
+                    {
+                        [EX("competencyId")]: window._meta.compId,
+                        [EX("subCompetency")]: window._meta.subCompetency
+                    }
+                );
+            }
             if (e.data === YT.PlayerState.ENDED) {
+                // Unlock button when video ends
                 enableNext();
             }
         }
 
         function launchPlayer(videoId) {
+            if (!videoId) return;
+
+            const tag = document.createElement("script");
+            tag.src = "https://www.youtube.com/iframe_api";
+            document.head.appendChild(tag);
+
             window.onYouTubeIframeAPIReady = () => {
                 player = new YT.Player("player", {
                     videoId: videoId,
@@ -275,38 +349,20 @@
                     events: { onReady: onPlayerReady, onStateChange: onPlayerStateChange }
                 });
             };
-            const tag = document.createElement("script");
-            tag.src = "https://www.youtube.com/iframe_api";
-            document.head.appendChild(tag);
+
+            loadYouTubeTitle(videoId);
+            loadCaptions(videoId);
+        }
+
+        if (cfg) {
+            launchPlayer(cfg.video);
         }
 
         /* ===========================================================================
-           FALLBACK MAP (YOU CAN EDIT VIDEO IDS IF NEEDED)
-        =========================================================================== */
-        const FALLBACK_MAP = {
-            "C1a-content": { video: "olOSOl0YPL4", apply: "../apply/C1a/C1a-apply.html" },
-            "C1b-content": { video: "VnXdj0yqpzI", apply: "../apply/C1b/C1b-apply.html" },
-            "C1c-content": { video: "QXGOjzcQdhQ", apply: "../apply/C1c/C1c-apply.html" },
-
-            "C2a-content": { video: "S6Y1QrQ-Wuw", apply: "../apply/C2a/C2a-apply.html" },
-            "C2b-content": { video: "VnXdj0yqpzI", apply: "../apply/C2b/C2b-apply.html" },
-            "C2c-content": { video: "XscUZ8dIa-8", apply: "../apply/C2c/C2c-apply.html" },
-
-            "C3a-content": { video: "VnXdj0yqpzI", apply: "../apply/C3a/C3a-apply.html" },
-            "C3b-content": { video: "6Pl3hPRwO-o", apply: "../apply/C3b/C3b-apply.html" },
-            "C3c-content": { video: "vswvFKIeMfg", apply: "../apply/C3c/C3c-apply.html" }
-        };
-
-        const cfg = FALLBACK_MAP[window._meta.keyRaw];
-        launchPlayer(cfg.video);
-        loadYouTubeTitle(cfg.video);
-        loadCaptions(cfg.video);
-
-        /* ===========================================================================
-           UNIVERSAL NEXT-BUTTON LOGIC (FIXES LOOP)
+           6. UNIVERSAL NEXT BUTTON (XAPI COMPLETION + ADAPTIVE ROUTE)
         =========================================================================== */
         document.getElementById("nextBtn").addEventListener("click", async () => {
-
+            // Send mastery-related completion for THIS subcompetency
             await sendXAPI(
                 "http://adlnet.gov/expapi/verbs/completed",
                 "completed content",
@@ -318,6 +374,7 @@
                 }
             );
 
+            // Route to adaptive engine (next.html). It will decide where to go next.
             const url = new URL("https://www.wirelearningsolutions.com/next.html");
             url.searchParams.set("learnerName", learnerName);
             url.searchParams.set("sid", sid);
@@ -326,11 +383,28 @@
         });
 
         /* ===========================================================================
-           DEBUG TOGGLE
+           7. DEBUG TOGGLE
         =========================================================================== */
         document.getElementById("debugBtn").addEventListener("click", () => {
             const p = document.getElementById("debugPanel");
-            p.style.display = p.style.display === "block" ? "none" : "block";
+            const dbg = document.getElementById("dbg");
+            if (p.style.display === "block") {
+                p.style.display = "none";
+            } else {
+                dbg.textContent = JSON.stringify(
+                    {
+                        keyRaw: window._meta.keyRaw,
+                        compId: window._meta.compId,
+                        subCompetency: window._meta.subCompetency,
+                        learnerName,
+                        sid,
+                        cfg
+                    },
+                    null,
+                    2
+                );
+                p.style.display = "block";
+            }
         });
     </script>
 
