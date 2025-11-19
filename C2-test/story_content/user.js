@@ -481,13 +481,13 @@ window.Script3 = function()
 
 window.Script4 = function()
 {
-  /* C1 Q1 – Incorrect */
+  /* C2 Q1 – Incorrect */
 (function () {
     const p = GetPlayer();
     if (!p) return;
 
-    const comp = "C1";
-    const sub = p.GetVar("C1_Q1_Sub") || p.GetVar("C1_SubCompetency") || "";
+    const comp = "C2";
+    const sub = p.GetVar("C2_Q1_Sub") || p.GetVar("C2_SubCompetency") || "";
     const fullSub = `${comp}${sub}`;
     const qid = `${fullSub}-Q1`;
 
@@ -501,7 +501,7 @@ window.Script4 = function()
         crypto.randomUUID();
     localStorage.setItem("sessionId", sid);
 
-    const answer = p.GetVar("C1_Q1_Answer") || "";
+    const answer = p.GetVar("C2_Q1_Answer") || "";
 
     sendXAPI(
         "http://adlnet.gov/expapi/verbs/answered",
@@ -525,13 +525,13 @@ window.Script4 = function()
 
 window.Script5 = function()
 {
-  /* C1 Q1 – Correct */
+  /* C2 Q1 – Correct */
 (function () {
     const p = GetPlayer();
     if (!p) return;
 
-    const comp = "C1";
-    const sub = p.GetVar("C1_Q1_Sub") || p.GetVar("C1_SubCompetency") || "";
+    const comp = "C2";
+    const sub = p.GetVar("C2_Q1_Sub") || p.GetVar("C2_SubCompetency") || "";
     const fullSub = `${comp}${sub}`;
     const qid = `${fullSub}-Q1`;
 
@@ -545,7 +545,7 @@ window.Script5 = function()
         crypto.randomUUID();
     localStorage.setItem("sessionId", sid);
 
-    const answer = p.GetVar("C1_Q1_Answer") || "";
+    const answer = p.GetVar("C2_Q1_Answer") || "";
 
     sendXAPI(
         "http://adlnet.gov/expapi/verbs/answered",
@@ -730,13 +730,13 @@ window.Script6 = function()
 
 window.Script7 = function()
 {
-  /* C1 Q2 – Incorrect */
+  /* C2 Q2 – Incorrect */
 (function () {
     const p = GetPlayer();
     if (!p) return;
 
-    const comp = "C1";
-    const sub = p.GetVar("C1_Q2_Sub") || p.GetVar("C1_SubCompetency") || "";
+    const comp = "C2";
+    const sub = p.GetVar("C2_Q2_Sub") || p.GetVar("C2_SubCompetency") || "";
     const fullSub = `${comp}${sub}`;
     const qid = `${fullSub}-Q2`;
 
@@ -750,7 +750,7 @@ window.Script7 = function()
         crypto.randomUUID();
     localStorage.setItem("sessionId", sid);
 
-    const answer = p.GetVar("C1_Q2_Answer") || "";
+    const answer = p.GetVar("C2_Q2_Answer") || "";
 
     sendXAPI(
         "http://adlnet.gov/expapi/verbs/answered",
@@ -979,13 +979,13 @@ window.Script9 = function()
 
 window.Script10 = function()
 {
-  /* C1 Q3 – Incorrect */
+  /* C2 Q3 – Incorrect */
 (function () {
     const p = GetPlayer();
     if (!p) return;
 
-    const comp = "C1";
-    const sub = p.GetVar("C1_Q3_Sub") || p.GetVar("C1_SubCompetency") || "";
+    const comp = "C2";
+    const sub = p.GetVar("C2_Q3_Sub") || p.GetVar("C2_SubCompetency") || "";
     const fullSub = `${comp}${sub}`;
     const qid = `${fullSub}-Q3`;
 
@@ -999,7 +999,7 @@ window.Script10 = function()
         crypto.randomUUID();
     localStorage.setItem("sessionId", sid);
 
-    const answer = p.GetVar("C1_Q3_Answer") || "";
+    const answer = p.GetVar("C2_Q3_Answer") || "";
 
     sendXAPI(
         "http://adlnet.gov/expapi/verbs/answered",
@@ -1368,7 +1368,7 @@ window.Script13 = function()
 
 window.Script14 = function()
 {
-  /* ============================================================
+  v/* ============================================================
    FAILURE LAYER INITIALIZER – Fully Aligned
 ============================================================ */
 
@@ -1545,60 +1545,118 @@ window.Script15 = function()
 window.Script16 = function()
 {
   /* ============================================================
-   SUCCESS LAYER INITIALIZER – Fully Aligned
+   SUCCESS LAYER INITIALIZER (Mastery + Routing Safe Version)
+   1) Sends a fresh xAPI mastery statement for this attempt
+   2) Marks test attempt as completed
+   3) Clears Storyline resume keys only
 ============================================================ */
 
 (function () {
   try {
     const p = GetPlayer();
-    if (!p) return;
+    if (!p) {
+      console.warn("⚠ No Storyline player found");
+      return;
+    }
 
-    const compId =
-      (location.href.toUpperCase().match(/C[123]/) || ["C1"])[0];
+    const NS = "https://acbl.wirelxdfirm.com/extensions/";
 
+    /* ----------------------------------------------------------
+       1. Detect competency safely (C1 / C2 / C3)
+    ---------------------------------------------------------- */
+    let compId = "C1";
+    try {
+      const match = window.location.href.toUpperCase().match(/C[123]/);
+      if (match && match[0]) {
+        compId = match[0];
+      } else {
+        console.warn("⚠ No compId found in URL, defaulting to C1");
+      }
+    } catch (e) {
+      console.warn("⚠ URL parse failed; defaulting compId = C1");
+    }
+
+    /* ----------------------------------------------------------
+       2. Pull identity + attempt data from Storyline
+    ---------------------------------------------------------- */
     const learner =
-      localStorage.getItem("learnerName") ||
       p.GetVar("learnerName") ||
+      localStorage.getItem("learnerName") ||
       "Anonymous";
 
-    const sid =
+    let sid =
       localStorage.getItem("sessionId") ||
-      p.GetVar("sessionId");
+      p.GetVar("sessionId") ||
+      (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()));
+
+    // Persist sid so everything uses the same one
+    try {
+      localStorage.setItem("sessionId", sid);
+    } catch (e) {
+      console.warn("⚠ Could not persist sessionId:", e);
+    }
 
     const mastery =
-      localStorage.getItem(`${compId}_mastery`) ||
       p.GetVar("masteryLevel") ||
-      "Failing";
+      p.GetVar(`${compId}_mastery`) ||
+      "";
 
-    const score =
-      Number(localStorage.getItem(`${compId}_score`) || 0);
+    // Score: expecting 0–3 but keep it generic
+    let rawScore =
+      Number(p.GetVar("finalScore")) ||
+      Number(p.GetVar(`${compId}_score`)) ||
+      0;
 
-    const missedRaw =
-      localStorage.getItem(`${compId}_missed`) || "[]";
+    if (Number.isNaN(rawScore)) rawScore = 0;
+
+    // missedSubs can be a JSON string or comma-separated list
+    let missedRaw =
+      p.GetVar("missedSubs") ||
+      p.GetVar(`${compId}_missed`) ||
+      "[]";
 
     let missed = [];
-    try { missed = JSON.parse(missedRaw); } catch {}
+    try {
+      const parsed = JSON.parse(missedRaw);
+      if (Array.isArray(parsed)) {
+        missed = parsed;
+      } else {
+        throw new Error("not array");
+      }
+    } catch {
+      missed = String(missedRaw)
+        .split(",")
+        .map((s) => s.replace(/"/g, "").trim())
+        .filter(Boolean);
+    }
 
-    const testedOut =
-      localStorage.getItem(`${compId}_testedOut`) === "true";
+    // Optional flags from Storyline variables
+    const testedOutVar = p.GetVar("testedOut");
+    const finalizedVar = p.GetVar("finalized");
 
-    const finalized =
-      localStorage.getItem(`${compId}_finalized`) === "true";
+    const toBool = (v) =>
+      v === true ||
+      v === 1 ||
+      v === "1" ||
+      (typeof v === "string" && /^true$/i.test(v));
 
-    /* ---------- SEND COMPLETION STATEMENT ---------- */
+    const testedOut = toBool(testedOutVar);
+    const finalized = toBool(finalizedVar);
+
+    /* ----------------------------------------------------------
+       3. Build xAPI "completed test" statement
+    ---------------------------------------------------------- */
     const stmt = {
       actor: {
         name: learner,
-        mbox:
-          "mailto:" +
-          encodeURIComponent(learner.replace(/\s+/g, "")) +
-          "@wirelxdfirm.com"
+        mbox: "mailto:" + encodeURIComponent(learner.replace(/\s+/g, "")) + "@wirelxdfirm.com"
       },
       verb: {
         id: "http://adlnet.gov/expapi/verbs/completed",
         display: { "en-US": "completed" }
       },
       object: {
+        // Important: Lambda uses this to detect compId (C1/C2/C3)
         id: `https://acbl.wirelxdfirm.com/activities/${compId}/test`,
         definition: {
           name: { "en-US": `${compId} Test` },
@@ -1606,36 +1664,98 @@ window.Script16 = function()
         }
       },
       result: {
-        score: { raw: score, min: 0, max: 3 },
+        score: {
+          raw: rawScore,
+          min: 0,
+          max: 3
+        },
+        // success is secondary; routing uses masteryLevel
         success: mastery === "Mastery",
         completion: true,
         extensions: {
-          "https://acbl.wirelxdfirm.com/extensions/competencyId": compId,
-          "https://acbl.wirelxdfirm.com/extensions/masteryLevel": mastery,
-          "https://acbl.wirelxdfirm.com/extensions/missed": missed,
-          "https://acbl.wirelxdfirm.com/extensions/testedOut": testedOut,
-          "https://acbl.wirelxdfirm.com/extensions/finalized": finalized,
-          "https://acbl.wirelxdfirm.com/extensions/sessionId": sid
+          [NS + "competencyId"]: compId,
+          [NS + "masteryLevel"]: mastery,
+          [NS + "missed"]: missed,
+          [NS + "testedOut"]: testedOut,
+          [NS + "finalized"]: finalized,
+          [NS + "sessionId"]: sid
         }
-      }
+      },
+      timestamp: new Date().toISOString()
     };
 
-    if (window.sendXAPI) {
-      window.sendXAPI("write", stmt);
+    /* ----------------------------------------------------------
+       4. Send to Lambda → SCORM Cloud (if helper exists)
+    ---------------------------------------------------------- */
+    try {
+      if (typeof sendXAPI === "function") {
+        sendXAPI("write", stmt);
+        console.log("✔ Sent mastery statement for", compId, stmt);
+      } else {
+        console.warn("⚠ sendXAPI helper not found; xAPI not sent");
+      }
+    } catch (e) {
+      console.error("❌ Failed to send mastery statement:", e);
     }
 
-    /* ---------- Mark attempt complete ---------- */
-    localStorage.setItem(`${compId}.completed`, "true");
+    /* ----------------------------------------------------------
+       5. Mark attempt as completed (local flag for browser logic)
+    ---------------------------------------------------------- */
+    try {
+      localStorage.setItem(`${compId}.completed`, "true");
+      console.log(`✔ Marked ${compId} attempt completed (SUCCESS outcome)`);
+    } catch (e) {
+      console.warn("⚠ Could not set completion flag:", e);
+    }
 
-    /* ---------- Clear resume keys ---------- */
-    Object.keys(localStorage)
-      .filter(k => k.startsWith("story") || k.includes("story_html5"))
-      .forEach(k => localStorage.removeItem(k));
+    /* ----------------------------------------------------------
+       6. Optional SCORM completion (ignored in HTML export)
+    ---------------------------------------------------------- */
+    try {
+      const lms = window.lmsAPI || null;
+      if (lms && typeof lms.SetStatus === "function") {
+        lms.SetStatus("completed");
+        lms.CommitData();
+        console.log("✔ SCORM completion sent (SUCCESS)");
+      }
+    } catch (e) {
+      console.log("ℹ SCORM API unavailable (HTML export)");
+    }
 
-    console.log(`✔ SUCCESS processed for ${compId}`);
+    /* ----------------------------------------------------------
+       7. Clear Storyline resume keys ONLY
+          Do NOT clear:
+            learnerName
+            sessionId
+            C?_mastery
+            C?_missed
+            C?_score
+            testedOut
+            finalized
+    ---------------------------------------------------------- */
+    try {
+      const keys = Object.keys(localStorage);
+
+      const slKeys = keys.filter(
+        (k) => k.startsWith("story") || k.includes("story_html5")
+      );
+
+      for (const k of slKeys) {
+        localStorage.removeItem(k);
+      }
+
+      console.log("✔ Storyline resume keys cleared (SUCCESS)");
+    } catch (e) {
+      console.warn("⚠ Could not clear resume keys:", e);
+    }
+
+    /* ----------------------------------------------------------
+       8. Prevent double-fire
+    ---------------------------------------------------------- */
+    window.__successLayerInit = true;
 
   } catch (err) {
-    console.error("❌ Success-layer failed:", err);
+    console.error("❌ Success-layer initialization failed:", err);
   }
 })();
 
